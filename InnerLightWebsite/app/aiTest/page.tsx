@@ -1,63 +1,41 @@
-"use client";
+'use client'
 
-import React, { useState } from "react";
-import { type ClientMessage } from "../actions";
-import { useActions } from "ai/rsc";
-import { nanoid } from "ai";
-
-export const dynamic = "force-dynamic";
-export const maxDuration = 30
+import { type Message, useAssistant } from 'ai/react'
+import React from 'react'
 
 export default function Page() {
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ClientMessage[]>([]);
-  const { submitMessage } = useActions();
-
-  const handleSubmission = async () => {
-    setMessages((currentMessages) => [
-      ...currentMessages,
-      {
-        id: nanoid(),
-        status: "user.message.created",
-        text: input,
-        gui: null,
-      },
-    ]);
-
-    const response = await submitMessage(input);
-    setMessages((currentMessages) => [...currentMessages, response]);
-    setInput("");
-  };
+  const {status, messages, input, submitMessage, handleInputChange} = useAssistant({
+    api: '/api/chatbot'
+  })
   return (
-    <div className="flex flex-col-reverse">
-      <div className="flex flex-row gap-2 p-2 bg-zinc-100 w-full">
-        <input
-          className="bg-zinc-100 w-full p-2 outline-none"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message..."
-          onKeyDown={(e) => e.key === "Enter" && handleSubmission()}
-        />
-        <button
-          className="p-2 bg-zinc-900 text-zinc-100 rounded-md"
-          onClick={handleSubmission}
-        >
-          Send
-        </button>
-      </div>
-
-      <div className="flex flex-col h-[calc(100dvh-56px)] overflow-y-scroll">
-        <div>
-          {messages.map((message) => (
-            <div key={message.id} className="flex flex-col gap-1 border-b p-2">
-              <div className="flex flex-row justify-between">
-                <div className="text-sm text-zinc-500">{message.status}</div>
-              </div>
-              <div>{message.text}</div>
-            </div>
-          ))}
+    <div className=''>
+      {messages.map((m : Message) => (
+        <div key={m.id} className='flex flex-col gap-1 border-b p-2'>
+          <strong>{`${m.role}: `}</strong>
+          {m.role !== 'data' && m.content}
+          {m.role === 'data' && (
+            <>
+              {(m.data as any).description}
+              <br />
+              <pre className='bg-amber-300'>
+                {JSON.stringify(m.data, null, 2)}
+              </pre>
+            </>
+          )}
         </div>
-      </div>
+      ))}
+
+      {status === 'in_progress' && <div />}
+      
+      <form onSubmit={submitMessage} className='flex flex-row gap-2 p-2 bg-zinc-100 w-full'>
+        <input
+          className='bg-zinc-100 w-full p-2 outline-none'
+          disabled={status != 'awaiting_message'}
+          value={input}
+          placeholder='Type a message'
+          onChange={handleInputChange}
+        />
+      </form>
     </div>
-  );
+  )
 }
