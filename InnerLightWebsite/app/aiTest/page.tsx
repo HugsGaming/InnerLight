@@ -5,6 +5,9 @@ import { type ClientMessage } from "../actions";
 import { useActions } from "ai/rsc";
 import { nanoid } from "ai";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 30
+
 export default function Page() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ClientMessage[]>([]);
