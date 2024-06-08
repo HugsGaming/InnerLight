@@ -82,7 +82,7 @@ export async function submitMessage(text: string): Promise<ClientMessage> {
           } else if (event === "thread.message.delta") {
             data.delta.content?.map((part) => {
               if (part.type === "text") {
-                textStream.append(part.text.value as string);
+                textStream.append(part.text?.value as string);
               }
             });
           } else if (event === "thread.run.failed") {
