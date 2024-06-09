@@ -31,9 +31,9 @@ export default function Page() {
 
   const loadModels = () => {
     Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri("./models"),
-      faceapi.nets.faceLandmark68Net.loadFromUri("./models"),
-      faceapi.nets.faceExpressionNet.loadFromUri("./models")
+      faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
+      faceapi.nets.faceLandmark68Net.loadFromUri("/models"),
+      faceapi.nets.faceExpressionNet.loadFromUri("/models")
     ]).then(() => {
       faceMyDetect();
     })
@@ -42,7 +42,8 @@ export default function Page() {
 
   const faceMyDetect = async () => {
     setInterval(async () => {
-      const detections = await faceapi.detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceExpressions();
+      const tnInput = await faceapi.toNetInput(videoRef.current!);
+      const detections = await faceapi.detectAllFaces(tnInput, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceExpressions();
 
       console.log(detections);
 

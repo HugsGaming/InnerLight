@@ -6,6 +6,7 @@
     "@types/bun": "latest",
     "@types/react": "^18.3.3",
     "autoprefixer": "^10.4.19",
+    "encoding": "^0.1.13",
     "eslint": "^8",
     "eslint-config-next": "^14.2.3",
     "postcss": "^8.4.38",
