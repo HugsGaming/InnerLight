@@ -42,13 +42,15 @@ export default function Page() {
 
   const faceMyDetect = async () => {
     setInterval(async () => {
-      const tnInput = await faceapi.toNetInput(videoRef.current!);
+      if(!videoRef.current) return; 
+      const tnInput = await faceapi.toNetInput(videoRef.current);
       const detections = await faceapi.detectAllFaces(tnInput, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceExpressions();
 
       console.log(detections);
 
       if(canvasRef.current) {
-        canvasRef.current.innerHTML = faceapi.createCanvasFromMedia(videoRef.current);
+        const canvas = faceapi.createCanvasFromMedia(videoRef.current);
+        canvasRef.current.append(canvas);
         faceapi.matchDimensions(canvasRef.current!, { width: 640, height: 480 });
 
         const resized = faceapi.resizeResults(detections, { width: 640, height: 480 });
