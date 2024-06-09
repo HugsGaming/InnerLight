@@ -1,15 +1,88 @@
 "use client";
 
 import { type Message, useAssistant } from "ai/react";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import Markdown from "react-markdown";
+import * as faceapi from "face-api.js";
 
 export default function Page() {
-  const { status, messages, input, submitMessage, handleInputChange } =
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { status, messages, input, submitMessage, handleInputChange, append } =
     useAssistant({
       api: "/api/chatbot",
-    });
+  });
+
+  useEffect(() => {
+    startVideo();
+    videoRef && loadModels();
+  }, [])
+
+  const startVideo = () => {
+    navigator.mediaDevices.getUserMedia({ video: true })
+    .then((currentStream) => {
+      if(videoRef.current) {
+        videoRef.current.srcObject = currentStream;
+      }
+    }).catch((error) => {
+      console.log(error);
+    })
+  }
+
+  const loadModels = () => {
+    Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri("./models"),
+      faceapi.nets.faceLandmark68Net.loadFromUri("./models"),
+      faceapi.nets.faceExpressionNet.loadFromUri("./models")
+    ]).then(() => {
+      faceMyDetect();
+    })
+    
+  }
+
+  const faceMyDetect = async () => {
+    setInterval(async () => {
+      const detections = await faceapi.detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceExpressions();
+
+      console.log(detections);
+
+      if(canvasRef.current) {
+        canvasRef.current.innerHTML = faceapi.createCanvasFromMedia(videoRef.current);
+        faceapi.matchDimensions(canvasRef.current!, { width: 640, height: 480 });
+
+        const resized = faceapi.resizeResults(detections, { width: 640, height: 480 });
+
+        faceapi.draw.drawDetections(canvasRef.current, resized);
+        faceapi.draw.drawFaceLandmarks(canvasRef.current, resized);
+        faceapi.draw.drawFaceExpressions(canvasRef.current, resized);
+      }
+      
+    }, 1000)
+  }
+
+  // const faceMyDetect = async () => {
+  //   setInterval(async () => {
+  //     const detections = await faceapi.detectSingleFace(videoRef.current,
+  //       new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceExpressions();
+
+  //       canvasRef.current?.innerHTML = faceapi.createCanvasFromMedia(videoRef.current!);
+  //       faceapi.matchDimensions(canvasRef.current!, { width: 640, height: 480 });
+
+  //       const resized = faceapi.resizeResults(detections, { width: 640, height: 480 });
+
+  //       faceapi.draw.drawDetections(canvasRef.current, resized);
+  //     )
+  //   }, 1000);
+  
   return (
+    <>
+    <div className="flex w-[100vw] h-[100vh] flex-col items-center justify-between">
+      <h1>Face Detection</h1>
+      <div className="flex items-center">
+        <video crossOrigin="anonymous" ref={videoRef} autoPlay></video>
+      </div>
+      <canvas className="" ref={canvasRef} width={640} height={480}></canvas>
+    </div>
     <div className="">
       {messages.map((m: Message) => (
         <div key={m.id} className="flex flex-col gap-1 border-b p-2">
@@ -42,5 +115,6 @@ export default function Page() {
         />
       </form>
     </div>
+    </>
   );
 }
