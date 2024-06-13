@@ -6,6 +6,10 @@
     "@types/bun": "latest",
     "@types/react": "^18.3.3",
     "autoprefixer": "^10.4.19",
+    "encoding": "^0.1.13",
+    "eslint": "^8",
+    "eslint-config-next": "^14.2.3",
+    "fs": "^0.0.1-security",
     "postcss": "^8.4.38",
     "prettier": "3.3.0",
     "tailwindcss": "^3.4.3"
@@ -21,8 +25,14 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@ai-sdk/openai": "^0.0.24",
+    "ai": "^3.1.30",
+    "face-api.js": "^0.22.2",
     "next": "^14.2.3",
+    "openai": "^4.49.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.1",
+    "zod": "^3.23.8"
   }
 }
