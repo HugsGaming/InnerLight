@@ -68,8 +68,9 @@ export default function FaceDetection() {
     <h1>Face Detection</h1>
     <div className="flex items-center">
       <video crossOrigin="anonymous" ref={videoRef} autoPlay />
+      <canvas className="absolute" ref={canvasRef} width={640} height={480} />
     </div>
-    <canvas className="absolute top-[100px]" ref={canvasRef} width={640} height={480} />
+    
   </div>
   )
 }
