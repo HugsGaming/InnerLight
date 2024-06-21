@@ -1,3 +1,10 @@
+import Home from "./pages";
+
 export default function Page() {
-  return <h1 className="text-3xl font-bold underline">Hello World</h1>;
+    return (
+        <>
+            <Home />
+            <h1 className="text-3xl font-bold underline">Hello World</h1>
+        </>
+    );
 }

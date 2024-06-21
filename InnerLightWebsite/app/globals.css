@@ -1,3 +1,52 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+* {
+    box-sizing: border-box;
+    user-select: none;
+  }
+  
+  body, html {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: #626262;
+    font-family: Helvetica, Arial, sans-serif;
+  }
+  
+  canvas {
+    cursor: crosshair;
+    background: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/390561/canvasBg.png') center center;
+    background-size: 50px;
+  }
+  
+  .toolbar {
+    position: absolute;
+    left: 20px;
+    top: 20px;
+    display: flex;
+    flex-direction: column;
+    background: #535353;
+    border-radius: 5px;
+    padding: 10px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, .16), 0 3px 6px rgba(0, 0, 0, .23);
+    color: #dcdcdc;
+  }
+  
+  .tool {
+    margin-bottom: 10px;
+  }
+  
+  .tool label {
+    display: block;
+    margin-bottom: 5px;
+  }
+  
+  .tool input[type="range"],
+  .tool input[type="color"] {
+    width: 100%;
+  }
+  
