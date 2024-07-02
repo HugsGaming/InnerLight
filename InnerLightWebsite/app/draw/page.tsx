@@ -1,15 +1,15 @@
 "use client";
 
 import Head from "next/head";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "../components/Sidebar";
-import PostList from "../components/PostList";
 import Header from "../components/Header";
-import Post from "../components/Post";
+import Canvas from "../components/Canvas";
 
-const Home: React.FC = () => {
+const Draw: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isDark, setIsDark] = useState(false);
+    const canvasRef = useRef<HTMLCanvasElement>(null); // Ref for canvas
 
     useEffect(() => {
         const getTheme = () => {
@@ -39,7 +39,9 @@ const Home: React.FC = () => {
 
     return (
         <div
-            className={`min-h-screen flex flex-col flex-auto flex-shrink-0 antialiased bg-white dark:bg-gray-700 text-black dark:text-white ${isDark ? "dark" : ""}`}
+            className={`min-h-screen flex flex-col flex-auto flex-shrink-0 antialiased bg-white dark:bg-gray-700 text-black dark:text-white ${
+                isDark ? "dark" : ""
+            }`}
         >
             <Head>
                 <script
@@ -50,11 +52,10 @@ const Home: React.FC = () => {
             <Header />
             <Sidebar />
             <div className="ml-14 mt-14 mb-10 md:ml-64">
-                <Post />
-                <PostList />
+                <Canvas canvasRef={canvasRef} currentColor={""} />
             </div>
         </div>
     );
 };
 
-export default Home;
+export default Draw;
