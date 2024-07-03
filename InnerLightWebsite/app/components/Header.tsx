@@ -1,0 +1,93 @@
+import React, { useEffect, useState } from "react";
+import {
+    FaUserCircle,
+    FaSearch,
+    FaSun,
+    FaMoon,
+    FaSignOutAlt,
+} from "react-icons/fa";
+
+const Header: React.FC = () => {
+    const [isDark, setIsDark] = useState(false);
+
+    useEffect(() => {
+        const getTheme = () => {
+            if (window.localStorage.getItem("dark")) {
+                return JSON.parse(
+                    window.localStorage.getItem("dark") as string,
+                );
+            }
+            return (
+                !!window.matchMedia &&
+                window.matchMedia("(prefers-color-scheme: dark)").matches
+            );
+        };
+
+        const setTheme = (value: boolean) => {
+            window.localStorage.setItem("dark", JSON.stringify(value));
+            document.documentElement.classList.toggle("dark", value);
+        };
+
+        setIsDark(getTheme());
+        setTheme(getTheme());
+    }, []);
+
+    const toggleTheme = () => {
+        setIsDark(!isDark);
+        window.localStorage.setItem("dark", JSON.stringify(!isDark));
+        document.documentElement.classList.toggle("dark", !isDark);
+    };
+
+    return (
+        <header className="fixed w-full flex items-center justify-between h-14 text-white z-10">
+            <div className="flex items-center justify-start md:justify-center pl-3 w-14 md:w-64 h-14 bg-yellow-950 dark:bg-gray-800 border-none">
+                <span className="hidden md:block">Innerlight</span>
+            </div>
+            <div className="flex justify-between items-center h-14 bg-yellow-950 dark:bg-gray-800 header-right">
+                <div className="bg-white rounded flex items-center w-full max-w-xl mr-4 p-2 shadow-sm border border-gray-200">
+                    <button className="outline-none focus:outline-none">
+                        <FaSearch className="w-5 text-gray-600 h-5 cursor-pointer" />
+                    </button>
+                    <input
+                        type="search"
+                        name=""
+                        id=""
+                        placeholder="Search"
+                        className="w-full pl-3 text-sm text-black outline-none focus:outline-none bg-transparent"
+                    />
+                </div>
+                <ul className="flex items-center">
+                    <li>
+                        <button
+                            onClick={toggleTheme}
+                            className="group p-2 transition-colors duration-200 rounded-full shadow-md bg-yellow-700 hover:bg-yellow-900 dark:bg-gray-50 dark:hover:bg-gray-200 text-gray-900 focus:outline-none"
+                        >
+                            {isDark ? (
+                                <FaSun className="w-6 h-6 text-gray-700 group-hover:text-gray-500 dark:text-gray-700 dark:group-hover:text-gray-500" />
+                            ) : (
+                                <FaMoon className="w-6 h-6 text-gray-700 group-hover:text-gray-500 dark:text-gray-700 dark:group-hover:text-gray-500" />
+                            )}
+                        </button>
+                    </li>
+                    <li>
+                        <div className="block w-px h-6 mx-3 bg-gray-400 dark:bg-gray-700"></div>
+                    </li>
+                    <li>
+                        <a
+                            href="#"
+                            className="flex items-center mr-4 hover:text-blue-100"
+                        >
+                            <FaSignOutAlt className="w-5 h-5" />
+                            Logout
+                        </a>
+                    </li>
+                    <li>
+                        <FaUserCircle className="w-7 h-7 md:w-10 md:h-10 mr-2 rounded-md overflow-hidden" />
+                    </li>
+                </ul>
+            </div>
+        </header>
+    );
+};
+
+export default Header;
