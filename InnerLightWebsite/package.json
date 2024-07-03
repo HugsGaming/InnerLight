@@ -25,12 +25,17 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@ai-sdk/openai": "^0.0.24",
-    "ai": "^3.1.30",
+    "@ai-sdk/openai": "^0.0.32",
+    "ai": "^3.2.1",
     "face-api.js": "^0.22.2",
+<<<<<<< HEAD
     "next": "^14.2.3",
     "openai": "^4.49.1",
     "perfect-freehand": "^1.2.2",
+=======
+    "next": "^14.2.4",
+    "openai": "^4.52.0",
+>>>>>>> beeae93c1559e3d5a917b10d18b51df0d5a56a06
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-icons": "^5.2.1",
