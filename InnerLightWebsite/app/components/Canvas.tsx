@@ -1,6 +1,21 @@
 import React, { useRef, useEffect, useState } from "react";
-import BrushOpacity from "./BrushOpacity";
+import getStroke from "perfect-freehand";
+import {
+    FaBrush,
+    FaDownload,
+    FaEraser,
+    FaImage,
+    FaPallet,
+    FaRainbow,
+    FaRedo,
+    FaSprayCan,
+    FaUndo,
+} from "react-icons/fa";
 import BrushSize from "./BrushSize";
+import BrushOpacity from "./BrushOpacity";
+import { LuPaintBucket } from "react-icons/lu";
+import { BsFillPaletteFill } from "react-icons/bs";
+import { MdOutlineClear } from "react-icons/md";
 
 interface CanvasProps {
     canvasRef: React.RefObject<HTMLCanvasElement>;
@@ -13,6 +28,10 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor }) => {
     const [currentColorState, setCurrentColor] = useState<string>(currentColor);
     const [brushOpacity, setBrushOpacity] = useState<number>(1);
     const [brushSize, setBrushSize] = useState<number>(10);
+    const [points, setPoints] = useState<Array<[number, number]>>([]);
+    const [isDrawing, setIsDrawing] = useState<boolean>(false);
+    const [history, setHistory] = useState<Array<ImageData>>([]);
+    const [historyIndex, setHistoryIndex] = useState<number>(-1);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -24,107 +43,117 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor }) => {
         }
     }, [canvasRef]);
 
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        const ctx = ctxRef.current;
+        if (!canvas || !ctx) return;
+
+        const handleMouseDown = (e: MouseEvent) => {
+            if (tool === "fill-bucket") {
+                fillBucket(e.offsetX, e.offsetY);
+            } else {
+                setIsDrawing(true);
+                setPoints([[e.offsetX, e.offsetY]]);
+            }
+        };
+
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isDrawing) return;
+            setPoints((prev) => [...prev, [e.offsetX, e.offsetY]]);
+        };
+
+        const handleMouseUp = () => {
+            setIsDrawing(false);
+            if (ctx && points.length) {
+                if (tool === "brush" || tool === "rainbow") {
+                    const stroke = getStroke(points, {
+                        size: brushSize,
+                        thinning: 0.5,
+                        smoothing: 0.5,
+                        streamline: 0.5,
+                        easing: (t) => t,
+                        simulatePressure: true,
+                    });
+
+                    ctx.beginPath();
+                    stroke.forEach(([x, y], index) => {
+                        if (index === 0) {
+                            ctx.moveTo(x, y);
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    });
+
+                    if (tool === "rainbow") {
+                        const rainbowColors = [
+                            "red",
+                            "orange",
+                            "yellow",
+                            "green",
+                            "blue",
+                            "indigo",
+                            "violet",
+                        ];
+                        ctx.strokeStyle =
+                            rainbowColors[
+                                Math.floor(Math.random() * rainbowColors.length)
+                            ];
+                    } else {
+                        ctx.strokeStyle = currentColorState;
+                    }
+
+                    ctx.globalAlpha = brushOpacity;
+                    ctx.lineWidth = brushSize;
+                    ctx.stroke();
+                    ctx.closePath();
+                    saveCanvasState();
+                    setPoints([]);
+                } else if (tool === "eraser") {
+                    ctx.globalCompositeOperation = "destination-out";
+                    ctx.strokeStyle = "rgba(0,0,0,1)";
+                    ctx.lineWidth = brushSize;
+                    ctx.beginPath();
+                    ctx.moveTo(points[0][0], points[0][1]);
+                    points.forEach(([x, y]) => {
+                        ctx.lineTo(x, y);
+                    });
+                    ctx.stroke();
+                    ctx.closePath();
+                    ctx.globalCompositeOperation = "source-over";
+                    saveCanvasState();
+                    setPoints([]);
+                } else if (tool === "spray") {
+                    ctx.fillStyle = currentColorState;
+                    points.forEach(([x, y]) => {
+                        for (let i = 0; i < 20; i++) {
+                            const offsetX =
+                                Math.random() * brushSize - brushSize / 2;
+                            const offsetY =
+                                Math.random() * brushSize - brushSize / 2;
+                            ctx.fillRect(x + offsetX, y + offsetY, 1, 1);
+                        }
+                    });
+                    saveCanvasState();
+                    setPoints([]);
+                }
+            }
+        };
+
+        canvas.addEventListener("mousedown", handleMouseDown);
+        canvas.addEventListener("mousemove", handleMouseMove);
+        canvas.addEventListener("mouseup", handleMouseUp);
+        canvas.addEventListener("mouseleave", handleMouseUp);
+
+        return () => {
+            canvas.removeEventListener("mousedown", handleMouseDown);
+            canvas.removeEventListener("mousemove", handleMouseMove);
+            canvas.removeEventListener("mouseup", handleMouseUp);
+            canvas.removeEventListener("mouseleave", handleMouseUp);
+        };
+    }, [isDrawing, points, brushSize, brushOpacity, currentColorState, tool]);
+
     const handleCanvasClick = (selectedTool: string) => {
         setTool(selectedTool);
-    };
-
-    const handleBrushClick = () => {
-        document.body.style.cursor = "url(brush-cursor.png) 0 20, auto";
-        const canvas = canvasRef.current;
-        const ctx = ctxRef.current;
-        if (canvas && ctx) {
-            let isDrawing = false;
-            let lastX = 0;
-            let lastY = 0;
-
-            canvas.addEventListener("mousedown", (e) => {
-                isDrawing = true;
-                lastX = e.offsetX;
-                lastY = e.offsetY;
-                ctx.globalAlpha = 0.9;
-                ctx.lineWidth = 15;
-            });
-
-            canvas.addEventListener("mousemove", (e) => {
-                if (isDrawing) {
-                    ctx.beginPath();
-                    ctx.moveTo(lastX, lastY);
-                    ctx.lineTo(e.offsetX, e.offsetY);
-                    ctx.strokeStyle = currentColorState;
-                    ctx.globalAlpha = brushOpacity;
-                    ctx.lineWidth = brushSize;
-                    ctx.stroke();
-                    lastX = e.offsetX;
-                    lastY = e.offsetY;
-                }
-            });
-
-            canvas.addEventListener("mouseup", () => {
-                isDrawing = false;
-            });
-        }
-    };
-
-    const handleRainbowClick = () => {
-        const canvas = canvasRef.current;
-        const ctx = ctxRef.current;
-        if (canvas && ctx) {
-            let hue = 0;
-            let isDrawing = false;
-
-            const onMouseDown = (e: MouseEvent) => {
-                isDrawing = true;
-                ctx.beginPath();
-                ctx.moveTo(e.offsetX, e.offsetY);
-            };
-
-            const onMouseMove = (e: MouseEvent) => {
-                if (isDrawing) {
-                    ctx.lineTo(e.offsetX, e.offsetY);
-                    ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
-                    ctx.globalAlpha = brushOpacity;
-                    ctx.lineWidth = brushSize;
-                    ctx.stroke();
-                    hue = (hue + 1) % 360;
-                }
-            };
-
-            const onMouseUp = () => {
-                if (isDrawing) {
-                    isDrawing = false;
-                    ctx.closePath();
-                }
-            };
-
-            canvas.addEventListener("mousedown", onMouseDown);
-            canvas.addEventListener("mousemove", onMouseMove);
-            canvas.addEventListener("mouseup", onMouseUp);
-
-            return () => {
-                canvas.removeEventListener("mousedown", onMouseDown);
-                canvas.removeEventListener("mousemove", onMouseMove);
-                canvas.removeEventListener("mouseup", onMouseUp);
-            };
-        }
-    };
-
-    const handleSprayClick = () => {
-        document.body.style.cursor = "url(spray-cursor.png) 0 20, auto";
-        const canvas = canvasRef.current;
-        const ctx = ctxRef.current;
-        if (canvas && ctx) {
-            canvas.addEventListener("mousedown", (e) => {
-                for (let i = 0; i < 10; i++) {
-                    const x = e.offsetX + Math.random() * 10 - 5;
-                    const y = e.offsetY + Math.random() * 10 - 5;
-                    ctx.beginPath();
-                    ctx.arc(x, y, 2, 0, 2 * Math.PI);
-                    ctx.fillStyle = currentColorState;
-                    ctx.globalAlpha = brushOpacity;
-                    ctx.fill();
-                }
-            });
-        }
     };
 
     const handleBgClick = () => {
@@ -133,31 +162,7 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor }) => {
         if (canvas && ctx) {
             ctx.fillStyle = currentColorState;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-    };
-
-    const handleEraserClick = () => {
-        document.body.style.cursor = "url(eraser-cursor.png) 0 20, auto";
-        const canvas = canvasRef.current;
-        const ctx = ctxRef.current;
-        if (canvas && ctx) {
-            ctx.globalCompositeOperation = "destination-out";
-
-            canvas.addEventListener("mousedown", (e) => {
-                ctx.beginPath();
-                ctx.moveTo(e.offsetX, e.offsetY);
-            });
-
-            canvas.addEventListener("mousemove", (e) => {
-                ctx.lineTo(e.offsetX, e.offsetY);
-                ctx.strokeStyle = "rgba(0, 0, 0, 0)";
-                ctx.lineWidth = brushSize;
-                ctx.stroke();
-            });
-
-            canvas.addEventListener("mouseup", () => {
-                ctx.closePath();
-            });
+            saveCanvasState();
         }
     };
 
@@ -173,6 +178,7 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor }) => {
         const ctx = ctxRef.current;
         if (canvas && ctx) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            saveCanvasState();
         }
     };
 
@@ -201,110 +207,245 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor }) => {
         setBrushSize(size);
     };
 
-    useEffect(() => {
-        switch (tool) {
-            case "brush":
-                handleBrushClick();
-                break;
-            case "rainbow":
-                handleRainbowClick();
-                break;
-            case "spray":
-                handleSprayClick();
-                break;
-            case "eraser":
-                handleEraserClick();
-                break;
-            default:
-                break;
+    const saveCanvasState = () => {
+        const canvas = canvasRef.current;
+        const ctx = ctxRef.current;
+        if (canvas && ctx) {
+            const imageData = ctx.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height,
+            );
+            setHistory((prevHistory) => [
+                ...prevHistory.slice(0, historyIndex + 1),
+                imageData,
+            ]);
+            setHistoryIndex((prevIndex) => prevIndex + 1);
+        }
+    };
+
+    const handleUndoClick = () => {
+        if (historyIndex > 0) {
+            setHistoryIndex((prevIndex) => prevIndex - 1);
+            const prevImageData = history[historyIndex - 1];
+            ctxRef.current?.putImageData(prevImageData, 0, 0);
+        }
+    };
+
+    const handleRedoClick = () => {
+        if (historyIndex < history.length - 1) {
+            setHistoryIndex((prevIndex) => prevIndex + 1);
+            const nextImageData = history[historyIndex + 1];
+            ctxRef.current?.putImageData(nextImageData, 0, 0);
+        }
+    };
+
+    const fillBucket = (startX: number, startY: number) => {
+        const canvas = canvasRef.current;
+        const ctx = ctxRef.current;
+        if (!canvas || !ctx) return;
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        const targetColor = getColorAtPixel(data, startX, startY, canvas.width);
+
+        if (!targetColor) return;
+
+        const fillColor = hexToRgb(currentColorState);
+        if (!fillColor) return;
+
+        const pixelStack = [[startX, startY]];
+
+        while (pixelStack.length) {
+            const [x, y] = pixelStack.pop()!;
+            const index = (y * canvas.width + x) * 4;
+
+            if (isSameColor(data, index, targetColor)) {
+                setColorAtPixel(data, index, fillColor);
+
+                if (x > 0) pixelStack.push([x - 1, y]);
+                if (x < canvas.width - 1) pixelStack.push([x + 1, y]);
+                if (y > 0) pixelStack.push([x, y - 1]);
+                if (y < canvas.height - 1) pixelStack.push([x, y + 1]);
+            }
         }
 
-        return () => {
-            // Clean up event listeners on tool change
-            const canvas = canvasRef.current;
-            if (canvas) {
-                canvas.removeEventListener("mousedown", handleBrushClick);
-                canvas.removeEventListener("mousemove", handleRainbowClick);
-                canvas.removeEventListener("mousemove", handleSprayClick);
-                canvas.removeEventListener("mousemove", handleEraserClick);
-            }
-        };
-    }, [tool, brushOpacity, brushSize, currentColorState]);
+        ctx.putImageData(imageData, 0, 0);
+        saveCanvasState();
+    };
+
+    const getColorAtPixel = (
+        data: Uint8ClampedArray,
+        x: number,
+        y: number,
+        width: number,
+    ) => {
+        const index = (y * width + x) * 4;
+        return [data[index], data[index + 1], data[index + 2], data[index + 3]];
+    };
+
+    const isSameColor = (
+        data: Uint8ClampedArray,
+        index: number,
+        color: number[],
+    ) => {
+        return (
+            data[index] === color[0] &&
+            data[index + 1] === color[1] &&
+            data[index + 2] === color[2] &&
+            data[index + 3] === color[3]
+        );
+    };
+
+    const setColorAtPixel = (
+        data: Uint8ClampedArray,
+        index: number,
+        color: number[],
+    ) => {
+        data[index] = color[0];
+        data[index + 1] = color[1];
+        data[index + 2] = color[2];
+        data[index + 3] = color[3];
+    };
+
+    const hexToRgb = (hex: string) => {
+        const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+        hex = hex.replace(
+            shorthandRegex,
+            (m, r, g, b) => r + r + g + g + b + b,
+        );
+
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result
+            ? [
+                  parseInt(result[1], 16),
+                  parseInt(result[2], 16),
+                  parseInt(result[3], 16),
+                  255,
+              ]
+            : null;
+    };
+
     return (
-        <div className="flex flex-col items-center space-y-4 p-4 bg-gray-100">
-            <BrushSize
-                onChange={handleBrushSizeChange}
-                defaultValue={brushSize}
-            />
-
-            <BrushOpacity
-                onChange={handleBrushOpacityChange}
-                defaultValue={brushOpacity}
-            />
-
-            <div className="flex space-x-5">
-                <div
-                    className={`tool brush ${tool === "brush" ? "active" : ""} cursor-pointer p-2 rounded bg-blue-500 text-white border-4 border-blue-700`}
-                    onClick={() => handleCanvasClick("brush")}
-                >
-                    Brush
-                </div>
-                <div
-                    className={`tool rainbow ${tool === "rainbow" ? "active" : ""} cursor-pointer p-2 rounded bg-red-500 text-white border-4 border-red-700`}
-                    onClick={() => handleCanvasClick("rainbow")}
-                >
-                    Rainbow
-                </div>
-                <div
-                    className={`tool spray ${tool === "spray" ? "active" : ""} cursor-pointer p-2 rounded bg-green-500 text-white border-4 border-green-700`}
-                    onClick={() => handleCanvasClick("spray")}
-                >
-                    Spray
-                </div>
-                <div
-                    className="tool bg cursor-pointer p-2 rounded bg-yellow-500 text-white border-4 border-yellow-700"
-                    onClick={handleBgClick}
-                >
-                    Background
-                </div>
-                <div
-                    className={`tool eraser ${tool === "eraser" ? "active" : ""} cursor-pointer p-2 rounded bg-purple-500 text-white border-4 border-purple-700`}
-                    onClick={() => handleCanvasClick("eraser")}
-                >
-                    Eraser
-                </div>
-                <div
-                    className="tool save cursor-pointer p-2 rounded bg-indigo-500 text-white border-4 border-indigo-700"
-                    onClick={handleSaveClick}
-                >
-                    Save
-                </div>
-                <div
-                    className="tool clear cursor-pointer p-2 rounded bg-pink-500 text-white border-4 border-pink-700"
-                    onClick={handleClearClick}
-                >
-                    Clear
-                </div>
-                <div
-                    className="tool dl cursor-pointer p-2 rounded bg-teal-500 text-white border-4 border-teal-700"
-                    onClick={handleDownloadClick}
-                >
-                    Download
-                </div>
-                <input
-                    type="color"
-                    className="tool colorSelector cursor-pointer p-2 rounded border-4"
-                    value={currentColorState}
-                    onChange={handleColorChange}
+        <div className="flex flex-col items-center space-y-4 p-4 bg-gray-100 dark:bg-gray-600">
+            <div className="relative overflow-hidden bg-white border border-gray-300 shadow-md rounded-lg">
+                <canvas
+                    ref={canvasRef}
+                    className="block mx-auto max-w-full h-auto"
+                    style={{ maxWidth: "100%", height: "auto" }}
+                    width={1000}
+                    height={800}
                 />
             </div>
 
-            <canvas
-                ref={canvasRef}
-                width={1000}
-                height={800}
-                className="border border-gray-300"
-            />
+            <div className="flex flex-col md:flex-row items-center justify-center w-full mt-4 space-y-4 md:space-y-0 md:space-x-4">
+                <div className="w-full md:w-auto flex flex-col md:flex-row items-center justify-center">
+                    <div className="w-full md:w-auto">
+                        <span className="hidden md:inline-block w-full text-center">
+                            Brush Size
+                        </span>
+                        <BrushSize
+                            onChange={handleBrushSizeChange}
+                            defaultValue={brushSize}
+                        />
+                    </div>
+
+                    <div className="w-full md:w-auto mt-4 md:mt-0">
+                        <span className="hidden md:inline-block w-full text-center">
+                            Brush Opacity
+                        </span>
+                        <BrushOpacity
+                            onChange={handleBrushOpacityChange}
+                            defaultValue={brushOpacity}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex flex-wrap justify-center md:justify-start  gap-2 md:gap-4 dark:bg-gray-600">
+                <div
+                    className="tool undo cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded bg-yellow-500 text-white hover:bg-yellow-600"
+                    onClick={handleUndoClick}
+                >
+                    <FaUndo className="mb-1" />
+                    <div className="text-xs hidden md:block">Undo</div>
+                </div>
+                <div
+                    className="tool redo cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded bg-yellow-500 text-white hover:bg-yellow-600"
+                    onClick={handleRedoClick}
+                >
+                    <FaRedo className="mb-1" />
+                    <div className="text-xs hidden md:block">Redo</div>
+                </div>
+                <div
+                    className="tool bg cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded bg-yellow-500 text-white hover:bg-yellow-600"
+                    onClick={handleBgClick}
+                >
+                    <FaImage className="mb-1" />
+                    <span className="hidden md:inline">Background</span>
+                </div>
+                <div
+                    className={`tool brush cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded ${tool === "brush" ? "bg-blue-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-blue-600`}
+                    onClick={() => handleCanvasClick("brush")}
+                >
+                    <FaBrush className="mb-1" />
+                    <span className="hidden md:inline">Brush</span>
+                </div>
+                <div
+                    className={`tool rainbow cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded ${tool === "rainbow" ? "bg-red-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-red-600`}
+                    onClick={() => handleCanvasClick("rainbow")}
+                >
+                    <FaRainbow className="mb-1" />
+                    <span className="hidden md:inline">Rainbow</span>
+                </div>
+                <div
+                    className={`tool spray cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded ${tool === "spray" ? "bg-green-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-green-600`}
+                    onClick={() => handleCanvasClick("spray")}
+                >
+                    <FaSprayCan className="mb-1" />
+                    <span className="hidden md:inline">Spray</span>
+                </div>
+                <div
+                    className={`tool eraser cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded ${tool === "eraser" ? "bg-purple-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-purple-600`}
+                    onClick={() => handleCanvasClick("eraser")}
+                >
+                    <FaEraser className="mb-1" />
+                    <span className="hidden md:inline">Eraser</span>
+                </div>
+                <div
+                    className={`tool fill-bucket cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded ${tool === "fill-bucket" ? "bg-orange-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-orange-600`}
+                    onClick={() => handleCanvasClick("fill-bucket")}
+                >
+                    <LuPaintBucket className="mb-1" />
+                    <span className="hidden md:inline">Fill Bucket</span>
+                </div>
+                <div
+                    className={`tool clear cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded bg-pink-500 text-white hover:bg-pink-600`}
+                >
+                    <BsFillPaletteFill className="mb-1" />
+                    <input
+                        type="color"
+                        className=" cursor-pointer p-2 rounded border-4 hover:bg-gray-300"
+                        value={currentColorState}
+                        onChange={handleColorChange}
+                    />
+                </div>
+                <div
+                    className="tool clear cursor-pointer p-4 rounded bg-pink-500 text-white hover:bg-pink-600"
+                    onClick={handleClearClick}
+                >
+                    <MdOutlineClear className="mb-1" />
+                    <span className="hidden md:inline">Clear</span>
+                </div>
+                <div
+                    className="tool dl cursor-pointer p-4 rounded bg-teal-500 text-white hover:bg-teal-600"
+                    onClick={handleDownloadClick}
+                >
+                    <FaDownload className="mb-1" />
+                    <span className="hidden md:inline">Download</span>
+                </div>
+            </div>
         </div>
     );
 };

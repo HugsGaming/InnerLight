@@ -1,6 +1,4 @@
 // BrushOpacity.tsx
-"use client";
-
 import React from "react";
 
 interface BrushOpacityProps {
@@ -18,14 +16,17 @@ const BrushOpacity: React.FC<BrushOpacityProps> = ({
     };
 
     return (
-        <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.1"
-            defaultValue={defaultValue.toString()}
-            onChange={handleChange}
-        />
+        <div className="flex items-center">
+            <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                defaultValue={defaultValue.toString()}
+                onChange={handleChange}
+                className="w-full"
+            />
+        </div>
     );
 };
 
