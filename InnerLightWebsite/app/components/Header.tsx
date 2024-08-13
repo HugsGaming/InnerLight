@@ -41,7 +41,13 @@ const Header: React.FC = () => {
     return (
         <header className="fixed w-full flex items-center justify-between h-14 text-white z-10">
             <div className="flex items-center justify-start md:justify-center pl-3 w-14 md:w-64 h-14 bg-yellow-950 dark:bg-gray-800 border-none">
-                <span className="hidden md:block">Innerlight</span>
+                <span className="hidden md:block w-full">
+                    <img
+                        src="https://imgur.com/ygBYDbr.png"
+                        alt="Logo"
+                        className="h-12 w-full object-contain"
+                    />
+                </span>
             </div>
             <div className="flex justify-between items-center h-14 bg-yellow-950 dark:bg-gray-800 header-right">
                 <div className="bg-white rounded flex items-center w-full max-w-xl mr-4 p-2 shadow-sm border border-gray-200">
@@ -63,26 +69,28 @@ const Header: React.FC = () => {
                             className="group p-2 transition-colors duration-200 rounded-full shadow-md bg-yellow-700 hover:bg-yellow-900 dark:bg-gray-50 dark:hover:bg-gray-200 text-gray-900 focus:outline-none"
                         >
                             {isDark ? (
-                                <FaSun className="w-6 h-6 text-gray-700 group-hover:text-gray-500 dark:text-gray-700 dark:group-hover:text-gray-500" />
+                                <FaSun className="w-4 h-4 text-gray-700 group-hover:text-gray-500 dark:text-gray-700 dark:group-hover:text-gray-500" />
                             ) : (
-                                <FaMoon className="w-6 h-6 text-gray-700 group-hover:text-gray-500 dark:text-gray-700 dark:group-hover:text-gray-500" />
+                                <FaMoon className="w-4 h-4 text-gray-100 group-hover:text-gray-300 dark:text-gray-700 dark:group-hover:text-gray-500" />
                             )}
                         </button>
                     </li>
                     <li>
-                        <div className="block w-px h-6 mx-3 bg-gray-400 dark:bg-gray-700"></div>
+                        <div className="block w-px h-6 mx-3 mr-1 bg-gray-400 dark:bg-gray-700"></div>
+                    </li>
+                    <li>
+                        <button className=" p-2 transition-colors duration-200 rounded-full shadow-md hover:text-blue-100">
+                            <FaUserCircle className="w-8 h-8 md:w-8 md:h-8 mr-2 rounded-full overflow-hidden" />
+                        </button>
                     </li>
                     <li>
                         <a
-                            href="#"
+                            href="/auth"
                             className="flex items-center mr-4 hover:text-blue-100"
                         >
-                            <FaSignOutAlt className="w-5 h-5" />
+                            <FaSignOutAlt className="w-4 h-4" />
                             Logout
                         </a>
-                    </li>
-                    <li>
-                        <FaUserCircle className="w-7 h-7 md:w-10 md:h-10 mr-2 rounded-md overflow-hidden" />
                     </li>
                 </ul>
             </div>

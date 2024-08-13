@@ -31,7 +31,7 @@ const Post: React.FC = () => {
     };
 
     return (
-        <div className="container mx-auto flex flex-col text-gray-800 border p-10">
+        <div className="container mx-auto flex flex-col text-gray-800 p-10">
             <input
                 className="title bg-gray-100 border border-gray-300 p-2 mb-4 outline-none"
                 spellCheck="false"
