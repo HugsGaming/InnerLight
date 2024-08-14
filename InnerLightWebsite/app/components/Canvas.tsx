@@ -14,7 +14,6 @@ import {
 import BrushSize from "./BrushSize";
 import BrushOpacity from "./BrushOpacity";
 import { LuPaintBucket } from "react-icons/lu";
-import { BsFillPaletteFill } from "react-icons/bs";
 import { MdOutlineClear } from "react-icons/md";
 
 interface CanvasProps {

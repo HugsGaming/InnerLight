@@ -25,12 +25,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
     };
 
     return (
-        <div className="flex min-h-screen dark:bg-gray-800">
-            {/* Form Section */}
-            <div className="w-full lg:w-1/2 p-10 flex items-center justify-center">
+        <div className="flex min-h-screen ">
+            <div className="w-full lg:w-1/2 p-2 flex items-center justify-center">
                 <form
                     onSubmit={handleSubmit(onSubmit)}
-                    className="w-full max-w-lg bg-white dark:bg-gray-800 p-12 shadow-lg rounded-lg"
+                    className="w-full max-w-lg bg-white dark:bg-gray-900 p-12 shadow-lg rounded-lg"
                 >
                     <h2 className="text-3xl font-bold mb-8 text-center text-gray-900 dark:text-white">
                         Log In
