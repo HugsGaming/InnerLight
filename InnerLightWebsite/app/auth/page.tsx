@@ -66,7 +66,7 @@ const Auth: React.FC = () => {
                     )}
                 </button>
             </div>
-            <div className="flex items-center justify-center h-full top-8">
+            <div className="flex items-start justify-center -mt-20">
                 {showLogin ? (
                     <LoginForm toggleForm={toggleForm} />
                 ) : (

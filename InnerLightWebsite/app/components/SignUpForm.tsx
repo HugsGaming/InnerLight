@@ -1,90 +1,142 @@
-import React, { useEffect, useCallback } from "react";
-import { useForm, type SubmitHandler } from "react-hook-form";
+import axios from "axios";
 import { useRouter } from "next/navigation";
-import { useReCaptcha } from "next-recaptcha-v3";
-import { SlSocialFacebook, SlSocialGoogle } from "react-icons/sl";
-
-interface IFormInput {
-    firstName: string;
-    lastName: string;
-    username: string;
-    email: string;
-    password: string;
-    confirmPassword: string;
-    termsAccepted: boolean; // Added field for terms acceptance
-}
+import React, { useState, type FormEvent, type MouseEvent } from "react";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
+import { SlSocialGoogle, SlSocialFacebook } from "react-icons/sl";
 
 interface SignUpFormProps {
     toggleForm: () => void;
 }
 
 const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
-    const {
-        register,
-        handleSubmit,
-        watch,
-        formState: { errors },
-    } = useForm<IFormInput>();
     const router = useRouter();
-    const { executeRecaptcha } = useReCaptcha();
+    const { executeRecaptcha } = useGoogleReCaptcha();
+    const [submit, setSubmit] = useState("");
+    const [formData, setFormData] = useState({
+        firstName: "",
+        lastName: "",
+        username: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        termsAccepted: false,
+    });
 
-    const password = watch("password");
-    const confirmPassword = watch("confirmPassword");
+    const [errors, setErrors] = useState({
+        firstName: "",
+        lastName: "",
+        username: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        termsAccepted: "",
+    });
 
-    useEffect(() => {
-        const script = document.createElement("script");
-        script.src =
-            "https://www.google.com/recaptcha/enterprise.js?render=6LdMICYqAAAAAKh9MmH4M4hPVqqMOyZIbqvIWfLc";
-        script.async = true;
-        document.head.appendChild(script);
-    }, []);
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value, type, checked } = e.target;
+        setFormData({
+            ...formData,
+            [name]: type === "checkbox" ? checked : value,
+        });
+    };
 
-    const onSubmit: SubmitHandler<IFormInput> = useCallback(
-        async (data) => {
-            try {
-                const token = await executeRecaptcha("verify_recaptcha");
+    const validateForm = () => {
+        let valid = true;
+        let errors = {
+            firstName: "",
+            lastName: "",
+            username: "",
+            email: "",
+            password: "",
+            confirmPassword: "",
+            termsAccepted: "",
+        };
 
-                const response = await fetch("/api/verify-recaptcha", {
-                    method: "POST",
+        if (!formData.firstName) {
+            errors.firstName = "First Name is required";
+            valid = false;
+        }
+        if (!formData.lastName) {
+            errors.lastName = "Last Name is required";
+            valid = false;
+        }
+        if (!formData.username) {
+            errors.username = "Username is required";
+            valid = false;
+        }
+        if (!formData.email) {
+            errors.email = "Email is required";
+            valid = false;
+        }
+        if (!formData.password) {
+            errors.password = "Password is required";
+            valid = false;
+        }
+        if (formData.password !== formData.confirmPassword) {
+            errors.confirmPassword = "Passwords do not match";
+            valid = false;
+        }
+        if (!formData.termsAccepted) {
+            errors.termsAccepted = "You must accept the terms and conditions";
+            valid = false;
+        }
+
+        setErrors(errors);
+        return valid;
+    };
+
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        setSubmit("");
+
+        if (!validateForm()) {
+            return;
+        }
+
+        if (!executeRecaptcha) {
+            console.log("Recaptcha has not been executed");
+            return;
+        }
+
+        const gRecaptchaToken = await executeRecaptcha("inquirySubmit");
+
+        try {
+            const response = await axios.post(
+                "/api/recaptchaSubmit",
+                { gRecaptchaToken },
+                {
                     headers: {
+                        Accept: "application/json, text/plain, */*",
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({ token, ...data }),
-                });
+                },
+            );
 
-                if (!response.ok) {
-                    throw new Error("reCAPTCHA verification failed.");
-                }
-
-                const result = await response.json();
-                if (result.success) {
-                    router.push("/home");
-                } else {
-                    alert(
-                        result.message ||
-                            "reCAPTCHA verification failed. Please try again.",
-                    );
-                }
-            } catch (error) {
-                alert(
-                    (error as Error).message ||
-                        "An error occurred. Please try again.",
-                );
+            if (response?.data?.success) {
+                console.log(`Success with score: ${response?.data?.score}`);
+                setSubmit("ReCaptcha Verified and Form Submitted!");
+                router.push("/home");
+            } else {
+                console.log(`Failed with score: ${response?.data?.score}`);
+                setSubmit("ReCaptcha Failed!");
             }
-        },
-        [executeRecaptcha, router],
-    );
+        } catch (error) {
+            console.error("Error during form submission:", error);
+            setSubmit("An error occurred during submission.");
+        }
+    };
 
     return (
         <div className="flex min-h-screen">
             <div className="w-full lg:w-1/2 p-2 flex items-center justify-center">
                 <form
-                    onSubmit={handleSubmit(onSubmit)}
                     className="w-full max-w-lg bg-white dark:bg-gray-900 p-12 shadow-lg rounded-lg"
+                    onSubmit={handleSubmit}
                 >
                     <h2 className="text-3xl font-bold mb-8 text-center text-gray-900 dark:text-white">
                         Sign Up
                     </h2>
+
                     <div className="mb-4">
                         <label
                             htmlFor="fname"
@@ -95,15 +147,18 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="text"
                             id="fname"
-                            {...register("firstName", { required: true })}
+                            name="firstName"
+                            value={formData.firstName}
+                            onChange={handleChange}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
                         {errors.firstName && (
                             <p className="text-red-500 text-sm">
-                                First Name is required
+                                {errors.firstName}
                             </p>
                         )}
                     </div>
+
                     <div className="mb-4">
                         <label
                             htmlFor="lname"
@@ -114,18 +169,21 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="text"
                             id="lname"
-                            {...register("lastName", { required: true })}
+                            name="lastName"
+                            value={formData.lastName}
+                            onChange={handleChange}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
                         {errors.lastName && (
                             <p className="text-red-500 text-sm">
-                                Last Name is required
+                                {errors.lastName}
                             </p>
                         )}
                     </div>
+
                     <div className="mb-4">
                         <label
-                            htmlFor="lname"
+                            htmlFor="uname"
                             className="block text-gray-700 dark:text-gray-300"
                         >
                             Username
@@ -133,15 +191,18 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="text"
                             id="uname"
-                            {...register("username", { required: true })}
+                            name="username"
+                            value={formData.username}
+                            onChange={handleChange}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
                         {errors.username && (
                             <p className="text-red-500 text-sm">
-                                Username is required
+                                {errors.username}
                             </p>
                         )}
                     </div>
+
                     <div className="mb-4">
                         <label
                             htmlFor="email"
@@ -152,12 +213,14 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="email"
                             id="email"
-                            {...register("email", { required: true })}
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
                         {errors.email && (
                             <p className="text-red-500 text-sm">
-                                Email is required
+                                {errors.email}
                             </p>
                         )}
                     </div>
@@ -172,12 +235,14 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="password"
                             id="password"
-                            {...register("password", { required: true })}
+                            name="password"
+                            value={formData.password}
+                            onChange={handleChange}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
                         {errors.password && (
                             <p className="text-red-500 text-sm">
-                                Password is required
+                                {errors.password}
                             </p>
                         )}
                     </div>
@@ -192,16 +257,14 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="password"
                             id="confirmPassword"
-                            {...register("confirmPassword", {
-                                validate: (value) =>
-                                    value === password ||
-                                    "Passwords must match",
-                            })}
+                            name="confirmPassword"
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
                         {errors.confirmPassword && (
                             <p className="text-red-500 text-sm">
-                                {errors.confirmPassword.message}
+                                {errors.confirmPassword}
                             </p>
                         )}
                     </div>
@@ -210,7 +273,9 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="checkbox"
                             id="termsAccepted"
-                            {...register("termsAccepted", { required: true })}
+                            name="termsAccepted"
+                            checked={formData.termsAccepted}
+                            onChange={handleChange}
                             className="mr-2"
                         />
                         <label
@@ -223,26 +288,20 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                             </a>
                         </label>
                         {errors.termsAccepted && (
-                            <p className="text-red-500 text-sm">
-                                You must accept the terms and conditions
+                            <p className="text-red-500 text-sm ml-2">
+                                {errors.termsAccepted}
                             </p>
                         )}
                     </div>
 
-                    <div className="mb-4">
-                        <div
-                            id="recaptcha-container"
-                            className="g-recaptcha"
-                        ></div>
-                    </div>
-
                     <button
                         type="submit"
-                        className="w-full bg-blue-600 dark:bg-blue-700 text-white py-3 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition"
+                        className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                     >
                         Sign Up
                     </button>
 
+                    {submit && <p className="mt-4 text-center">{submit}</p>}
                     <div className="my-4 flex items-center">
                         <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
                         <span className="mx-4 text-gray-500 dark:text-gray-400">

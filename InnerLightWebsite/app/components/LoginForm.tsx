@@ -1,31 +1,68 @@
-import React from "react";
-import { useForm, type SubmitHandler } from "react-hook-form";
+import axios from "axios";
 import { useRouter } from "next/navigation";
+import React, { useState } from "react";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
+import { useForm, type SubmitHandler } from "react-hook-form";
 import { SlSocialFacebook, SlSocialGoogle } from "react-icons/sl";
 
 interface IFormInput {
     email: string;
     password: string;
 }
+
 interface LoginFormProps {
     toggleForm: () => void;
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
+    const { executeRecaptcha } = useGoogleReCaptcha();
+    const router = useRouter();
+    const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+
     const {
         register,
         handleSubmit,
         formState: { errors },
     } = useForm<IFormInput>();
-    const router = useRouter();
 
-    const onSubmit: SubmitHandler<IFormInput> = (data) => {
-        console.log(data);
-        router.push("/home");
+    const onSubmit: SubmitHandler<IFormInput> = async (data) => {
+        if (!executeRecaptcha) {
+            console.log("ReCaptcha is not loaded");
+            return;
+        }
+
+        const gRecaptchaToken = await executeRecaptcha("loginSubmit");
+
+        try {
+            const response = await axios.post(
+                "/api/recaptchaSubmit",
+                { ...data, gRecaptchaToken },
+                {
+                    headers: {
+                        Accept: "application/json, text/plain, */*",
+                        "Content-Type": "application/json",
+                    },
+                },
+            );
+
+            if (response?.data?.success) {
+                console.log(`Success with score: ${response?.data?.score}`);
+                setSubmitMessage("Login successful!");
+                router.push("/home");
+            } else {
+                console.log(`Failed with score: ${response?.data?.score}`);
+                setSubmitMessage(
+                    "ReCaptcha verification failed. Please try again.",
+                );
+            }
+        } catch (error) {
+            console.error("Error during login:", error);
+            setSubmitMessage("An error occurred during login.");
+        }
     };
 
     return (
-        <div className="flex min-h-screen ">
+        <div className="flex min-h-screen">
             <div className="w-full lg:w-1/2 p-2 flex items-center justify-center">
                 <form
                     onSubmit={handleSubmit(onSubmit)}
@@ -78,6 +115,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
                         )}
                     </div>
 
+                    {submitMessage && (
+                        <p className="text-center text-red-500 mb-4">
+                            {submitMessage}
+                        </p>
+                    )}
+
                     <button
                         type="submit"
                         className="w-full bg-blue-600 dark:bg-blue-700 text-white py-3 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition"
@@ -110,7 +153,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
                     <div>
                         <button
                             className="mt-5 text-blue-500 dark:text-blue-400"
-                            onClick={toggleForm}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                toggleForm();
+                            }}
                         >
                             Don't have an account? Sign Up
                         </button>
