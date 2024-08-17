@@ -5,7 +5,9 @@ import { useReCaptcha } from "next-recaptcha-v3";
 import { SlSocialFacebook, SlSocialGoogle } from "react-icons/sl";
 
 interface IFormInput {
-    name: string;
+    firstName: string;
+    lastName: string;
+    username: string;
     email: string;
     password: string;
     confirmPassword: string;
@@ -40,7 +42,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
     const onSubmit: SubmitHandler<IFormInput> = useCallback(
         async (data) => {
             try {
-                const token = await executeRecaptcha("SIGNUP");
+                const token = await executeRecaptcha("verify_recaptcha");
 
                 const response = await fetch("/api/verify-recaptcha", {
                     method: "POST",
@@ -93,10 +95,10 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="text"
                             id="fname"
-                            {...register("name", { required: true })}
+                            {...register("firstName", { required: true })}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
-                        {errors.name && (
+                        {errors.firstName && (
                             <p className="text-red-500 text-sm">
                                 First Name is required
                             </p>
@@ -107,15 +109,15 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                             htmlFor="lname"
                             className="block text-gray-700 dark:text-gray-300"
                         >
-                            First Name
+                            Last Name
                         </label>
                         <input
                             type="text"
                             id="lname"
-                            {...register("name", { required: true })}
+                            {...register("lastName", { required: true })}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
-                        {errors.name && (
+                        {errors.lastName && (
                             <p className="text-red-500 text-sm">
                                 Last Name is required
                             </p>
@@ -131,10 +133,10 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="text"
                             id="uname"
-                            {...register("name", { required: true })}
+                            {...register("username", { required: true })}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
-                        {errors.name && (
+                        {errors.username && (
                             <p className="text-red-500 text-sm">
                                 Username is required
                             </p>

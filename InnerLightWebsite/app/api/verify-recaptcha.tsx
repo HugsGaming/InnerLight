@@ -24,7 +24,7 @@ export default async function handler(
     try {
         const secretKey = process.env.RECAPTCHA_SECRET_KEY;
         const response = await fetch(
-            `https://recaptchaenterprise.googleapis.com/v1/projects/innerlight-1723620024894/assessments?key=API_KEY`,
+            `https://recaptchaenterprise.googleapis.com/v1/projects/innerlight-1723620024894/assessments?key=AIzaSyAQWV_NCTBW2F5WNxtcolWoDl9ljgCd4Bs`,
             {
                 method: "POST",
                 headers: {
@@ -33,15 +33,17 @@ export default async function handler(
                 body: JSON.stringify({
                     event: {
                         token,
-                        expectedAction: "SIGNUP",
-                        action: "SIGNUP",
-                        siteKey: "6LdMICYqAAAAAKh9MmH4M4hPVqqMOyZIbqvIWfLc",
+                        // expectedAction: "SIGNUP",
+                        // action: "SIGNUP",
+                        siteKey: process.env.RECAPTCHA_SITE_KEY,
                     },
                 }),
             },
         );
 
         const data = await response.json();
+
+        
 
         if (data && data.tokenProperties && data.tokenProperties.valid) {
             res.status(200).json({ success: true });
