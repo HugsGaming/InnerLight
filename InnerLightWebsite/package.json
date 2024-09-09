@@ -3,16 +3,23 @@
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.4.8",
+    "@testing-library/react": "^16.0.0",
     "@types/bun": "latest",
+    "@types/jest": "^29.5.12",
     "@types/react": "^18.3.3",
     "autoprefixer": "^10.4.19",
     "encoding": "^0.1.13",
     "eslint": "^8",
     "eslint-config-next": "^14.2.3",
     "fs": "^0.0.1-security",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8.4.39",
     "prettier": "3.3.0",
-    "tailwindcss": "^3.4.4"
+    "tailwindcss": "^3.4.4",
+    "ts-node": "^10.9.2"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
@@ -22,7 +29,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "jest"
   },
   "dependencies": {
     "@ai-sdk/openai": "^0.0.32",
