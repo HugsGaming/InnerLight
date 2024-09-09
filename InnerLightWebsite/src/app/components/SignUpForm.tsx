@@ -26,53 +26,57 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
         formState: { errors },
     } = useForm<IFormInput>();
     const router = useRouter();
-    const { executeRecaptcha } = useReCaptcha();
+    // const { executeRecaptcha } = useReCaptcha();
 
     const password = watch("password");
     const confirmPassword = watch("confirmPassword");
 
-    useEffect(() => {
-        const script = document.createElement("script");
-        script.src =
-            "https://www.google.com/recaptcha/enterprise.js?render=6LdMICYqAAAAAKh9MmH4M4hPVqqMOyZIbqvIWfLc";
-        script.async = true;
-        document.head.appendChild(script);
-    }, []);
+    // useEffect(() => {
+    //     const script = document.createElement("script");
+    //     script.src =
+    //         "https://www.google.com/recaptcha/enterprise.js?render=6LdMICYqAAAAAKh9MmH4M4hPVqqMOyZIbqvIWfLc";
+    //     script.async = true;
+    //     document.head.appendChild(script);
+    // }, []);
 
     const onSubmit: SubmitHandler<IFormInput> = useCallback(
+        // async (data) => {
+        //     try {
+        //         const token = await executeRecaptcha("verify_recaptcha");
+
+        //         const response = await fetch("/api/verify-recaptcha", {
+        //             method: "POST",
+        //             headers: {
+        //                 "Content-Type": "application/json",
+        //             },
+        //             body: JSON.stringify({ token, ...data }),
+        //         });
+
+        //         if (!response.ok) {
+        //             throw new Error("reCAPTCHA verification failed.");
+        //         }
+
+        //         const result = await response.json();
+        //         if (result.success) {
+        //             router.push("/home");
+        //         } else {
+        //             alert(
+        //                 result.message ||
+        //                     "reCAPTCHA verification failed. Please try again.",
+        //             );
+        //         }
+        //     } catch (error) {
+        //         alert(
+        //             (error as Error).message ||
+        //                 "An error occurred. Please try again.",
+        //         );
+        //     }
+        // },
+        // [executeRecaptcha, router],
         async (data) => {
-            try {
-                const token = await executeRecaptcha("verify_recaptcha");
-
-                const response = await fetch("/api/verify-recaptcha", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ token, ...data }),
-                });
-
-                if (!response.ok) {
-                    throw new Error("reCAPTCHA verification failed.");
-                }
-
-                const result = await response.json();
-                if (result.success) {
-                    router.push("/home");
-                } else {
-                    alert(
-                        result.message ||
-                            "reCAPTCHA verification failed. Please try again.",
-                    );
-                }
-            } catch (error) {
-                alert(
-                    (error as Error).message ||
-                        "An error occurred. Please try again.",
-                );
-            }
+            
         },
-        [executeRecaptcha, router],
+        [router]
     );
 
     return (

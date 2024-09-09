@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react'
-import Page from '../app/page'
+import Page from '../src/app/page'
 
 describe('first', () => { 
     it('should render', () => {
