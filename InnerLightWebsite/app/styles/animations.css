@@ -1,7 +1,11 @@
 html {
     font-size: 20px;
     margin: 0;
-    background: linear-gradient(to bottom, #160a08 0%, #57302a 100%); /* Background color for the entire page */
+    background: linear-gradient(
+        to bottom,
+        #160a08 0%,
+        #57302a 100%
+    ); /* Background color for the entire page */
 }
 
 #marco {
@@ -24,7 +28,7 @@ html {
 }
 
 #edificios {
-    background: url('https://res.cloudinary.com/pastelitos/image/upload/v1610526533/eva/edificiosOne_fsg7nx.svg');
+    background: url("https://res.cloudinary.com/pastelitos/image/upload/v1610526533/eva/edificiosOne_fsg7nx.svg");
     height: 500px;
     width: 2325px;
     z-index: -10;
@@ -37,15 +41,19 @@ html {
 
 /* Animation for moving buildings */
 @keyframes animar_edificios {
-    from { background-position: 0 0; }
-    to { background-position: 100% 0; }
+    from {
+        background-position: 0 0;
+    }
+    to {
+        background-position: 100% 0;
+    }
 }
 
 #luna {
     width: 6em;
     height: 6em;
     border-radius: 50%;
-    box-shadow: 30px 10px 0 #F7F8E0;
+    box-shadow: 30px 10px 0 #f7f8e0;
     margin-top: 1em;
     margin-left: 50%;
     transform: translateX(-50%); /* Center horizontally */
@@ -56,12 +64,12 @@ html {
 #muro {
     height: 23em;
     width: 100%;
-    background:black; /* Gradient from bottom to top */
+    background: black; /* Gradient from bottom to top */
     bottom: 0;
 }
 
 #gato {
-    background: url('https://res.cloudinary.com/pastelitos/image/upload/v1610526571/eva/gatito_pushui.svg');
+    background: url("https://res.cloudinary.com/pastelitos/image/upload/v1610526571/eva/gatito_pushui.svg");
     height: 297px;
     width: 507.5px;
     margin-top: 6em;
@@ -73,6 +81,10 @@ html {
 
 /* Animation for sprite */
 @keyframes sprite-animation {
-    from { background-position: 0 0; }
-    to { background-position: -8120px 0; }
+    from {
+        background-position: 0 0;
+    }
+    to {
+        background-position: -8120px 0;
+    }
 }

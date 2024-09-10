@@ -3,6 +3,7 @@ import { useForm, type SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { useReCaptcha } from "next-recaptcha-v3";
 import { SlSocialFacebook, SlSocialGoogle } from "react-icons/sl";
+import { createClient } from "../utils/supabase/client";
 
 interface IFormInput {
     firstName: string;
@@ -26,6 +27,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
         formState: { errors },
     } = useForm<IFormInput>();
     const router = useRouter();
+    const supabase = createClient();
     // const { executeRecaptcha } = useReCaptcha();
 
     const password = watch("password");
@@ -74,9 +76,44 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
         // },
         // [executeRecaptcha, router],
         async (data) => {
-            
+            // try {
+            //     await supabase.auth.signUp({
+            //         email: data.email,
+            //         password: data.password,
+            //         options: {
+            //             data: {
+            //                 first_name: data.firstName,
+            //                 last_name: data.lastName,
+            //                 username: data.username
+            //             }
+            //         }
+            //     });
+            //     router.replace("/home");
+            // } catch (error) {
+            //     console
+            // }
+            console.log(data);
+            supabase.auth
+                .signUp({
+                    email: data.email,
+                    password: data.password,
+                    options: {
+                        data: {
+                            first_name: data.firstName,
+                            last_name: data.lastName,
+                            username: data.username,
+                        },
+                    },
+                })
+                .then((data) => {
+                    console.log(data);
+                    router.replace("/home");
+                })
+                .catch((error) => {
+                    console.log(error);
+                });
         },
-        [router]
+        [router],
     );
 
     return (

@@ -43,8 +43,6 @@ export default async function handler(
 
         const data = await response.json();
 
-        
-
         if (data && data.tokenProperties && data.tokenProperties.valid) {
             res.status(200).json({ success: true });
         } else {

@@ -1,7 +1,14 @@
 import "./styles/animations.css"; // Keep this if it's needed
 import "./styles/hero.css"; // You can remove this if it's no longer needed
+import { redirect } from "next/navigation";
+import { createClient } from "./utils/supabase/server";
 
-export default function Page() {
+export default async function Page() {
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.getSession();
+    if (data.session) {
+        redirect("/home");
+    }
     return (
         <>
             <div className="relative w-full h-[420px] bg-cover bg-center flex items-center justify-center text-center text-white mb-8 ">

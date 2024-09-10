@@ -2,6 +2,7 @@ import React from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { SlSocialFacebook, SlSocialGoogle } from "react-icons/sl";
+import { createClient } from "../utils/supabase/client";
 
 interface IFormInput {
     email: string;
@@ -18,9 +19,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
         formState: { errors },
     } = useForm<IFormInput>();
     const router = useRouter();
+    const supabase = createClient();
 
-    const onSubmit: SubmitHandler<IFormInput> = (data) => {
-        console.log(data);
+    const onSubmit: SubmitHandler<IFormInput> = async (data) => {
+        await supabase.auth.signInWithPassword({
+            email: data.email,
+            password: data.password,
+        });
         router.push("/home");
     };
 
@@ -112,7 +117,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
                             className="mt-5 text-blue-500 dark:text-blue-400"
                             onClick={toggleForm}
                         >
-                            Don't have an account? Sign Up
+                            Don&apos;t have an account? Sign Up
                         </button>
                     </div>
                 </form>

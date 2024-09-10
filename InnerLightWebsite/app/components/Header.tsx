@@ -6,9 +6,14 @@ import {
     FaMoon,
     FaSignOutAlt,
 } from "react-icons/fa";
+import { createClient } from "../utils/supabase/client";
+import { useRouter } from "next/navigation";
 
 const Header: React.FC = () => {
     const [isDark, setIsDark] = useState(false);
+    const router = useRouter();
+
+    const supabase = createClient();
 
     useEffect(() => {
         const getTheme = () => {
@@ -36,6 +41,11 @@ const Header: React.FC = () => {
         setIsDark(!isDark);
         window.localStorage.setItem("dark", JSON.stringify(!isDark));
         document.documentElement.classList.toggle("dark", !isDark);
+    };
+
+    const signOut = async () => {
+        const { error } = await supabase.auth.signOut();
+        router.replace("/auth");
     };
 
     return (
@@ -85,8 +95,8 @@ const Header: React.FC = () => {
                     </li>
                     <li>
                         <a
-                            href="/auth"
                             className="flex items-center mr-4 hover:text-blue-100"
+                            onClick={signOut}
                         >
                             <FaSignOutAlt className="w-4 h-4" />
                             Logout
