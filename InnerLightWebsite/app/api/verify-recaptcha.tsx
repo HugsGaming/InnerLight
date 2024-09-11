@@ -24,7 +24,7 @@ export default async function handler(
     try {
         const secretKey = process.env.RECAPTCHA_SECRET_KEY;
         const response = await fetch(
-            `https://recaptchaenterprise.googleapis.com/v1/projects/innerlight-1723620024894/assessments?key=AIzaSyAQWV_NCTBW2F5WNxtcolWoDl9ljgCd4Bs`,
+            `https://recaptchaenterprise.googleapis.com/v1/projects/innerlight-1723620024894/assessments?key=${process.env.API_KEY}`,
             {
                 method: "POST",
                 headers: {
