@@ -3,6 +3,7 @@ import { useForm, type SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { SlSocialFacebook, SlSocialGoogle } from "react-icons/sl";
 import { createClient } from "../utils/supabase/client";
+import { Bounce, ToastContainer, toast } from 'react-toastify';
 
 interface IFormInput {
     email: string;
@@ -22,11 +23,26 @@ const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
     const supabase = createClient();
 
     const onSubmit: SubmitHandler<IFormInput> = async (data) => {
-        await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
             email: data.email,
             password: data.password,
         });
-        router.push("/home");
+        if(error) {
+            toast.error(error.message, {
+                position: "top-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+                theme: "light",
+                transition: Bounce
+            });
+            console.error(error);
+        } else {
+            router.push("/home");
+        }
     };
 
     return (

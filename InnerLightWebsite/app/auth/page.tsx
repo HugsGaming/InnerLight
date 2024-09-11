@@ -5,6 +5,8 @@ import LoginForm from "../components/LoginForm";
 import SignUpForm from "../components/SignUpForm";
 import Header from "../components/Header";
 import { FaMoon, FaSun } from "react-icons/fa";
+import { Bounce, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const Auth: React.FC = () => {
     const [showLogin, setShowLogin] = useState(true);
@@ -73,6 +75,19 @@ const Auth: React.FC = () => {
                     <SignUpForm toggleForm={toggleForm} />
                 )}
             </div>
+            <ToastContainer
+                position="top-right"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+                transition={Bounce} 
+            />
         </div>
     );
 };

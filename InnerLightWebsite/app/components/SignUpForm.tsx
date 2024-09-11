@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useReCaptcha } from "next-recaptcha-v3";
 import { SlSocialFacebook, SlSocialGoogle } from "react-icons/sl";
 import { createClient } from "../utils/supabase/client";
+import { ToastContainer, toast } from 'react-toastify';
 
 interface IFormInput {
     firstName: string;
@@ -93,25 +94,41 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
             //     console
             // }
             console.log(data);
-            supabase.auth
-                .signUp({
-                    email: data.email,
-                    password: data.password,
-                    options: {
-                        data: {
-                            first_name: data.firstName,
-                            last_name: data.lastName,
-                            username: data.username,
-                        },
+            // supabase.auth
+            //     .signUp({
+            //         email: data.email,
+            //         password: data.password,
+            //         options: {
+            //             data: {
+            //                 first_name: data.firstName,
+            //                 last_name: data.lastName,
+            //                 username: data.username,
+            //             },
+            //         },
+            //     })
+            //     .then((data) => {
+            //         console.log(data);
+            //         router.replace("/home");
+            //     })
+            //     .catch((error) => {
+            //         console.log(error);
+            //     });
+            const { error } = await supabase.auth.signUp({
+                email: data.email,
+                password: data.password,
+                options: {
+                    data: {
+                        first_name: data.firstName,
+                        last_name: data.lastName,
+                        username: data.username,
                     },
-                })
-                .then((data) => {
-                    console.log(data);
-                    router.replace("/home");
-                })
-                .catch((error) => {
-                    console.log(error);
-                });
+                }
+            });
+            if(error) {
+                toast.error(error.message);
+            } else {
+                router.push("/home");
+            }
         },
         [router],
     );
