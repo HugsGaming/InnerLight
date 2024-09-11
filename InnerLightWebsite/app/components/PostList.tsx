@@ -112,8 +112,8 @@ const PostList: React.FC = () => {
                                 Bob Johnson
                             </p>
                             <p className="text-gray-500 dark:text-white text-sm">
-                                I can&apos;t handle the cuteness! Where can I get
-                                one?
+                                I can&apos;t handle the cuteness! Where can I
+                                get one?
                             </p>
                         </div>
                     </div>

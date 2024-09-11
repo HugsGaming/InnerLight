@@ -14,7 +14,6 @@ import {
 import BrushSize from "./BrushSize";
 import BrushOpacity from "./BrushOpacity";
 import { LuPaintBucket } from "react-icons/lu";
-import { BsFillPaletteFill } from "react-icons/bs";
 import { MdOutlineClear } from "react-icons/md";
 
 interface CanvasProps {
@@ -32,6 +31,40 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor }) => {
     const [isDrawing, setIsDrawing] = useState<boolean>(false);
     const [history, setHistory] = useState<Array<ImageData>>([]);
     const [historyIndex, setHistoryIndex] = useState<number>(-1);
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+            const resizeCanvas = () => {
+                const ctx = ctxRef.current;
+                if (!ctx) return;
+
+                const imageData = ctx.getImageData(
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height,
+                );
+
+                const displayWidth = canvas.clientWidth;
+                const displayHeight = canvas.clientHeight;
+
+                canvas.width = displayWidth * window.devicePixelRatio;
+                canvas.height = displayHeight * window.devicePixelRatio;
+
+                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+                ctx.putImageData(imageData, 0, 0);
+            };
+
+            resizeCanvas();
+
+            window.addEventListener("resize", resizeCanvas);
+
+            return () => {
+                window.removeEventListener("resize", resizeCanvas);
+            };
+        }
+    }, [canvasRef]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -363,87 +396,76 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor }) => {
                 </div>
             </div>
 
-            <div className="flex flex-wrap justify-center md:justify-start  gap-2 md:gap-4 dark:bg-gray-600">
+            <div className="flex flex-wrap justify-center gap-2 md:gap-4 dark:bg-gray-600">
                 <div
-                    className="tool undo cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded bg-yellow-500 text-white hover:bg-yellow-600"
+                    className="tool undo cursor-pointer flex items-center justify-center w-10 h-10 md:w-14 md:h-14 p-2 md:p-3 rounded bg-yellow-500 text-white hover:bg-yellow-600"
                     onClick={handleUndoClick}
                 >
                     <FaUndo className="mb-1" />
-                    <div className="text-xs hidden md:block">Undo</div>
                 </div>
                 <div
-                    className="tool redo cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded bg-yellow-500 text-white hover:bg-yellow-600"
+                    className="tool redo cursor-pointer flex items-center justify-center w-10 h-10 md:w-14 md:h-14 p-2 md:p-3 rounded bg-yellow-500 text-white hover:bg-yellow-600"
                     onClick={handleRedoClick}
                 >
                     <FaRedo className="mb-1" />
-                    <div className="text-xs hidden md:block">Redo</div>
                 </div>
                 <div
-                    className="tool bg cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded bg-yellow-500 text-white hover:bg-yellow-600"
+                    className="tool bg cursor-pointer flex items-center justify-center w-10 h-10 md:w-14 md:h-14 p-2 md:p-3 rounded bg-yellow-500 text-white hover:bg-yellow-600"
                     onClick={handleBgClick}
                 >
                     <FaImage className="mb-1" />
-                    <span className="hidden md:inline">Background</span>
                 </div>
                 <div
-                    className={`tool brush cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded ${tool === "brush" ? "bg-blue-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-blue-600`}
+                    className={`tool brush cursor-pointer flex items-center justify-center w-10 h-10 md:w-14 md:h-14 p-2 md:p-3 rounded ${tool === "brush" ? "bg-blue-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-blue-600`}
                     onClick={() => handleCanvasClick("brush")}
                 >
                     <FaBrush className="mb-1" />
-                    <span className="hidden md:inline">Brush</span>
                 </div>
                 <div
-                    className={`tool rainbow cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded ${tool === "rainbow" ? "bg-red-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-red-600`}
+                    className={`tool rainbow cursor-pointer flex items-center justify-center w-10 h-10 md:w-14 md:h-14 p-2 md:p-3 rounded ${tool === "rainbow" ? "bg-red-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-red-600`}
                     onClick={() => handleCanvasClick("rainbow")}
                 >
                     <FaRainbow className="mb-1" />
-                    <span className="hidden md:inline">Rainbow</span>
                 </div>
                 <div
-                    className={`tool spray cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded ${tool === "spray" ? "bg-green-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-green-600`}
+                    className={`tool spray cursor-pointer flex items-center justify-center w-10 h-10 md:w-14 md:h-14 p-2 md:p-3 rounded ${tool === "spray" ? "bg-green-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-green-600`}
                     onClick={() => handleCanvasClick("spray")}
                 >
                     <FaSprayCan className="mb-1" />
-                    <span className="hidden md:inline">Spray</span>
                 </div>
                 <div
-                    className={`tool eraser cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded ${tool === "eraser" ? "bg-purple-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-purple-600`}
+                    className={`tool eraser cursor-pointer flex items-center justify-center w-10 h-10 md:w-14 md:h-14 p-2 md:p-3 rounded ${tool === "eraser" ? "bg-purple-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-purple-600`}
                     onClick={() => handleCanvasClick("eraser")}
                 >
                     <FaEraser className="mb-1" />
-                    <span className="hidden md:inline">Eraser</span>
                 </div>
                 <div
-                    className={`tool fill-bucket cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded ${tool === "fill-bucket" ? "bg-orange-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-orange-600`}
+                    className={`tool fill-bucket cursor-pointer flex items-center justify-center w-10 h-10 md:w-14 md:h-14 p-2 md:p-3 rounded ${tool === "fill-bucket" ? "bg-orange-500 text-white" : "bg-gray-300 text-gray-700"} hover:bg-orange-600`}
                     onClick={() => handleCanvasClick("fill-bucket")}
                 >
                     <LuPaintBucket className="mb-1" />
-                    <span className="hidden md:inline">Fill Bucket</span>
                 </div>
                 <div
-                    className={`tool clear cursor-pointer flex items-center justify-center w-16 h-16 md:w-20 md:h-20 p-2 md:p-3 rounded bg-pink-500 text-white hover:bg-pink-600`}
+                    className={`tool cursor-pointer flex items-center justify-center w-10 h-10 md:w-14 md:h-14 p-2 md:p-3 rounded bg-pink-500 text-white hover:bg-pink-600`}
                 >
-                    <BsFillPaletteFill className="mb-1" />
                     <input
                         type="color"
-                        className=" cursor-pointer p-2 rounded border-4 hover:bg-gray-300"
+                        className=" cursor-pointer hover:bg-gray-300"
                         value={currentColorState}
                         onChange={handleColorChange}
                     />
                 </div>
                 <div
-                    className="tool clear cursor-pointer p-4 rounded bg-pink-500 text-white hover:bg-pink-600"
+                    className="tool clear cursor-pointer flex items-center justify-center p-4 rounded w-10 h-10 md:w-14 md:h-14 bg-pink-500 text-white hover:bg-pink-600"
                     onClick={handleClearClick}
                 >
                     <MdOutlineClear className="mb-1" />
-                    <span className="hidden md:inline">Clear</span>
                 </div>
                 <div
-                    className="tool dl cursor-pointer p-4 rounded bg-teal-500 text-white hover:bg-teal-600"
+                    className="tool dl cursor-pointer flex items-center justify-center p-4 rounded w-10 h-10 md:w-14 md:h-14 bg-teal-500 text-white hover:bg-teal-600"
                     onClick={handleDownloadClick}
                 >
                     <FaDownload className="mb-1" />
-                    <span className="hidden md:inline">Download</span>
                 </div>
             </div>
         </div>
