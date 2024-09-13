@@ -67,6 +67,23 @@ const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
                             id="email"
                             {...register("email", {
                                 required: "Email is required",
+                                pattern: {
+                                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                    message: "Invalid email address",
+                                },
+                                validate: {
+                                    isRegistered: async (value) => {
+                                        const { data, error } = await supabase
+                                            .from("profiles")
+                                            .select("email")
+                                            .eq("email", value);
+                                        if (data?.length <= 0 || error) {
+                                            return "Email is not registered";
+                                        } else {
+                                            return false;
+                                        }
+                                    }
+                                }
                             })}
                             className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
