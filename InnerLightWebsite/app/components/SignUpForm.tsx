@@ -191,12 +191,24 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="text"
                             id="uname"
-                            {...register("username", { required: true })}
+                            {...register("username", { 
+                                required: "Username is required",
+                                validate: {
+                                    uniqueUsername: async (value) => {
+                                        const { data, error } = await supabase.from("profiles").select("username").eq("username", value);
+                                        if(data!.length > 0) {
+                                            return "Username is already taken";
+                                        } else {
+                                            return true;
+                                        }
+                                    }
+                                }
+                            })}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
                         {errors.username && (
                             <p className="text-red-500 text-sm">
-                                Username is required
+                                {errors.username.message}
                             </p>
                         )}
                     </div>
@@ -210,12 +222,25 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="email"
                             id="email"
-                            {...register("email", { required: true })}
+                            {...register("email", { 
+                                required: true,
+                                pattern: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i || "Invalid email address",
+                                validate: {
+                                    uniqueEmail: async (value) => {
+                                        const { data, error } = await supabase.from("profiles").select("email").eq("email", value);
+                                        if(data!.length > 0) {
+                                            return "Email already exists";
+                                        } else {
+                                            return false;
+                                        }
+                                    }
+                                }
+                             })}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
                         {errors.email && (
                             <p className="text-red-500 text-sm">
-                                Email is required
+                                {errors.email.message}
                             </p>
                         )}
                     </div>
@@ -230,12 +255,21 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="password"
                             id="password"
-                            {...register("password", { required: true })}
+                            {...register("password", 
+                                { 
+                                    required: true,
+                                    validate: {
+                                        minLength: (value) => value.length >= 8 || "Password must be at least 8 characters",
+                                        hasUpperCase: (value) => /[A-Z]/.test(value) || "Password must contain at least one uppercase letter",
+                                        hasLowerCase: (value) => /[a-z]/.test(value) || "Password must contain at least one lowercase letter",
+                                        hasNumber: (value) => /[0-9]/.test(value) || "Password must contain at least one number",
+                                    }
+                                })}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
                         {errors.password && (
                             <p className="text-red-500 text-sm">
-                                Password is required
+                                {errors.password.message}
                             </p>
                         )}
                     </div>
