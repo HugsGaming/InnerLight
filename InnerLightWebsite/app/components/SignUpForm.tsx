@@ -196,7 +196,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                                 validate: {
                                     uniqueUsername: async (value) => {
                                         const { data, error } = await supabase.from("profiles").select("username").eq("username", value);
-                                        if(data?.length > 0) {
+                                        if(data!.length > 0) {
                                             return "Username is already taken";
                                         } else {
                                             return true;
@@ -228,7 +228,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                                 validate: {
                                     uniqueEmail: async (value) => {
                                         const { data, error } = await supabase.from("profiles").select("email").eq("email", value);
-                                        if(data?.length > 0) {
+                                        if(data!.length > 0) {
                                             return "Email already exists";
                                         } else {
                                             return false;

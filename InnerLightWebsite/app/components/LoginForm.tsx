@@ -77,7 +77,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
                                             .from("profiles")
                                             .select("email")
                                             .eq("email", value);
-                                        if (data?.length <= 0 || error) {
+                                        if (data!.length <= 0 || error) {
                                             return "Email is not registered";
                                         } else {
                                             return false;
