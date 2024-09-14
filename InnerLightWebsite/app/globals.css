@@ -52,7 +52,7 @@
   */
 
 /* Compiled dark classes from Tailwind */
-.dark .dark\:divide-gray-700 > :not([hidden]) ~ :not([hidden]) {
+/* .dark .dark\:divide-gray-700 > :not([hidden]) ~ :not([hidden]) {
     border-color: rgba(55, 65, 81);
 }
 .dark .dark\:bg-gray-50 {
@@ -159,7 +159,7 @@
 }
 
 /* Custom style */
-.header-right {
+/*.header-right {
     width: calc(100% - 3.5rem);
 }
 .sidebar:hover {
@@ -170,3 +170,4 @@
         width: calc(100% - 16rem);
     }
 }
+*/

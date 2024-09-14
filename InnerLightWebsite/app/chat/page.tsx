@@ -1,57 +1,12 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-/*import Chat from "../components/Chat";*/
 import Head from "next/head";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
-import { chatData } from "../components/ChatData";
+import ChatComponent from "../components/ChatComponents";
 
 const App = () => {
-    const [selectedChat, setSelectedChat] = useState<string>("Friends Forever");
-    const [chatMessages, setChatMessages] = useState<{
-        [key: string]: { sender: string; text: string; time: string }[];
-    }>({});
-
-    useEffect(() => {
-        const initializeChatMessages = () => {
-            const initialMessages = chatData.groups
-                .concat(chatData.individuals)
-                .reduce(
-                    (acc, chat) => {
-                        acc[chat.name] = chat.messages;
-                        return acc;
-                    },
-                    {} as {
-                        [key: string]: {
-                            sender: string;
-                            text: string;
-                            time: string;
-                        }[];
-                    },
-                );
-
-            setChatMessages(initialMessages);
-        };
-
-        initializeChatMessages();
-    }, []);
-
-    const handleSelectChat = (chatName: string) => {
-        setSelectedChat(chatName);
-    };
-
-    const handleSendMessage = (newMessage: {
-        sender: string;
-        text: string;
-        time: string;
-    }) => {
-        setChatMessages((prevMessages) => ({
-            ...prevMessages,
-            [selectedChat]: [...(prevMessages[selectedChat] || []), newMessage],
-        }));
-    };
-
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isDark, setIsDark] = useState(false);
 
@@ -81,6 +36,17 @@ const App = () => {
         setIsSidebarOpen(!isSidebarOpen);
     };
 
+    const [messages, setMessages] = useState<string[]>([]);
+
+    type ChatMessageProps = {
+        content: string;
+        sender: string;
+    };
+
+    function handleSendMessage(message: ChatMessageProps): void {
+        throw new Error("Function not implemented.");
+    }
+
     return (
         <div
             className={`min-h-screen flex flex-col flex-auto flex-shrink-0 antialiased bg-white dark:bg-gray-700 text-black dark:text-white ${isDark ? "dark" : ""}`}
@@ -93,7 +59,9 @@ const App = () => {
             </Head>
             <Header />
             <Sidebar />
-            <div className="flex flex-1 ml-14 mt-14 mb-10 md:ml-64 h-full"></div>
+            <div className="p-10 ml-14 mt-10 md:ml-64 ">
+                <ChatComponent />
+            </div>
         </div>
     );
 };
