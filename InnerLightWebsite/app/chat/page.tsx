@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import ChatSidebar from "../components/ChatSidebar";
-import ChatWindow from "../components/ChatWindow";
+/*import Chat from "../components/Chat";*/
 import Head from "next/head";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
@@ -94,14 +93,7 @@ const App = () => {
             </Head>
             <Header />
             <Sidebar />
-            <div className="flex flex-1 ml-14 mt-14 mb-10 md:ml-64 h-full">
-                <ChatSidebar onSelectChat={handleSelectChat} />
-                <ChatWindow
-                    chatName={selectedChat}
-                    messages={chatMessages[selectedChat] || []}
-                    onSendMessage={handleSendMessage}
-                />
-            </div>
+            <div className="flex flex-1 ml-14 mt-14 mb-10 md:ml-64 h-full"></div>
         </div>
     );
 };
