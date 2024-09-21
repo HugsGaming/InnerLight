@@ -168,14 +168,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ friend }) => {
                                         onContextMenu={(e) =>
                                             handleContextMenu(e, message.id)
                                         }
-                                    >
-                                        <MessageBox
-                                            position={message.position}
-                                            type={message.type}
-                                            title={message.title}
-                                            data={message.data}
-                                        />
-                                    </div>
+                                    ></div>
                                 ),
                             };
                         }
