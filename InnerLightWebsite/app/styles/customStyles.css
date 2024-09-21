@@ -1,0 +1,22 @@
+/* customStyles.css */
+.rce-citem {
+    background: #2d3748 !important; /* Dark background */
+    color: #e2e8f0 !important; /* Light text color */
+}
+
+.rce-citem:hover {
+    background: #4a5568 !important; /* Darker background on hover */
+}
+
+.rce-citem .rce-citem-body {
+    color: #e2e8f0 !important; /* Ensure text inside the item is light */
+}
+
+.rce-citem .rce-citem-body .rce-citem-body--bottom {
+    color: #a0aec0 !important; 
+}
+
+.rce-container-input .rce-input {
+    background: #2d3748 !important; /* Dark background */
+    color: #e2e8f0 !important; /* Light text color */
+}

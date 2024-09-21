@@ -1,34 +1,50 @@
-// components/ChatListComponent.tsx
-
-import React from "react";
-import { ChatList } from "react-chat-elements";
+import React, { useState } from "react";
+import { ChatList, Input, Button } from "react-chat-elements";
 import "react-chat-elements/dist/main.css";
 
-interface Chat {
-    id: number;
-    avatar: string;
-    alt: string;
-    title: string;
-    subtitle: string;
-    date: Date;
-    unread: number;
-}
-
 interface ChatListComponentProps {
-    chats: Chat[];
-    onChatClick: (chat: Chat) => void;
+    onSelectFriend: (friend: any) => void;
 }
 
 const ChatListComponent: React.FC<ChatListComponentProps> = ({
-    chats,
-    onChatClick,
+    onSelectFriend,
 }) => {
+    const [friends, setFriends] = useState<any[]>([]);
+    const [input, setInput] = useState("");
+
+    const handleAddFriend = () => {
+        if (input.trim()) {
+            const newFriend = { title: input, messages: [] };
+            setFriends([...friends, newFriend]);
+            setInput("");
+        }
+    };
+
+    const handleSelectFriend = (friend: any) => {
+        onSelectFriend(friend);
+    };
+
     return (
-        <div className="w-1/3 bg-gray-200 p-4 border-r border-gray-300 dark:bg-gray-800">
+        <div className="p-4 bg-gray-200 rounded-lg shadow-md h-screen mr-2 dark:bg-gray-800 dark:text-white">
+            <div className="flex mb-4 bg-transparent text-black dark:bg-gray-800">
+                <Input
+                    placeholder="Add a friend..."
+                    multiline={false}
+                    value={input}
+                    onChange={(e: {
+                        target: { value: React.SetStateAction<string> };
+                    }) => setInput(e.target.value)}
+                    maxHeight={100}
+                    className="flex-1 mr-2 text-black"
+                    rightButtons={
+                        <Button text="Add" onClick={handleAddFriend} />
+                    }
+                />
+            </div>
             <ChatList
-                className="chat-list  text-black dark:text-white dark:bg-gray-800"
-                dataSource={chats}
-                onClick={(item) => onChatClick(item as Chat)}
+                className=" bg-transparent text-black "
+                dataSource={friends}
+                onClick={(friend) => handleSelectFriend(friend)}
                 id="chat-list"
                 lazyLoadingImage="path/to/lazy-loading-image.png"
             />
