@@ -1,10 +1,12 @@
+"use client";
+
 import React, { useEffect, useCallback } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { useReCaptcha } from "next-recaptcha-v3";
 import { SlSocialFacebook, SlSocialGoogle } from "react-icons/sl";
 import { createClient } from "../utils/supabase/client";
-import { ToastContainer, toast } from 'react-toastify';
+import { ToastContainer, toast } from "react-toastify";
 
 interface IFormInput {
     firstName: string;
@@ -16,11 +18,7 @@ interface IFormInput {
     termsAccepted: boolean; // Added field for terms acceptance
 }
 
-interface SignUpFormProps {
-    toggleForm: () => void;
-}
-
-const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
+const SignUpForm: React.FC = () => {
     const {
         register,
         handleSubmit,
@@ -34,104 +32,33 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
     const password = watch("password");
     const confirmPassword = watch("confirmPassword");
 
-    // useEffect(() => {
-    //     const script = document.createElement("script");
-    //     script.src =
-    //         "https://www.google.com/recaptcha/enterprise.js?render=6LdMICYqAAAAAKh9MmH4M4hPVqqMOyZIbqvIWfLc";
-    //     script.async = true;
-    //     document.head.appendChild(script);
-    // }, []);
-
-    const onSubmit: SubmitHandler<IFormInput> = useCallback(
-        // async (data) => {
-        //     try {
-        //         const token = await executeRecaptcha("verify_recaptcha");
-
-        //         const response = await fetch("/api/verify-recaptcha", {
-        //             method: "POST",
-        //             headers: {
-        //                 "Content-Type": "application/json",
-        //             },
-        //             body: JSON.stringify({ token, ...data }),
-        //         });
-
-        //         if (!response.ok) {
-        //             throw new Error("reCAPTCHA verification failed.");
-        //         }
-
-        //         const result = await response.json();
-        //         if (result.success) {
-        //             router.push("/home");
-        //         } else {
-        //             alert(
-        //                 result.message ||
-        //                     "reCAPTCHA verification failed. Please try again.",
-        //             );
-        //         }
-        //     } catch (error) {
-        //         alert(
-        //             (error as Error).message ||
-        //                 "An error occurred. Please try again.",
-        //         );
-        //     }
-        // },
-        // [executeRecaptcha, router],
-        async (data) => {
-            // try {
-            //     await supabase.auth.signUp({
-            //         email: data.email,
-            //         password: data.password,
-            //         options: {
-            //             data: {
-            //                 first_name: data.firstName,
-            //                 last_name: data.lastName,
-            //                 username: data.username
-            //             }
-            //         }
-            //     });
-            //     router.replace("/home");
-            // } catch (error) {
-            //     console
-            // }
-            console.log(data);
-            // supabase.auth
-            //     .signUp({
-            //         email: data.email,
-            //         password: data.password,
-            //         options: {
-            //             data: {
-            //                 first_name: data.firstName,
-            //                 last_name: data.lastName,
-            //                 username: data.username,
-            //             },
-            //         },
-            //     })
-            //     .then((data) => {
-            //         console.log(data);
-            //         router.replace("/home");
-            //     })
-            //     .catch((error) => {
-            //         console.log(error);
-            //     });
-            const { error } = await supabase.auth.signUp({
-                email: data.email,
-                password: data.password,
-                options: {
-                    data: {
-                        first_name: data.firstName,
-                        last_name: data.lastName,
-                        username: data.username,
-                    },
-                }
+    const onSubmit: SubmitHandler<IFormInput> = async (data) => {
+        const { data: user, error } = await supabase.auth.signUp({
+            email: data.email,
+            password: data.password,
+            options: {
+                data: {
+                    first_name: data.firstName,
+                    last_name: data.lastName,
+                    username: data.username,
+                },
+            },
+        });
+        if(error) {
+            toast.error(error.message, {
+                position: "top-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+                theme: "light",
             });
-            if(error) {
-                toast.error(error.message);
-            } else {
-                router.push("/home");
-            }
-        },
-        [router],
-    );
+        } else {
+            router.push("/home");
+        }
+    }
 
     return (
         <div className="flex min-h-screen">
@@ -158,7 +85,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         />
                         {errors.firstName && (
                             <p className="text-red-500 text-sm">
-                                First Name is required
+                                {errors.firstName.message}
                             </p>
                         )}
                     </div>
@@ -177,13 +104,12 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         />
                         {errors.lastName && (
                             <p className="text-red-500 text-sm">
-                                Last Name is required
+                                {errors.lastName.message}
                             </p>
                         )}
-                    </div>
                     <div className="mb-4">
                         <label
-                            htmlFor="lname"
+                            htmlFor="uname"
                             className="block text-gray-700 dark:text-gray-300"
                         >
                             Username
@@ -191,18 +117,21 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="text"
                             id="uname"
-                            {...register("username", { 
+                            {...register("username", {
                                 required: "Username is required",
                                 validate: {
                                     uniqueUsername: async (value) => {
-                                        const { data, error } = await supabase.from("profiles").select("username").eq("username", value);
-                                        if(data!.length > 0) {
+                                        const { data, error } = await supabase
+                                            .from("profiles")
+                                            .select("username")
+                                            .eq("username", value);
+
+                                        console.log("Username validation ", data);
+                                        if (data!.length > 0) {
                                             return "Username is already taken";
-                                        } else {
-                                            return true;
                                         }
-                                    }
-                                }
+                                    },
+                                },
                             })}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
@@ -222,20 +151,24 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="email"
                             id="email"
-                            {...register("email", { 
+                            {...register("email", {
                                 required: true,
-                                pattern: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i || "Invalid email address",
+                                pattern:
+                                    /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i ||
+                                    "Invalid email address",
                                 validate: {
                                     uniqueEmail: async (value) => {
-                                        const { data, error } = await supabase.from("profiles").select("email").eq("email", value);
-                                        if(data!.length > 0) {
+                                        const { data, error } = await supabase
+                                            .from("profiles")
+                                            .select("email")
+                                            .eq("email", value);
+                                            console.log("Email validation ", data);
+                                        if (data!.length > 0) {
                                             return "Email already exists";
-                                        } else {
-                                            return false;
                                         }
-                                    }
-                                }
-                             })}
+                                    },
+                                },
+                            })}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
                         {errors.email && (
@@ -244,7 +177,6 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                             </p>
                         )}
                     </div>
-
                     <div className="mb-4">
                         <label
                             htmlFor="password"
@@ -255,16 +187,23 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                         <input
                             type="password"
                             id="password"
-                            {...register("password", 
-                                { 
-                                    required: true,
-                                    validate: {
-                                        minLength: (value) => value.length >= 8 || "Password must be at least 8 characters",
-                                        hasUpperCase: (value) => /[A-Z]/.test(value) || "Password must contain at least one uppercase letter",
-                                        hasLowerCase: (value) => /[a-z]/.test(value) || "Password must contain at least one lowercase letter",
-                                        hasNumber: (value) => /[0-9]/.test(value) || "Password must contain at least one number",
-                                    }
-                                })}
+                            {...register("password", {
+                                required: true,
+                                validate: {
+                                    minLength: (value) =>
+                                        value.length >= 8 ||
+                                        "Password must be at least 8 characters",
+                                    hasUpperCase: (value) =>
+                                        /[A-Z]/.test(value) ||
+                                        "Password must contain at least one uppercase letter",
+                                    hasLowerCase: (value) =>
+                                        /[a-z]/.test(value) ||
+                                        "Password must contain at least one lowercase letter",
+                                    hasNumber: (value) =>
+                                        /[0-9]/.test(value) ||
+                                        "Password must contain at least one number",
+                                },
+                            })}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
                         {errors.password && (
@@ -273,7 +212,6 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                             </p>
                         )}
                     </div>
-
                     <div className="mb-4">
                         <label
                             htmlFor="confirmPassword"
@@ -297,7 +235,6 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                             </p>
                         )}
                     </div>
-
                     <div className="mb-4 flex items-center">
                         <input
                             type="checkbox"
@@ -320,6 +257,44 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                             </p>
                         )}
                     </div>
+                    </div>
+                    <button
+                        type="submit"
+                        className="w-full bg-blue-600 dark:bg-blue-700 text-white py-3 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition"
+                    >
+                        Sign Up
+                    </button>
+                    <div className="my-4 flex items-center">
+                        <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
+                        <span className="mx-4 text-gray-500 dark:text-gray-400">
+                            or
+                        </span>
+                        <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
+                    </div>
+
+                    <div className="mt-4">
+                        <button className="w-full bg-red-600 dark:bg-red-700 text-white py-3 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition flex items-center justify-center gap-2">
+                            <SlSocialGoogle className="w-5 h-5" />
+                            Sign Up with Google
+                        </button>
+                    </div>
+
+                    <div className="mt-4">
+                        <button className="w-full bg-blue-800 dark:bg-blue-900 text-white py-3 rounded-lg hover:bg-blue-900 dark:hover:bg-blue-800 transition flex items-center justify-center gap-2">
+                            <SlSocialFacebook className="w-5 h-5" />
+                            Sign Up with Facebook
+                        </button>
+                    </div>
+
+                    <div>
+                        <button
+                            className="mt-5 text-blue-500 dark:text-blue-400"
+                            onClick={() => {}}
+                        >
+                            Already have an account? Log In
+                        </button>
+                    </div>
+                    {/* 
 
                     <div className="mb-4">
                         <div
@@ -360,11 +335,11 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                     <div>
                         <button
                             className="mt-5 text-blue-500 dark:text-blue-400"
-                            onClick={toggleForm}
+                            onClick={() => {}}
                         >
                             Already have an account? Log In
                         </button>
-                    </div>
+                    </div> */}
                 </form>
             </div>
             <div className="hidden lg:block lg:w-1/2">
@@ -374,6 +349,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ toggleForm }) => {
                     className="w-full h-full rounded-lg object-contain"
                 />
             </div>
+            <ToastContainer />
         </div>
     );
 };

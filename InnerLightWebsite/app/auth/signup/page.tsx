@@ -1,15 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import LoginForm from "../components/LoginForm";
-import SignUpForm from "../components/SignUpForm";
-import Header from "../components/Header";
 import { FaMoon, FaSun } from "react-icons/fa";
-import { Bounce, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import SignUpForm from "../../components/SignUpForm";
 
-const Auth: React.FC = () => {
-    const [showLogin, setShowLogin] = useState(true);
+export default function SignUp() {
     const [isDark, setIsDark] = useState<boolean>(false);
 
     useEffect(() => {
@@ -18,37 +14,24 @@ const Auth: React.FC = () => {
             if (storedTheme) {
                 return JSON.parse(storedTheme);
             }
-            return (
-                !!window.matchMedia &&
-                window.matchMedia("(prefers-color-scheme: dark)").matches
-            );
+            return !!window.matchMedia("(prefers-color-scheme: dark)").matches;
         };
 
         const initialTheme = getTheme();
         setIsDark(initialTheme);
         document.documentElement.classList.toggle("dark", initialTheme);
     }, []);
-
     const toggleTheme = () => {
         const newIsDark = !isDark;
         setIsDark(newIsDark);
         window.localStorage.setItem("dark", JSON.stringify(newIsDark));
         document.documentElement.classList.toggle("dark", newIsDark);
     };
-
-    const toggleForm = () => {
-        setShowLogin(!showLogin);
-    };
-
     const backgroundImage = isDark
         ? "url('https://imgur.com/pbsYPLc.png')"
         : "url('https://imgur.com/cTYX4Ri.png')";
-
     return (
-        <div
-            className="bg-cover bg-center transition-all duration-500"
-            style={{ backgroundImage }}
-        >
+        <div className="bg-cover bg-center transition-all duration-500" style={{backgroundImage}}>
             <div className="flex items-center justify-between p-8 border-none">
                 <span>
                     <img
@@ -69,27 +52,8 @@ const Auth: React.FC = () => {
                 </button>
             </div>
             <div className="flex items-center justify-center h-full top-8">
-                {showLogin ? (
-                    <LoginForm  />
-                ) : (
-                    <SignUpForm />
-                )}
+                <SignUpForm />
             </div>
-            <ToastContainer
-                position="top-right"
-                autoClose={5000}
-                hideProgressBar={false}
-                newestOnTop={false}
-                closeOnClick
-                rtl={false}
-                pauseOnFocusLoss
-                draggable
-                pauseOnHover
-                theme="light"
-                transition={Bounce}
-            />
         </div>
     );
-};
-
-export default Auth;
+}
