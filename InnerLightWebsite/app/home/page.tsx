@@ -19,7 +19,7 @@ const Home: React.FC = () => {
         supabase.auth.getUser().then(async ({ data }) => {
             const { user } = data;
             if (!user || user === null) {
-                router.replace("/auth");
+                router.replace("/auth/signup");
             } else {
                 let metadata = user.user_metadata;
                 console.log(metadata);

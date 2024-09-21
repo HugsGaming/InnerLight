@@ -35,10 +35,10 @@
     "dependencies": {
         "@ai-sdk/openai": "^0.0.58",
         "@supabase/ssr": "^0.5.1",
-        "@supabase/supabase-js": "^2.45.3",
+        "@supabase/supabase-js": "^2.45.4",
         "ai": "^3.3.28",
         "face-api.js": "^0.22.2",
-        "next": "^14.2.8",
+        "next": "^14.2.13",
         "next-recaptcha-v3": "^1.4.1",
         "openai": "^4.58.1",
         "perfect-freehand": "^1.2.2",
