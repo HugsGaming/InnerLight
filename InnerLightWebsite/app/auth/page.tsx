@@ -69,11 +69,7 @@ const Auth: React.FC = () => {
                 </button>
             </div>
             <div className="flex items-center justify-center h-full top-8">
-                {showLogin ? (
-                    <LoginForm  />
-                ) : (
-                    <SignUpForm />
-                )}
+                {showLogin ? <LoginForm /> : <SignUpForm />}
             </div>
             <ToastContainer
                 position="top-right"

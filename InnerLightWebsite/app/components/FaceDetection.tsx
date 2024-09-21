@@ -5,11 +5,6 @@ export default function FaceDetection() {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    useEffect(() => {
-        startVideo();
-        videoRef && loadModels();
-    }, []);
-
     const startVideo = () => {
         navigator.mediaDevices
             .getUserMedia({ video: true })
@@ -36,6 +31,11 @@ export default function FaceDetection() {
                 console.log(error);
             });
     };
+
+    useEffect(() => {
+        startVideo();
+        videoRef && loadModels();
+    }, [loadModels]);
 
     const faceMyDetect = async () => {
         setInterval(async () => {

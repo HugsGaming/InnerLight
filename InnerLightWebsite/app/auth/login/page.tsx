@@ -3,9 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { FaMoon, FaSun } from "react-icons/fa";
 import "react-toastify/dist/ReactToastify.css";
-import SignUpForm from "../../components/SignUpForm";
+import LoginForm from "../../components/LoginForm";
 
-export default function SignUp() {
+export default function LogIn() {
     const [isDark, setIsDark] = useState<boolean>(false);
 
     useEffect(() => {
@@ -55,7 +55,7 @@ export default function SignUp() {
                 </button>
             </div>
             <div className="flex items-center justify-center h-full top-8">
-                <SignUpForm />
+                <LoginForm />
             </div>
         </div>
     );

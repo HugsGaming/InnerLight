@@ -12,7 +12,7 @@ interface IFormInput {
     password: string;
 }
 
-const LoginForm: React.FC= () => {
+const LoginForm: React.FC = () => {
     const {
         register,
         handleSubmit,
@@ -76,8 +76,6 @@ const LoginForm: React.FC= () => {
                                             .eq("email", value);
                                         if (data!.length <= 0 || error) {
                                             return "Email is not registered";
-                                        } else {
-                                            return false;
                                         }
                                     },
                                 },
@@ -145,7 +143,9 @@ const LoginForm: React.FC= () => {
                     <div>
                         <button
                             className="mt-5 text-blue-500 dark:text-blue-400"
-                            onClick={() => {}}
+                            onClick={() => {
+                                router.push("/auth/signup");
+                            }}
                         >
                             Don&apos;t have an account? Sign Up
                         </button>
