@@ -8,7 +8,7 @@ import Header from "../components/Header";
 import Post from "../components/Post";
 import { createClient } from "../utils/supabase/client";
 import { redirect, useRouter } from "next/navigation";
-
+import ButtonAiChat from "../components/ButtonAiChat";
 const Home: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isDark, setIsDark] = useState(false);
@@ -98,6 +98,7 @@ const Home: React.FC = () => {
             <div className="ml-14 mt-14 mb-10 md:ml-64">
                 <Post />
                 <PostList />
+                <ButtonAiChat />
             </div>
         </div>
     );
