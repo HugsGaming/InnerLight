@@ -1,5 +1,5 @@
 // components/Post.tsx
-"use client"
+"use client";
 
 import React, { useState } from "react";
 import { FaImage, FaPoll, FaLink } from "react-icons/fa";
