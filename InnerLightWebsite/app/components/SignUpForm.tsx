@@ -7,6 +7,7 @@ import { useReCaptcha } from "next-recaptcha-v3";
 import { SlSocialFacebook, SlSocialGoogle } from "react-icons/sl";
 import { createClient } from "../utils/supabase/client";
 import { ToastContainer, toast } from "react-toastify";
+import { set } from "zod";
 
 interface IFormInput {
     firstName: string;
@@ -31,8 +32,10 @@ const SignUpForm: React.FC = () => {
 
     const password = watch("password");
     const confirmPassword = watch("confirmPassword");
+    const [isDisabled, setIsDisabled] = React.useState(false);
 
     const onSubmit: SubmitHandler<IFormInput> = async (data) => {
+        setIsDisabled(true);
         const { data: user, error } = await supabase.auth.signUp({
             email: data.email,
             password: data.password,
@@ -302,6 +305,7 @@ const SignUpForm: React.FC = () => {
                             onClick={() => {
                                 router.push("/auth/login");
                             }}
+                            disabled={isDisabled}
                         >
                             Already have an account? Log In
                         </button>

@@ -21,14 +21,27 @@ const LoginForm: React.FC = () => {
     const router = useRouter();
     const supabase = createClient();
 
+    const isEmailRegistered = async (email: string) => {
+        const { data, error } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("email", email)
+            .single();
+        if (!data || error) {
+            return "Email is not registered";
+        }
+        return true;
+    }
+
     const onSubmit: SubmitHandler<IFormInput> = async (data) => {
         console.log(data);
         const { data: user, error } = await supabase.auth.signInWithPassword({
             email: data.email,
             password: data.password,
         });
-        if (error) {
-            toast.error(error.message, {
+        console.log(user, error);
+        if (error || user === null) {
+            toast.error(error!.message, {
                 position: "top-right",
                 autoClose: 5000,
                 hideProgressBar: false,
@@ -38,8 +51,9 @@ const LoginForm: React.FC = () => {
                 progress: undefined,
                 theme: "light",
             });
+        } else {
+            router.push("/home");
         }
-        router.push("/home");
     };
 
     return (
@@ -68,17 +82,7 @@ const LoginForm: React.FC = () => {
                                     value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
                                     message: "Invalid email address",
                                 },
-                                validate: {
-                                    isRegistered: async (value) => {
-                                        const { data, error } = await supabase
-                                            .from("profiles")
-                                            .select("email")
-                                            .eq("email", value);
-                                        if (data!.length <= 0 || error) {
-                                            return "Email is not registered";
-                                        }
-                                    },
-                                },
+                                validate: isEmailRegistered,
                             })}
                             className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
