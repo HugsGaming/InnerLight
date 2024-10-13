@@ -31,7 +31,7 @@ const LoginForm: React.FC = () => {
             return "Email is not registered";
         }
         return true;
-    }
+    };
 
     const onSubmit: SubmitHandler<IFormInput> = async (data) => {
         console.log(data);
@@ -164,6 +164,7 @@ const LoginForm: React.FC = () => {
                     className="w-full h-full rounded-lg object-contain"
                 />
             </div>
+            <ToastContainer />
         </div>
     );
 };
