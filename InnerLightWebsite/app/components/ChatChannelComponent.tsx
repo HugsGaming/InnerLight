@@ -8,7 +8,7 @@ interface ChatComponentProps {
     friend: any;
 }
 
-const ChatComponent: React.FC<ChatComponentProps> = ({ friend }) => {
+const ChatChannelComponent: React.FC<ChatComponentProps> = ({ friend }) => {
     const [messages, setMessages] = useState<any[]>([
         {
             id: 1,
@@ -255,4 +255,4 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ friend }) => {
     );
 };
 
-export default ChatComponent;
+export default ChatChannelComponent;
