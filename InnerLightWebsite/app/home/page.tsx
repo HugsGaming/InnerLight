@@ -1,91 +1,78 @@
-"use client";
-
 import Head from "next/head";
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Sidebar from "../components/Sidebar";
 import PostList from "../components/PostList";
 import Header from "../components/Header";
 import Post from "../components/Post";
-import { createClient } from "../utils/supabase/client";
-import { redirect, useRouter } from "next/navigation";
+import { createClient } from "../utils/supabase/server";
+import { redirect } from "next/navigation";
 
 const Home: React.FC = () => {
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [isDark, setIsDark] = useState(false);
-    const router = useRouter();
     const supabase = createClient();
 
-    useEffect(() => {
-        supabase.auth.getUser().then(async ({ data }) => {
-            const { user } = data;
-            if (!user || user === null) {
-                router.replace("/auth");
-            } else {
-                let metadata = user.user_metadata;
-                console.log(metadata);
-                const first_name = metadata.first_name;
-                const last_name = metadata.last_name;
-                const username = metadata.username;
-                // supabase.from('profiles').select("*").eq('user_id', user.id).single().then(({data}) => {
-                //     if(!data || data === null) {
-                //         supabase.from('profiles').insert({
-                //             user_id: user.id,
-                //             first_name: first_name,
-                //             last_name: last_name,
-                //             username: username
-                //         })
-                //     }
-                // });
-                const { data, error } = await supabase
-                    .from("profiles")
-                    .select("*")
-                    .eq("user_id", user.id);
-                console.log(data);
-                if (!data || data === null || data.length === 0) {
-                    await supabase
-                        .from("profiles")
-                        .insert({
+    supabase.auth.getUser().then(async ({ data }) => {
+        const { user } = data;
+        if (!user || user === null) {
+            redirect("/auth/login");
+        } else {
+            let metadata = user.user_metadata;
+            console.log(metadata);
+            const first_name = metadata.first_name;
+            const last_name = metadata.last_name;
+            const username = metadata.username;
+            await supabase
+                .from("profiles")
+                .select("*")
+                .eq("id", user.id)
+                .single()
+                .then(async ({ data }) => {
+                    console.log("Profile Data: ", data);
+                    if (!data || data === null) {
+                        try {
+                            console.log(first_name, last_name, username);
+                            const { data: profileData, error } = await supabase
+                                .from("profiles")
+                                .insert({
+                                    first_name: first_name,
+                                    last_name: last_name,
+                                    username: username,
+                                    email: user.email,
+                                });
+                            if (error) {
+                                console.log(error);
+                            } else {
+                                console.log("Profile created");
+                                const { data: logData, error } = await supabase
+                                    .from("auditLogs")
+                                    .insert({
+                                        user_id: user.id,
+                                        action_type: "Registration",
+                                        add_info: null,
+                                    });
+                                if (error) {
+                                    console.log(error);
+                                } else {
+                                    console.log("Log created");
+                                }
+                            }
+                        } catch (error) {
+                            console.log(error);
+                        }
+                    } else {
+                        await supabase.from("auditLogs").insert({
                             user_id: user.id,
-                            first_name: first_name,
-                            last_name: last_name,
-                            username: username,
-                            email: user.email,
-                        })
-                        .select();
-                    console.log("No profile found, created new profile");
-                } else {
-                    console.error(error);
-                }
-            }
-        });
-        const getTheme = () => {
-            if (window.localStorage.getItem("dark")) {
-                return JSON.parse(
-                    window.localStorage.getItem("dark") as string,
-                );
-            }
-            return (
-                !!window.matchMedia &&
-                window.matchMedia("(prefers-color-scheme: dark)").matches
-            );
-        };
-
-        const setTheme = (value: boolean) => {
-            window.localStorage.setItem("dark", JSON.stringify(value));
-            document.documentElement.classList.toggle("dark", value);
-        };
-
-        setIsDark(getTheme());
-        setTheme(getTheme());
-    }, []);
-
-    const toggleSidebar = () => {
-        setIsSidebarOpen(!isSidebarOpen);
-    };
+                            action_type: "Login",
+                            add_info: null,
+                        });
+                        console.log("Log created");
+                    }
+                });
+        }
+    });
 
     return (
         <div
-            className={`min-h-screen flex flex-col flex-auto flex-shrink-0 antialiased bg-white dark:bg-gray-700 text-black dark:text-white ${isDark ? "dark" : ""}`}
+            className={`min-h-screen flex flex-col flex-auto flex-shrink-0 antialiased bg-white dark:bg-gray-700 text-black dark:text-white `}
         >
             <Head>
                 <script

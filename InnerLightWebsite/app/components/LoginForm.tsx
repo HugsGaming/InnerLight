@@ -1,19 +1,18 @@
+"use client";
+
 import React from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { SlSocialFacebook, SlSocialGoogle } from "react-icons/sl";
 import { createClient } from "../utils/supabase/client";
-import { Bounce, ToastContainer, toast } from 'react-toastify';
+import { Bounce, ToastContainer, toast } from "react-toastify";
 
 interface IFormInput {
     email: string;
     password: string;
 }
-interface LoginFormProps {
-    toggleForm: () => void;
-}
 
-const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
+const LoginForm: React.FC = () => {
     const {
         register,
         handleSubmit,
@@ -22,13 +21,27 @@ const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
     const router = useRouter();
     const supabase = createClient();
 
+    const isEmailRegistered = async (email: string) => {
+        const { data, error } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("email", email)
+            .single();
+        if (!data || error) {
+            return "Email is not registered";
+        }
+        return true;
+    };
+
     const onSubmit: SubmitHandler<IFormInput> = async (data) => {
-        const { error } = await supabase.auth.signInWithPassword({
+        console.log(data);
+        const { data: user, error } = await supabase.auth.signInWithPassword({
             email: data.email,
             password: data.password,
         });
-        if(error) {
-            toast.error(error.message, {
+        console.log(user, error);
+        if (error || user === null) {
+            toast.error(error!.message, {
                 position: "top-right",
                 autoClose: 5000,
                 hideProgressBar: false,
@@ -37,9 +50,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
                 draggable: true,
                 progress: undefined,
                 theme: "light",
-                transition: Bounce
             });
-            console.error(error);
         } else {
             router.push("/home");
         }
@@ -67,6 +78,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
                             id="email"
                             {...register("email", {
                                 required: "Email is required",
+                                pattern: {
+                                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                    message: "Invalid email address",
+                                },
+                                validate: isEmailRegistered,
                             })}
                             className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200"
                         />
@@ -131,7 +147,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
                     <div>
                         <button
                             className="mt-5 text-blue-500 dark:text-blue-400"
-                            onClick={toggleForm}
+                            onClick={() => {
+                                router.push("/auth/signup");
+                            }}
                         >
                             Don&apos;t have an account? Sign Up
                         </button>
@@ -146,6 +164,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ toggleForm }) => {
                     className="w-full h-full rounded-lg object-contain"
                 />
             </div>
+            <ToastContainer />
         </div>
     );
 };

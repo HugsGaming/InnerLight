@@ -5,7 +5,7 @@ import { createClient } from "./utils/supabase/server";
 
 export default async function Page() {
     const supabase = createClient();
-    const { data, error } = await supabase.auth.getSession();
+    const { data } = await supabase.auth.getSession();
     if (data.session) {
         redirect("/home");
     }
@@ -21,7 +21,7 @@ export default async function Page() {
                         others.
                     </p>
                     <a
-                        href="/auth"
+                        href="/auth/signup"
                         className="inline-block text-white bg-yellow-700 hover:bg-yellow-900 py-2 px-6 rounded transition-colors"
                     >
                         Sign Up Now!
