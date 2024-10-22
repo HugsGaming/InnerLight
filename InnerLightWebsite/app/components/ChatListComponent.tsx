@@ -3,7 +3,7 @@ import { ChatList, Input, Button } from "react-chat-elements";
 import { createClient } from "../utils/supabase/client";
 import "react-chat-elements/dist/main.css";
 import { Channel } from "./ChatComponent";
-import { Tables } from '../../database.types'
+import { Tables } from "../../database.types";
 
 interface ChatListComponentProps {
     onSelectFriend: (friend: any) => void;
@@ -29,19 +29,24 @@ const ChatListComponent: React.FC<ChatListComponentProps> = ({
     };
 
     useEffect(() => {
-        const channel = supabase.channel('realtime-channels').on('postgres_changes',
-            {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'messageChannels',
-            }, (payload) => {
-                console.log(payload.new.id, payload.new.name);
-            }
-        ).subscribe();
+        const channel = supabase
+            .channel("realtime-channels")
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "messageChannels",
+                },
+                (payload) => {
+                    console.log(payload.new.id, payload.new.name);
+                },
+            )
+            .subscribe();
 
         return () => {
             channel.unsubscribe();
-        }
+        };
     }, []);
 
     return (

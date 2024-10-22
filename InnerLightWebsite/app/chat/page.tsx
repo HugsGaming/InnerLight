@@ -17,7 +17,7 @@ const App: React.FC = async () => {
     if (userError || !user || user === null) {
         redirect("/auth/login");
     }
-    let channels = []
+    let channels = [];
     try {
         const { data: rawChannelsData, error: rawChannelsError } =
             await supabase
@@ -33,7 +33,7 @@ const App: React.FC = async () => {
             .neq("user_channels.user_id", user.id)
             .in(
                 "user_channels.channel_id",
-                rawChannelsData.map((channel) => channel.id)
+                rawChannelsData.map((channel) => channel.id),
             );
 
         if (channelsError || !channelsData || channelsData === null) {

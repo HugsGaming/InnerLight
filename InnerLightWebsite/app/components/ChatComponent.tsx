@@ -19,9 +19,7 @@ export default function ChatComponent() {
     return (
         <div className="p-10 ml-14 mt-10 md:ml-64 flex flex-row ">
             <div className="w-1/3">
-                <ChatListComponent
-                    onSelectFriend={setSelectedFriend}
-                />
+                <ChatListComponent onSelectFriend={setSelectedFriend} />
             </div>
             <div className="w-2/3">
                 <ChatChannelComponent friend={selectedFriend} />

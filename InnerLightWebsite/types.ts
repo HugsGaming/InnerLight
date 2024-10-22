@@ -4,4 +4,4 @@ type Channel = {
     user_channels: {
         user_id: string;
     }[];
-}
+};
