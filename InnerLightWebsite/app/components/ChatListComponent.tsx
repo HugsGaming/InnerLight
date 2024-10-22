@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { ChatList, Input, Button } from "react-chat-elements";
 import { createClient } from "../utils/supabase/client";
 import "react-chat-elements/dist/main.css";
+import { Channel } from "./ChatComponent";
+import { Tables } from '../../database.types'
 
 interface ChatListComponentProps {
     onSelectFriend: (friend: any) => void;
@@ -12,6 +14,7 @@ const ChatListComponent: React.FC<ChatListComponentProps> = ({
 }) => {
     const [channels, setChannels] = useState<any[]>([]);
     const [input, setInput] = useState("");
+    const supabase = createClient();
 
     const handleAddFriend = () => {
         if (input.trim()) {
@@ -25,7 +28,21 @@ const ChatListComponent: React.FC<ChatListComponentProps> = ({
         onSelectFriend(friend);
     };
 
-    useEffect(() => {}, [channels]);
+    useEffect(() => {
+        const channel = supabase.channel('realtime-channels').on('postgres_changes',
+            {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messageChannels',
+            }, (payload) => {
+                console.log(payload.new.id, payload.new.name);
+            }
+        ).subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        }
+    }, []);
 
     return (
         <div className="p-4 bg-gray-200 rounded-lg shadow-md h-screen mr-2 dark:bg-gray-800 dark:text-white">

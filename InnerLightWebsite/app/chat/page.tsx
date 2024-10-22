@@ -10,12 +10,41 @@ export const revalidate = 0;
 
 const App: React.FC = async () => {
     const supabase = createClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if(userError || !user || user === null) {
+    const {
+        data: { user },
+        error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user || user === null) {
         redirect("/auth/login");
     }
-    const { data, error: channelError } = await supabase.from("messageChannels").select("*, user_channels!inner(user_id)").eq("user_channels.user_id", user.id);
-    console.log(data, channelError);
+    let channels = []
+    try {
+        const { data: rawChannelsData, error: rawChannelsError } =
+            await supabase
+                .from("messageChannels")
+                .select("id, name, user_channels()")
+                .eq("user_channels.user_id", user.id);
+        if (rawChannelsError || !rawChannelsData || rawChannelsData === null) {
+            throw rawChannelsError;
+        }
+        const { data: channelsData, error: channelsError } = await supabase
+            .from("messageChannels")
+            .select("id, name, user_channels!left(user_id)")
+            .neq("user_channels.user_id", user.id)
+            .in(
+                "user_channels.channel_id",
+                rawChannelsData.map((channel) => channel.id)
+            );
+
+        if (channelsError || !channelsData || channelsData === null) {
+            throw channelsError;
+        }
+        channels = channelsData;
+    } catch (error) {
+        console.error(error);
+    }
+
+    //console.log(channelsData, channelError);
     return (
         <div
             className={`min-h-screen flex flex-col flex-auto flex-shrink-0 antialiased bg-white dark:bg-gray-700 text-black dark:text-white`}

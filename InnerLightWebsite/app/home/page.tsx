@@ -33,8 +33,8 @@ const Home: React.FC = () => {
                             const { data: profileData, error } = await supabase
                                 .from("profiles")
                                 .insert({
-                                    first_name: first_name,
-                                    last_name: last_name,
+                                    first_name: first_name ?? "",
+                                    last_name: last_name ?? "",
                                     username: username,
                                     email: user.email,
                                 });
