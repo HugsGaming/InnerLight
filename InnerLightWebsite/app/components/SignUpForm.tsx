@@ -3,7 +3,6 @@
 import React, { useEffect, useCallback } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import { useReCaptcha } from "next-recaptcha-v3";
 import { SlSocialFacebook, SlSocialGoogle } from "react-icons/sl";
 import { createClient } from "../utils/supabase/client";
 import { ToastContainer, toast } from "react-toastify";
