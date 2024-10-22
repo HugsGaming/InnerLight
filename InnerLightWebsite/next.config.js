@@ -1,6 +1,6 @@
 // @ts-check
 
-export default async (phase, { defaultConfig }) => {
+export default async () => {
     /**
      * @type {import('next').NextConfig});}
      */
