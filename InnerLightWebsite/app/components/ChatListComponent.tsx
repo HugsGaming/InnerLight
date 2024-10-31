@@ -13,6 +13,7 @@ const ChatListComponent: React.FC<ChatListComponentProps> = ({
     onSelectFriend,
 }) => {
     const [channels, setChannels] = useState<any[]>([]);
+    const [channelInvite, setChannelInvite] = useState<string>("");
     const [input, setInput] = useState("");
     const supabase = createClient();
 
@@ -36,10 +37,11 @@ const ChatListComponent: React.FC<ChatListComponentProps> = ({
                 {
                     event: "INSERT",
                     schema: "public",
-                    table: "messageChannels",
+                    table: "user_channels",
                 },
                 (payload) => {
-                    console.log(payload.new.id, payload.new.name);
+                    console.log(payload.new.channel_id);
+                    setChannelInvite(payload.new.channel_id);
                 },
             )
             .subscribe();
@@ -48,6 +50,16 @@ const ChatListComponent: React.FC<ChatListComponentProps> = ({
             channel.unsubscribe();
         };
     }, []);
+
+    useEffect(() => {
+        supabase.from("messageChannels").select('*').filter('id', 'eq', channelInvite).single().then(({ data, error }) => {
+            if (!data || error) {
+                throw error;
+            }
+            setChannels([...channels, data]);
+            console.log(data)
+        })
+    }, [channelInvite]);
 
     return (
         <div className="p-4 bg-gray-200 rounded-lg shadow-md h-screen mr-2 dark:bg-gray-800 dark:text-white">

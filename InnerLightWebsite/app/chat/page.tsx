@@ -17,32 +17,39 @@ const App: React.FC = async () => {
     if (userError || !user || user === null) {
         redirect("/auth/login");
     }
-    let channels = [];
-    try {
-        const { data: rawChannelsData, error: rawChannelsError } =
-            await supabase
-                .from("messageChannels")
-                .select("id, name, user_channels()")
-                .eq("user_channels.user_id", user.id);
-        if (rawChannelsError || !rawChannelsData || rawChannelsData === null) {
-            throw rawChannelsError;
-        }
-        const { data: channelsData, error: channelsError } = await supabase
-            .from("messageChannels")
-            .select("id, name, user_channels!left(user_id)")
-            .neq("user_channels.user_id", user.id)
-            .in(
-                "user_channels.channel_id",
-                rawChannelsData.map((channel) => channel.id),
-            );
+    // let channels = [];
+    // try {
+    //     const { data: rawChannelsData, error: rawChannelsError } =
+    //         await supabase
+    //             .from("messageChannels")
+    //             .select("id, name, user_channels()")
+    //             .eq("user_channels.user_id", user.id);
+    //     if (rawChannelsError || !rawChannelsData || rawChannelsData === null) {
+    //         throw rawChannelsError;
+    //     }
+    //     const { data: channelsData, error: channelsError } = await supabase
+    //         .from("messageChannels")
+    //         .select("id, name, user_channels!left(user_id)")
+    //         .neq("user_channels.user_id", user.id)
+    //         .in(
+    //             "user_channels.channel_id",
+    //             rawChannelsData.map((channel) => channel.id),
+    //         );
 
-        if (channelsError || !channelsData || channelsData === null) {
-            throw channelsError;
-        }
-        channels = channelsData;
-    } catch (error) {
-        console.error(error);
+    //     if (channelsError || !channelsData || channelsData === null) {
+    //         throw channelsError;
+    //     }
+    //     channels = channelsData;
+    // } catch (error) {
+    //     console.error(error);
+    // }
+    const {data: rawChannelsData, error: rawChannelsError} = await supabase.from("user_channels").select("*").filter("user_id", "eq", user.id);
+
+    if (rawChannelsError || !rawChannelsData || rawChannelsData === null) {
+        throw rawChannelsError;
     }
+
+    const { data: channelsData, error: channelsError } = await supabase.from("messageChannels").select("*").in("id", rawChannelsData.map((channel) => channel.channel_id));
 
     //console.log(channelsData, channelError);
     return (
