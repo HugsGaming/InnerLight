@@ -50,6 +50,7 @@ const App: React.FC = async () => {
     }
 
     const { data: channelsData, error: channelsError } = await supabase.from("messageChannels").select("*").in("id", rawChannelsData.map((channel) => channel.channel_id));
+    console.log(channelsData)
 
     //console.log(channelsData, channelError);
     return (

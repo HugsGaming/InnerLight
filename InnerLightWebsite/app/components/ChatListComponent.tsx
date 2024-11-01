@@ -59,7 +59,7 @@ const ChatListComponent: React.FC<ChatListComponentProps> = ({
             setChannels([...channels, data]);
             console.log(data)
         })
-    }, [channelInvite]);
+    }, [channelInvite, channels, supabase]);
 
     return (
         <div className="p-4 bg-gray-200 rounded-lg shadow-md h-screen mr-2 dark:bg-gray-800 dark:text-white">
