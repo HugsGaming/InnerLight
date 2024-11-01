@@ -83,8 +83,15 @@ const Home: React.FC = () => {
             <Header />
             <Sidebar />
             <div className="ml-14 mt-14 mb-10 md:ml-64">
-                <Post />
-                <PostList />
+                <PostList
+                    user={{
+                        id: "",
+                        email: "",
+                        first_name: "",
+                        last_name: "",
+                        username: "user.username",
+                    }}
+                />
             </div>
         </div>
     );
