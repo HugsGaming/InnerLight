@@ -6,6 +6,7 @@ import Header from "../components/Header";
 import Post from "../components/Post";
 import { createClient } from "../utils/supabase/server";
 import { redirect } from "next/navigation";
+import ButtonAiChat from "../components/ButtonAiChat";
 
 const Home: React.FC = async () => {
     const supabase = createClient();
@@ -15,14 +16,14 @@ const Home: React.FC = async () => {
         if (!user || user === null) {
             redirect("/auth/login");
         } else {
-            
         }
     });
-    const {data: {user}} = await supabase.auth.getUser();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
     let profile;
 
-    if(!user || user == null) {
-
+    if (!user || user == null) {
     } else {
         let metadata = user.user_metadata;
         console.log(metadata);
@@ -76,15 +77,17 @@ const Home: React.FC = async () => {
                     console.log("Log created");
                 }
             });
-            const {data: profileData, error: profileError} = await supabase.from("profiles").select("*").eq("id", user.id).single();
-            if(profileError || profileData === null) {
-                throw(profileError);
-            }else {
-                profile = profileData;
-            }
+        const { data: profileData, error: profileError } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+        if (profileError || profileData === null) {
+            throw profileError;
+        } else {
+            profile = profileData;
+        }
     }
-
-    
 
     return (
         <div
@@ -109,6 +112,7 @@ const Home: React.FC = async () => {
                     }}
                 />
             </div>
+            <ButtonAiChat />
         </div>
     );
 };

@@ -23,6 +23,7 @@ interface Post {
 interface Comment {
     id: number;
     text: string;
+    votes: number;
     user: {
         id: string;
         email: string;
@@ -115,7 +116,7 @@ const Post: React.FC<{
     };
 
     return (
-        <div className="container mx-auto flex flex-col text-gray-800 p-10">
+        <div className="container mx-auto flex flex-col text-gray-800 mb-10">
             <input
                 className="title bg-gray-100 border border-gray-300 p-2 mb-4 outline-none"
                 spellCheck="false"
@@ -148,7 +149,7 @@ const Post: React.FC<{
                 </div>
             )}
 
-            <div className="icons flex text-gray-500 m-2">
+            <div className="icons flex text-gray-500 m-2 dark:text-white text-xl">
                 <label
                     htmlFor="image-upload"
                     className="mr-2 cursor-pointer hover:text-gray-700"
@@ -164,7 +165,7 @@ const Post: React.FC<{
                 />
                 <label
                     htmlFor="gif-upload"
-                    className="mr-2 cursor-pointer hover:text-gray-700"
+                    className="mr-2 cursor-pointer hover:text-gray-700 dark:text-white text-xl"
                 >
                     <PiGifFill />
                 </label>
@@ -175,8 +176,8 @@ const Post: React.FC<{
                     id="gif-upload"
                     onChange={handleGifUpload}
                 />
-                <FaLink className="mr-2 cursor-pointer hover:text-gray-700" />
-                <FaPoll className="mr-2 cursor-pointer hover:text-gray-700" />
+                {/* <FaLink className="mr-2 cursor-pointer hover:text-gray-700" />
+                <FaPoll className="mr-2 cursor-pointer hover:text-gray-700" /> */}
                 <div className="count ml-auto text-gray-400 text-xs font-semibold">
                     {charCount}/{maxCharCount}
                 </div>

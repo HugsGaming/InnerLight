@@ -24,6 +24,7 @@ interface Post {
 interface Comment {
     id: number;
     text: string;
+    votes: number;
     user: {
         id: string;
         email: string;
@@ -78,6 +79,11 @@ const PostList: React.FC<{
         console.log("Post downvoted:", postId);
     };
 
+    const editPost = (postId: number) => {
+        // Implement the editPost functionality here
+        console.log("Edit post:", postId);
+    };
+
     return (
         <div className="container px-6 py-10 mx-auto bg-white dark:bg-gray-700">
             <PostComponent addPost={addPost} user={user} />
@@ -88,6 +94,7 @@ const PostList: React.FC<{
                     addComment={addComment}
                     upvotePost={upvotePost}
                     downvotePost={downvotePost}
+                    editPost={editPost}
                 />
             ))}
         </div>
