@@ -2,6 +2,8 @@
 import React, { useState } from "react";
 import { FaImage, FaPoll, FaLink } from "react-icons/fa";
 import { PiGifFill } from "react-icons/pi";
+import { formatFileSize, validateFileSize } from '../utils/files';
+import { toast} from 'react-toastify'
 
 interface Post {
     id: number;
@@ -63,11 +65,19 @@ const Post: React.FC<{
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImage(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+            if(file.type.startsWith('image/')) {
+                if(!validateFileSize(file, 50)) {
+                    toast.error('File size must be less than 50MB');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setImage(reader.result as string);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                toast.error('File must be an image');
+            }
         }
     };
 

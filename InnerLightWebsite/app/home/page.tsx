@@ -1,11 +1,13 @@
 import Head from "next/head";
-import React from "react";
+import React, { use } from "react";
 import Sidebar from "../components/Sidebar";
 import PostList from "../components/PostList";
 import Header from "../components/Header";
 import Post from "../components/Post";
 import { createClient } from "../utils/supabase/server";
 import { redirect } from "next/navigation";
+import {ToastContainer} from 'react-toastify'
+import "react-toastify/dist/ReactToastify.css";
 
 const Home: React.FC = async () => {
     const supabase = createClient();
@@ -28,7 +30,7 @@ const Home: React.FC = async () => {
         console.log(metadata);
         const first_name = metadata.first_name;
         const last_name = metadata.last_name;
-        const username = metadata.username;
+        const username = metadata.username ?? metadata.first_name + "_" + metadata.last_name + "@" + user.id;
         await supabase
             .from("profiles")
             .select("*")
@@ -98,6 +100,7 @@ const Home: React.FC = async () => {
             </Head>
             <Header />
             <Sidebar />
+            <ToastContainer />
             <div className="ml-14 mt-14 mb-10 md:ml-64">
                 <PostList
                     user={{
