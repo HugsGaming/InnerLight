@@ -5,6 +5,11 @@ export default function FaceDetection() {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
+    useEffect(() => {
+        startVideo();
+        videoRef && loadModels();
+    }, []);
+
     const startVideo = () => {
         navigator.mediaDevices
             .getUserMedia({ video: true })
@@ -32,11 +37,6 @@ export default function FaceDetection() {
             });
     };
 
-    useEffect(() => {
-        startVideo();
-        videoRef && loadModels();
-    }, [loadModels]);
-
     const faceMyDetect = async () => {
         setInterval(async () => {
             if (!videoRef.current || !canvasRef.current) return;
@@ -53,13 +53,13 @@ export default function FaceDetection() {
             const canvas = faceapi.createCanvasFromMedia(videoRef.current);
             canvasRef.current.append(canvas);
             faceapi.matchDimensions(canvasRef.current, {
-                width: 640,
-                height: 480,
+                width: 340,
+                height: 260,
             });
 
             const resized = faceapi.resizeResults(detections, {
-                width: 640,
-                height: 480,
+                width: 340,
+                height: 260,
             });
 
             if (!resized) return;
@@ -71,15 +71,14 @@ export default function FaceDetection() {
     };
 
     return (
-        <div className="flex w-[100vw] h-[100vh] flex-col items-center justify-between">
-            <h1>Face Detection</h1>
+        <div className="">
             <div className="flex items-center">
                 <video crossOrigin="anonymous" ref={videoRef} autoPlay />
                 <canvas
                     className="absolute"
                     ref={canvasRef}
-                    width={640}
-                    height={480}
+                    width={540}
+                    height={380}
                 />
             </div>
         </div>
