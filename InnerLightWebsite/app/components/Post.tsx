@@ -4,6 +4,7 @@ import { FaImage, FaPoll, FaLink } from "react-icons/fa";
 import { PiGifFill } from "react-icons/pi";
 import { formatFileSize, validateFileSize } from "../utils/files";
 import { toast } from "react-toastify";
+import { Tables } from "../../database.types";
 
 interface Post {
     id: number;
@@ -13,37 +14,19 @@ interface Post {
     comments: Comment[];
     image?: string | File;
     gif?: string | File;
-    user: {
-        id: string;
-        email: string;
-        first_name: string;
-        last_name: string;
-        username: string; // Add username field
-    };
+    user: Tables<'profiles'>;
 }
 
 interface Comment {
     id: number;
     text: string;
     votes: number;
-    user: {
-        id: string;
-        email: string;
-        first_name: string;
-        last_name: string;
-        username: string; // Add username field
-    };
+    user: Tables<'profiles'>;
 }
 
 const Post: React.FC<{
-    addPost: (post: Post) => void;
-    user: {
-        id: string;
-        email: string;
-        first_name: string;
-        last_name: string;
-        username: string;
-    }; // Add username field
+    addPost: (post: Post) => Promise<void>;
+    user: Tables<'profiles'> // Add username field
 }> = ({ addPost, user }) => {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -106,12 +89,7 @@ const Post: React.FC<{
             comments: [],
             image: imageFile || undefined,
             gif: gif || undefined,
-            user: {
-                ...user,
-                first_name: user.first_name,
-                last_name: user.last_name,
-                username: user.username, // Add username field
-            },
+            user: user,
         };
         addPost(newPost);
         setTitle("");

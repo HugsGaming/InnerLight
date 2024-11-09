@@ -6,6 +6,7 @@ import {
     FaArrowDown,
     FaEdit,
 } from "react-icons/fa";
+import { Tables } from "../../database.types";
 
 interface PostItemProps {
     post: {
@@ -14,15 +15,9 @@ interface PostItemProps {
         description: string;
         votes: number;
         comments: Comment[];
-        image?: string;
-        gif?: string;
-        user: {
-            id: string;
-            email: string;
-            first_name: string;
-            last_name: string;
-            username: string;
-        };
+        image?: string | File;
+        gif?: string | File;
+        user: Tables<'profiles'>;
     };
     addComment: (postId: number, comment: Comment) => void;
     upvotePost: (postId: number) => void;
@@ -34,13 +29,7 @@ interface Comment {
     id: number;
     text: string;
     votes: number; // Added votes property
-    user: {
-        id: string;
-        email: string;
-        first_name: string;
-        last_name: string;
-        username: string;
-    };
+    user: Tables<'profiles'>;
 }
 
 const PostItem: React.FC<PostItemProps> = ({
@@ -110,7 +99,7 @@ const PostItem: React.FC<PostItemProps> = ({
                 {post.image && (
                     <div className="mt-4">
                         <img
-                            src={post.image}
+                            src={post.image as string}
                             alt="Post Image"
                             className="w-full h-auto max-w-xl max-h-96 rounded-md"
                         />
@@ -119,7 +108,7 @@ const PostItem: React.FC<PostItemProps> = ({
                 {post.gif && (
                     <div className="mt-4">
                         <img
-                            src={post.gif}
+                            src={post.gif as string}
                             alt="Post GIF"
                             className="w-full h-auto max-w-xl max-h-96 rounded-md"
                         />

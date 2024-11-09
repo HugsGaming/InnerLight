@@ -18,26 +18,14 @@ interface Post {
     comments: Comment[];
     image?: string | File;
     gif?: string | File;
-    user: {
-        id: string;
-        email: string;
-        first_name: string;
-        last_name: string;
-        username: string;
-    };
+    user: Tables<'profiles'>;
 }
 
 interface Comment {
     id: number;
     text: string;
     votes: number;
-    user: {
-        id: string;
-        email: string;
-        first_name: string;
-        last_name: string;
-        username: string;
-    };
+    user: Tables<'profiles'>;
 }
 
 const PostList: React.FC<{
