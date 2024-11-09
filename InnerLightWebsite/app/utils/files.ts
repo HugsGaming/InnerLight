@@ -13,3 +13,7 @@ export function validateFileSize(file: File, maxSizeMB: number) {
     }
     return true;
 }
+
+export function getFileExtension(filename: string) {
+    return filename.split(".").pop();
+}

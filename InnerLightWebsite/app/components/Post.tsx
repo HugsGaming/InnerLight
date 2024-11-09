@@ -2,8 +2,8 @@
 import React, { useState } from "react";
 import { FaImage, FaPoll, FaLink } from "react-icons/fa";
 import { PiGifFill } from "react-icons/pi";
-import { formatFileSize, validateFileSize } from '../utils/files';
-import { toast} from 'react-toastify'
+import { formatFileSize, validateFileSize } from "../utils/files";
+import { toast } from "react-toastify";
 
 interface Post {
     id: number;
@@ -11,8 +11,8 @@ interface Post {
     description: string;
     votes: number;
     comments: Comment[];
-    image?: string;
-    gif?: string;
+    image?: string | File;
+    gif?: string | File;
     user: {
         id: string;
         email: string;
@@ -49,7 +49,9 @@ const Post: React.FC<{
     const [description, setDescription] = useState("");
     const [charCount, setCharCount] = useState(0);
     const [image, setImage] = useState<string | null>(null);
+    const [imageFile, setImageFile] = useState<File | null>(null);
     const [gif, setGif] = useState<string | null>(null);
+    const [gifFile, setGifFile] = useState<File | null>(null);
     const maxCharCount = 300;
 
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,9 +68,9 @@ const Post: React.FC<{
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            if(file.type.startsWith('image/')) {
-                if(!validateFileSize(file, 50)) {
-                    toast.error('File size must be less than 50MB');
+            if (file.type.startsWith("image/")) {
+                if (!validateFileSize(file, 50)) {
+                    toast.error("File size must be less than 50MB");
                     return;
                 }
                 const reader = new FileReader();
@@ -76,8 +78,10 @@ const Post: React.FC<{
                     setImage(reader.result as string);
                 };
                 reader.readAsDataURL(file);
+                setImageFile(file);
+                console.log(file);
             } else {
-                toast.error('File must be an image');
+                toast.error("File must be an image");
             }
         }
     };
@@ -100,7 +104,7 @@ const Post: React.FC<{
             description,
             votes: 0,
             comments: [],
-            image: image || undefined,
+            image: imageFile || undefined,
             gif: gif || undefined,
             user: {
                 ...user,
