@@ -7,32 +7,27 @@ import {
     FaEdit,
 } from "react-icons/fa";
 import { Tables } from "../../database.types";
+import { Post } from "./PostList";
+import { createClient } from "../utils/supabase/client";
 
 interface PostItemProps {
-    post: {
-        id: number;
-        title: string;
-        description: string;
-        votes: number;
-        comments: Comment[];
-        image?: string | File;
-        gif?: string | File;
-        user: Tables<'profiles'>;
-    };
-    addComment: (postId: number, comment: Comment) => void;
-    upvotePost: (postId: number) => void;
-    downvotePost: (postId: number) => void;
-    editPost: (postId: number) => void;
+    user: Tables<"profiles">;
+    post: Post;
+    addComment: (postId: string, comment: Comment) => void;
+    upvotePost: (postId: string) => void;
+    downvotePost: (postId: string) => void;
+    editPost: (postId: string) => void;
 }
 
 interface Comment {
     id: number;
     text: string;
     votes: number; // Added votes property
-    user: Tables<'profiles'>;
+    user: Tables<"profiles">;
 }
 
 const PostItem: React.FC<PostItemProps> = ({
+    user,
     post,
     addComment,
     upvotePost,
@@ -42,7 +37,9 @@ const PostItem: React.FC<PostItemProps> = ({
     const [commentText, setCommentText] = useState("");
     const [showComments, setShowComments] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(false); // Assuming you have a way to toggle this
-    const [openCommentId, setOpenCommentId] = useState<number | null>(null);
+    const [openCommentId, setOpenCommentId] = useState<string | null>(null);
+
+    const supabase = createClient();
 
     const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setCommentText(e.target.value);
@@ -53,13 +50,13 @@ const PostItem: React.FC<PostItemProps> = ({
             id: Date.now(),
             text: commentText,
             votes: 0, // Initialize votes to 0
-            user: post.user, // Assuming the commenter is the same user who posted
+            user: user,
         };
         addComment(post.id, newComment);
         setCommentText("");
     };
 
-    const toggleComment = (commentId: number) => {
+    const toggleComment = (commentId: string) => {
         setOpenCommentId(openCommentId === commentId ? null : commentId);
     };
 
@@ -85,7 +82,7 @@ const PostItem: React.FC<PostItemProps> = ({
             <div className="flex-1">
                 <div className="flex justify-between items-center mb-2">
                     <div className="text-sm">
-                        Posted by: {post.user.username}
+                        Posted by: {post.user?.username}
                     </div>
                     <button
                         onClick={() => editPost(post.id)}
@@ -95,17 +92,17 @@ const PostItem: React.FC<PostItemProps> = ({
                     </button>
                 </div>
                 <div className="text-xl font-bold mb-2">{post.title}</div>
-                <p className="my-2">{post.description}</p>
-                {post.image && (
+                <p className="my-2">{post.content}</p>
+                {post.image_data && (
                     <div className="mt-4">
                         <img
-                            src={post.image as string}
+                            src={post.image_data as string}
                             alt="Post Image"
                             className="w-full h-auto max-w-xl max-h-96 rounded-md"
                         />
                     </div>
                 )}
-                {post.gif && (
+                {/* {post.gif && (
                     <div className="mt-4">
                         <img
                             src={post.gif as string}
@@ -113,7 +110,7 @@ const PostItem: React.FC<PostItemProps> = ({
                             className="w-full h-auto max-w-xl max-h-96 rounded-md"
                         />
                     </div>
-                )}
+                )} */}
                 <div className="flex justify-between items-center text-sm mt-4">
                     <div className="flex items-center space-x-1">
                         <button
@@ -122,21 +119,21 @@ const PostItem: React.FC<PostItemProps> = ({
                         >
                             <FaComment className="w-5 h-5 fill-current" />
                         </button>
-                        <span>{post.comments.length}</span>
+                        <span>{post.comments?.length}</span>
                     </div>
                 </div>
                 {showComments && (
                     <div className="mt-4 transition-all duration-300 ease-in-out">
-                        {post.comments.map((comment) => (
+                        {post.comments?.map((comment) => (
                             <div key={comment.id} className="mb-2">
                                 <div
                                     className="flex items-center space-x-2 cursor-pointer"
                                     onClick={() => toggleComment(comment.id)}
                                 >
                                     <div className="text-sm">
-                                        {comment.user.username} -
+                                        {comment.user_id} -
                                     </div>
-                                    <div>{comment.text}</div>
+                                    <div>{comment.content}</div>
                                 </div>
                                 {openCommentId === comment.id && (
                                     <div className="mt-2 ml-4 transition-all duration-300 ease-in-out">
@@ -144,7 +141,7 @@ const PostItem: React.FC<PostItemProps> = ({
                                             <button className="hover:text-green-500 transition-colors duration-300">
                                                 <FaArrowUp className="w-4 h-4 fill-current" />
                                             </button>
-                                            <span>{comment.votes}</span>
+                                            {/* <span>{comment.votes ? 0}</span> */}
                                             <button className="hover:text-red-500 transition-colors duration-300">
                                                 <FaArrowDown className="w-4 h-4 fill-current" />
                                             </button>

@@ -1,6 +1,6 @@
 // components/PostList.tsx
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import PostItem from "./PostItem";
 import PostComponent from "./Post";
 import { createClient } from "../utils/supabase/client";
@@ -8,35 +8,101 @@ import { getFileExtension } from "../utils/files";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "react-toastify";
 import { User } from "@supabase/supabase-js";
-import {Tables} from '../../database.types'
+import { Tables } from "../../database.types";
 
-interface Post {
-    id: number;
+export interface Post extends Tables<"posts"> {
+    comments: Tables<"comments">[];
+    upVotes: Tables<"postUpvotes">[];
+    downVotes: Tables<"postDownvotes">[];
+    votes?: number;
+    user?: Tables<"profiles">;
+    image_data?: string | null;
+}
+
+export interface NewPost {
     title: string;
     description: string;
-    votes: number;
-    comments: Comment[];
-    image?: string | File;
-    gif?: string | File;
-    user: Tables<'profiles'>;
+    image: File | null | undefined;
+    gif: File | null | undefined;
+    user_id: string;
 }
 
 interface Comment {
     id: number;
     text: string;
     votes: number;
-    user: Tables<'profiles'>;
+    user: Tables<"profiles">;
 }
 
 const PostList: React.FC<{
-    user: Tables<'profiles'>;
-}> = ({ user }) => {
+    user: Tables<"profiles">;
+    initialPosts?: Post[] | null;
+}> = ({ user, initialPosts }) => {
     const [posts, setPosts] = useState<Post[]>([]);
     const supabase = createClient();
 
-    const addPost = async (post: Post) => {
+    let post: Post;
+
+    const getUser: (
+        userId: string,
+    ) => Promise<Tables<"profiles"> | null> = async (userId: string) => {
+        const { data, error } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", userId)
+            .single();
+        if (error) {
+            console.error("Error fetching user:", error);
+            return null;
+        }
+        return data;
+    };
+
+    const downloadImage = async (post: Post) => {
+        if (post.post_image) {
+            const { data: imageBlob, error } = await supabase.storage
+                .from("post_images")
+                .download(post.post_image);
+            if (error) {
+                return null;
+            }
+            console.log(imageBlob);
+            const imageObjectURL = URL.createObjectURL(imageBlob);
+            return imageObjectURL;
+        }
+        return null;
+    };
+
+    useEffect(() => {
+        const fetchPosts = async () => {
+            if (!initialPosts) return;
+
+            const postWithData = await Promise.all(
+                initialPosts.map(async (post) => {
+                    const user = await getUser(post.user_id!);
+                    if (user) {
+                        console.log(user);
+                        const image_data = await downloadImage(post);
+                        return {
+                            ...post,
+                            user,
+                            image_data,
+                            votes: 0,
+                        };
+                    }
+                    return null;
+                }),
+            );
+            setPosts(postWithData.filter((post) => post !== null));
+        };
+
+        fetchPosts();
+        console.log(posts);
+    }, []);
+
+    const addPost = async (post: NewPost) => {
         // setPosts([post, ...posts]);
-        let postImage : string | undefined;
+        let postImage: string | undefined;
         const imageFile = post.image as File;
         if (imageFile) {
             const extension = getFileExtension(imageFile.name);
@@ -72,7 +138,7 @@ const PostList: React.FC<{
         }
     };
 
-    const addComment = (postId: number, comment: Comment) => {
+    const addComment = (postId: string, comment: Comment) => {
         // setPosts(
         //     posts.map((post) =>
         //         post.id === postId
@@ -83,7 +149,7 @@ const PostList: React.FC<{
         console.log("Comment added:", comment);
     };
 
-    const upvotePost = (postId: number) => {
+    const upvotePost = (postId: string) => {
         // setPosts(
         //     posts.map((post) =>
         //         post.id === postId ? { ...post, votes: post.votes + 1 } : post,
@@ -92,7 +158,7 @@ const PostList: React.FC<{
         console.log("Post upvoted:", postId);
     };
 
-    const downvotePost = (postId: number) => {
+    const downvotePost = (postId: string) => {
         // setPosts(
         //     posts.map((post) =>
         //         post.id === postId ? { ...post, votes: post.votes - 1 } : post,
@@ -101,7 +167,7 @@ const PostList: React.FC<{
         console.log("Post downvoted:", postId);
     };
 
-    const editPost = (postId: number) => {
+    const editPost = (postId: string) => {
         // Implement the editPost functionality here
         console.log("Edit post:", postId);
     };
@@ -109,8 +175,10 @@ const PostList: React.FC<{
     return (
         <div className="container px-6 py-10 mx-auto bg-white dark:bg-gray-700">
             <PostComponent addPost={addPost} user={user} />
+            {posts.length === 0 && <p>No posts found.</p>}
             {posts.map((post) => (
                 <PostItem
+                    user={user}
                     key={post.id}
                     post={post}
                     addComment={addComment}

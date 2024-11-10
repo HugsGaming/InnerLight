@@ -3,15 +3,26 @@ import React, { use } from "react";
 import Sidebar from "../components/Sidebar";
 import PostList from "../components/PostList";
 import Header from "../components/Header";
-import Post from "../components/Post";
 import { createClient } from "../utils/supabase/server";
+import { QueryResult, QueryData } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import ButtonAiChat from "../components/ButtonAiChat";
-import { ToastContainer } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Post } from "../components/PostList";
 
 const Home: React.FC = async () => {
     const supabase = createClient();
+
+    const postsWithCommentsAndVotesQuery = supabase
+        .from("posts")
+        .select("*, comments(*), postDownvotes(*), postUpvotes(*)")
+        .order("created_at", { ascending: false });
+
+    type PostWithCommentsAndVotes = QueryData<
+        typeof postsWithCommentsAndVotesQuery
+    >;
+
     let usernameData;
     supabase.auth.getUser().then(async ({ data }) => {
         const { user } = data;
@@ -49,7 +60,9 @@ const Home: React.FC = async () => {
                             .insert({
                                 first_name: first_name,
                                 last_name: last_name,
-                                username: username ?? `${first_name}_${last_name}@${user.id}`,
+                                username:
+                                    username ??
+                                    `${first_name}_${last_name}@${user.id}`,
                                 email: user.email!,
                             });
                         if (error) {
@@ -93,6 +106,15 @@ const Home: React.FC = async () => {
         }
     }
 
+    const { data: postsData, error: postsError } =
+        await postsWithCommentsAndVotesQuery;
+    if (postsError) {
+        toast.error(postsError.message, { position: "top-right" });
+        return;
+    }
+    const posts: PostWithCommentsAndVotes = postsData;
+    console.log(posts);
+
     return (
         <div
             className={`min-h-screen flex flex-col flex-auto flex-shrink-0 antialiased bg-white dark:bg-gray-700 text-black dark:text-white `}
@@ -107,9 +129,7 @@ const Home: React.FC = async () => {
             <Sidebar />
             <ToastContainer />
             <div className="ml-14 mt-14 mb-10 md:ml-64">
-                <PostList
-                    user={profile!}
-                    />
+                <PostList user={profile!} initialPosts={posts as Post[]} />
             </div>
             <ButtonAiChat />
         </div>

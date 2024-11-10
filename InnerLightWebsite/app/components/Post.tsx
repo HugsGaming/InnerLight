@@ -5,28 +5,29 @@ import { PiGifFill } from "react-icons/pi";
 import { formatFileSize, validateFileSize } from "../utils/files";
 import { toast } from "react-toastify";
 import { Tables } from "../../database.types";
+import { NewPost } from "./PostList";
 
-interface Post {
-    id: number;
-    title: string;
-    description: string;
-    votes: number;
-    comments: Comment[];
-    image?: string | File;
-    gif?: string | File;
-    user: Tables<'profiles'>;
-}
+// interface Post {
+//     id: string;
+//     title: string;
+//     description: string;
+//     votes: number;
+//     comments: Comment[];
+//     image?: string | File;
+//     gif?: string | File;
+//     user: Tables<'profiles'>;
+// }
 
 interface Comment {
     id: number;
     text: string;
     votes: number;
-    user: Tables<'profiles'>;
+    user: Tables<"profiles">;
 }
 
 const Post: React.FC<{
-    addPost: (post: Post) => Promise<void>;
-    user: Tables<'profiles'> // Add username field
+    addPost: (post: NewPost) => Promise<void>;
+    user: Tables<"profiles">; // Add username field
 }> = ({ addPost, user }) => {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -81,15 +82,22 @@ const Post: React.FC<{
     };
 
     const handlePost = () => {
-        const newPost: Post = {
-            id: Date.now(),
+        // const newPost: Post = {
+        //     id: Date.now().toString(),
+        //     title,
+        //     description,
+        //     votes: 0,
+        //     comments: [],
+        //     image: imageFile || undefined,
+        //     gif: gif || undefined,
+        //     user: user,
+        // };
+        const newPost: NewPost = {
             title,
             description,
-            votes: 0,
-            comments: [],
             image: imageFile || undefined,
-            gif: gif || undefined,
-            user: user,
+            gif: gifFile || undefined,
+            user_id: user.id,
         };
         addPost(newPost);
         setTitle("");
