@@ -38,7 +38,7 @@ const PostList: React.FC<{
     user: Tables<"profiles">;
     initialPosts?: Post[] | null;
 }> = ({ user, initialPosts }) => {
-    const [posts, setPosts] = useState<Post[]>([]);
+    const [posts, setPosts] = useState<Post[] | null>([]);
     const supabase = createClient();
 
     let post: Post;
@@ -175,8 +175,8 @@ const PostList: React.FC<{
     return (
         <div className="container px-6 py-10 mx-auto bg-white dark:bg-gray-700">
             <PostComponent addPost={addPost} user={user} />
-            {posts.length === 0 && <p>No posts found.</p>}
-            {posts.map((post) => (
+            {posts?.length === 0 && <p>No posts found.</p>}
+            {posts?.map((post) => (
                 <PostItem
                     user={user}
                     key={post.id}
