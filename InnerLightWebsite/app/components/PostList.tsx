@@ -38,7 +38,7 @@ const PostList: React.FC<{
     user: Tables<"profiles">;
     initialPosts?: Post[] | null;
 }> = ({ user, initialPosts }) => {
-    const [posts, setPosts] = useState<Post[] | null>([]);
+    const [posts, setPosts] = useState<(Post | null)[]>([]);
     const supabase = createClient();
 
     let post: Post;
@@ -179,8 +179,8 @@ const PostList: React.FC<{
             {posts?.map((post) => (
                 <PostItem
                     user={user}
-                    key={post.id}
-                    post={post}
+                    key={post!.id}
+                    post={post!}
                     addComment={addComment}
                     upvotePost={upvotePost}
                     downvotePost={downvotePost}
