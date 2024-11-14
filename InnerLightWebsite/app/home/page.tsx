@@ -129,7 +129,10 @@ const Home: React.FC = async () => {
             <Sidebar />
             <ToastContainer />
             <div className="ml-14 mt-14 mb-10 md:ml-64">
-                <PostList user={profile!} initialPosts={posts as unknown as Post[]} />
+                <PostList
+                    user={profile!}
+                    initialPosts={posts as unknown as Post[]}
+                />
             </div>
             <ButtonAiChat />
         </div>

@@ -98,6 +98,39 @@ const PostList: React.FC<{
 
         fetchPosts();
         console.log(posts);
+    }, [initialPosts]);
+
+    useEffect(() => {
+        const channel = supabase
+            .channel("realtime_posts")
+            .on(
+                "postgres_changes",
+                { event: "INSERT", schema: "public", table: "posts" },
+                async (payload) => {
+                    let newPost: Post;
+                    const newPostData = payload.new as Post;
+                    const user = await getUser(newPostData.user_id!);
+                    if (user) {
+                        const image_data = await downloadImage(newPostData);
+                        newPost = {
+                            ...newPostData,
+                            user,
+                            image_data,
+                            votes: 0,
+                        };
+                        setPosts((prevPosts) => [
+                            newPost,
+                            ...(prevPosts ?? []),
+                        ]);
+                        console.log(posts);
+                    }
+                },
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
     }, []);
 
     const addPost = async (post: NewPost) => {
