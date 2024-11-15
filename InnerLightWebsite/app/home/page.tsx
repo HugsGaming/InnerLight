@@ -8,8 +8,8 @@ import { QueryResult, QueryData } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import ButtonAiChat from "../components/ButtonAiChat";
 import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { Post } from "../components/PostList";
+import 'react-toastify/dist/ReactToastify.css';
 
 const Home: React.FC = async () => {
     const supabase = createClient();

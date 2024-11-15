@@ -1,19 +1,18 @@
 // components/PostList.tsx
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback, Suspense } from "react";
 import PostItem from "./PostItem";
 import PostComponent from "./Post";
 import { createClient } from "../utils/supabase/client";
 import { getFileExtension } from "../utils/files";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "react-toastify";
-import { User } from "@supabase/supabase-js";
 import { Tables } from "../../database.types";
 
 export interface Post extends Tables<"posts"> {
-    comments: Tables<"comments">[];
-    upVotes: Tables<"postUpvotes">[];
-    downVotes: Tables<"postDownvotes">[];
+    comments?: Tables<"comments">[];
+    upVotes?: Tables<"postUpvotes">[];
+    downVotes?: Tables<"postDownvotes">[];
     votes?: number;
     user?: Tables<"profiles">;
     image_data?: string | null;
@@ -39,13 +38,11 @@ const PostList: React.FC<{
     initialPosts?: Post[] | null;
 }> = ({ user, initialPosts }) => {
     const [posts, setPosts] = useState<(Post | null)[]>([]);
-    const supabase = createClient();
-
-    let post: Post;
+    const supabase = useMemo(() => createClient(), []);
 
     const getUser: (
         userId: string,
-    ) => Promise<Tables<"profiles"> | null> = async (userId: string) => {
+    ) => Promise<Tables<"profiles"> | null> = useCallback(async (userId: string) => {
         const { data, error } = await supabase
             .from("profiles")
             .select("*")
@@ -56,49 +53,55 @@ const PostList: React.FC<{
             return null;
         }
         return data;
-    };
+    }, [supabase]);
 
-    const downloadImage = async (post: Post) => {
-        if (post.post_image) {
-            const { data: imageBlob, error } = await supabase.storage
+    const downloadImage = useCallback(async (post: Post) => {
+        if(!post.post_image) return null;
+
+        try {
+            const { data, error } = await supabase.storage
                 .from("post_images")
                 .download(post.post_image);
+
             if (error) {
+                toast.error(error.message, { position: "top-right" });
                 return null;
             }
-            console.log(imageBlob);
-            const imageObjectURL = URL.createObjectURL(imageBlob);
-            return imageObjectURL;
+
+            return URL.createObjectURL(data);
+        } catch (error) {
+            toast.error("Error downloading image", { position: "top-right" });
+            return null;
         }
-        return null;
-    };
+    }, [supabase]);
+
+    const processPost = useCallback(async (post: Post) => {
+        const user = await getUser(post.user_id!);
+        if(!user) return null;
+
+        const image_data = await downloadImage(post);
+        return {
+            ...post,
+            user,
+            image_data,
+            votes: 0
+        }
+
+    }, [getUser, downloadImage])
 
     useEffect(() => {
         const fetchPosts = async () => {
-            if (!initialPosts) return;
+            if (!initialPosts?.length) return;
 
             const postWithData = await Promise.all(
-                initialPosts.map(async (post) => {
-                    const user = await getUser(post.user_id!);
-                    if (user) {
-                        console.log(user);
-                        const image_data = await downloadImage(post);
-                        return {
-                            ...post,
-                            user,
-                            image_data,
-                            votes: 0,
-                        };
-                    }
-                    return null;
-                }),
+                initialPosts.map(processPost)
             );
             setPosts(postWithData.filter((post) => post !== null));
         };
 
         fetchPosts();
         console.log(posts);
-    }, [initialPosts]);
+    }, [initialPosts, processPost]);
 
     useEffect(() => {
         const channel = supabase
@@ -107,22 +110,11 @@ const PostList: React.FC<{
                 "postgres_changes",
                 { event: "INSERT", schema: "public", table: "posts" },
                 async (payload) => {
-                    let newPost: Post;
                     const newPostData = payload.new as Post;
-                    const user = await getUser(newPostData.user_id!);
-                    if (user) {
-                        const image_data = await downloadImage(newPostData);
-                        newPost = {
-                            ...newPostData,
-                            user,
-                            image_data,
-                            votes: 0,
-                        };
-                        setPosts((prevPosts) => [
-                            newPost,
-                            ...(prevPosts ?? []),
-                        ]);
-                        console.log(posts);
+                    const processedPost = await processPost(newPostData);
+
+                    if (processedPost) {
+                        setPosts((prevPosts) => [processedPost, ...(prevPosts ?? [])]);
                     }
                 },
             )
@@ -131,45 +123,43 @@ const PostList: React.FC<{
         return () => {
             channel.unsubscribe();
         };
-    }, []);
+    }, [supabase, processPost]);
 
-    const addPost = async (post: NewPost) => {
-        // setPosts([post, ...posts]);
-        let postImage: string | undefined;
-        const imageFile = post.image as File;
-        if (imageFile) {
-            const extension = getFileExtension(imageFile.name);
-            const { data: imageData, error: imageDataError } =
-                await supabase.storage
+    const addPost = useCallback(async (post: NewPost) => {
+        try {
+            let postImage: string | undefined;
+
+            if(post.image) {
+                const extension = getFileExtension(post.image.name);
+                const imagePath = `post_images/${uuidv4()}.${extension}`;
+
+                const { data: imageData, error: imageDataError } = await supabase.storage
                     .from("post_images")
-                    .upload(`post_images/${uuidv4()}.${extension}`, imageFile);
-            if (imageDataError) {
-                toast.error(imageDataError.message, { position: "top-right" });
-                return;
+                    .upload(imagePath, post.image);
+
+                if (imageDataError) throw imageDataError;
+
+                postImage = imageData.path;
             }
 
-            console.log(imageData);
+            const { error: postError } = await supabase
+                .from("posts")
+                .insert({
+                    title: post.title,
+                    content: post.description,
+                    post_image: postImage,
+                    user_id: user.id
+                });
 
-            postImage = imageData.path;
-        }
-
-        const { data: postData, error: postError } = await supabase
-            .from("posts")
-            .insert({
-                title: post.title,
-                content: post.description,
-                post_image: postImage,
-                user_id: user!.id,
-            });
-        if (postData) {
+            if (postError) throw postError;
+            
             toast.success("Post added successfully", { position: "top-right" });
-            return;
+
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Error adding post", { position: "top-right" });
         }
-        if (postError) {
-            toast.error(postError.message, { position: "top-right" });
-            return;
-        }
-    };
+        
+    }, [supabase, user.id])
 
     const addComment = (postId: string, comment: Comment) => {
         // setPosts(
@@ -179,7 +169,7 @@ const PostList: React.FC<{
         //             : post,
         //     ),
         // );
-        console.log("Comment added:", comment);
+        console.log("Comment added:", comment, postId);
     };
 
     const upvotePost = (postId: string) => {
