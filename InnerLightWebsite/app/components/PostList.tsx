@@ -26,11 +26,18 @@ export interface NewPost {
     user_id: string;
 }
 
-interface Comment {
-    id: number;
+export interface NewComment {
     text: string;
+    post_id: string;
+    user_id: string;
     votes: number;
-    user: Tables<"profiles">;
+}
+
+export interface Comment extends Tables<"comments"> {
+    user?: Tables<"profiles"> | null;
+    votes?: number;
+    upVotes?: Tables<"commentUpvote">[];
+    downVotes?: Tables<"commentDownVote">[];
 }
 
 const PostList: React.FC<{
@@ -125,6 +132,35 @@ const PostList: React.FC<{
         };
     }, [supabase, processPost]);
 
+    // useEffect(() => {
+    //     const channel = supabase
+    //         .channel("realtime_comments")
+    //         .on(
+    //             "postgres_changes",
+    //             { event: "INSERT", schema: "public", table: "comments" },
+    //             async (payload) => {
+    //                 const newComment = payload.new as Comment;
+    //                 // setPosts((prevPosts) =>
+    //                 //     prevPosts.map((post) => {
+    //                 //         if (post?.id === newComment.post_id) {
+    //                 //             return {
+    //                 //                 ...post,
+    //                 //                 comments: [...(post.comments ?? []), newComment],
+    //                 //             };
+    //                 //         }
+    //                 //         return post;
+    //                 //     })
+    //                 // );
+    //                 console.log("Comment added:", newComment);
+    //             },
+    //         )
+    //         .subscribe();
+
+    //     return () => {
+    //         channel.unsubscribe();
+    //     };
+    // }, [supabase]);
+
     const addPost = useCallback(async (post: NewPost) => {
         try {
             let postImage: string | undefined;
@@ -161,16 +197,24 @@ const PostList: React.FC<{
         
     }, [supabase, user.id])
 
-    const addComment = (postId: string, comment: Comment) => {
-        // setPosts(
-        //     posts.map((post) =>
-        //         post.id === postId
-        //             ? { ...post, comments: [...post.comments, comment] }
-        //             : post,
-        //     ),
-        // );
-        console.log("Comment added:", comment, postId);
-    };
+    const addComment = useCallback(async (postId: string, comment: NewComment) => {
+        console.log(postId, comment);
+        try {
+            const { error } = await supabase.from("comments").insert({
+                content: comment.text,
+                post_id: postId,
+                user_id: user.id,
+                root_comment_id: null
+            });
+            if(error) {
+                console.log(error);
+                throw error;
+            }
+        }
+        catch (error) {
+            toast.error(error instanceof Error ? error.message : "Error adding comment", { position: "top-right" });
+        }
+    }, [supabase, user.id]);
 
     const upvotePost = (postId: string) => {
         // setPosts(
