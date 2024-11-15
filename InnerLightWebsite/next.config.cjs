@@ -7,6 +7,7 @@ module.exports = async (phase, { defaultConfig }) => {
 
     const nextConfig = {
         webpack5: true,
+        reactStrictMode: false,
         webpack: (config, options) => {
             config.resolve.fallback = {
                 fs: false,

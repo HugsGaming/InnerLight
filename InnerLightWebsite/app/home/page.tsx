@@ -1,74 +1,119 @@
 import Head from "next/head";
-import React from "react";
+import React, { use } from "react";
 import Sidebar from "../components/Sidebar";
 import PostList from "../components/PostList";
 import Header from "../components/Header";
-import Post from "../components/Post";
 import { createClient } from "../utils/supabase/server";
+import { QueryResult, QueryData } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
+import ButtonAiChat from "../components/ButtonAiChat";
+import { toast, ToastContainer } from "react-toastify";
+import { Post } from "../components/PostList";
+import 'react-toastify/dist/ReactToastify.css';
 
-const Home: React.FC = () => {
+const Home: React.FC = async () => {
     const supabase = createClient();
 
+    const postsWithCommentsAndVotesQuery = supabase
+        .from("posts")
+        .select("*, comments(*), postDownvotes(*), postUpvotes(*)")
+        .order("created_at", { ascending: false });
+
+    type PostWithCommentsAndVotes = QueryData<
+        typeof postsWithCommentsAndVotesQuery
+    >;
+
+    let usernameData;
     supabase.auth.getUser().then(async ({ data }) => {
         const { user } = data;
         if (!user || user === null) {
             redirect("/auth/login");
         } else {
-            let metadata = user.user_metadata;
-            console.log(metadata);
-            const first_name = metadata.first_name;
-            const last_name = metadata.last_name;
-            const username = metadata.username;
-            await supabase
-                .from("profiles")
-                .select("*")
-                .eq("id", user.id)
-                .single()
-                .then(async ({ data }) => {
-                    console.log("Profile Data: ", data);
-                    if (!data || data === null) {
-                        try {
-                            console.log(first_name, last_name, username);
-                            const { data: profileData, error } = await supabase
-                                .from("profiles")
+        }
+    });
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+    let profile;
+
+    if (!user || user == null) {
+    } else {
+        let metadata = user.user_metadata;
+        console.log(metadata);
+        const first_name = metadata.first_name;
+        const last_name = metadata.last_name;
+        const username =
+            metadata.username ??
+            metadata.first_name + "_" + metadata.last_name + "@" + user.id;
+        await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single()
+            .then(async ({ data }) => {
+                console.log("Profile Data: ", data);
+                if (!data || data === null) {
+                    try {
+                        console.log(first_name, last_name, username);
+                        const { data: profileData, error } = await supabase
+                            .from("profiles")
+                            .insert({
+                                first_name: first_name,
+                                last_name: last_name,
+                                username:
+                                    username ??
+                                    `${first_name}_${last_name}@${user.id}`,
+                                email: user.email!,
+                            });
+                        if (error) {
+                            console.log(error);
+                        } else {
+                            console.log("Profile created");
+                            const { data: logData, error } = await supabase
+                                .from("auditLogs")
                                 .insert({
-                                    first_name: first_name,
-                                    last_name: last_name,
-                                    username: username,
-                                    email: user.email,
+                                    user_id: user.id,
+                                    action_type: "Registration",
+                                    add_info: null,
                                 });
                             if (error) {
                                 console.log(error);
                             } else {
-                                console.log("Profile created");
-                                const { data: logData, error } = await supabase
-                                    .from("auditLogs")
-                                    .insert({
-                                        user_id: user.id,
-                                        action_type: "Registration",
-                                        add_info: null,
-                                    });
-                                if (error) {
-                                    console.log(error);
-                                } else {
-                                    console.log("Log created");
-                                }
+                                console.log("Log created");
                             }
-                        } catch (error) {
-                            console.log(error);
                         }
-                    } else {
-                        await supabase.from("auditLogs").insert({
-                            user_id: user.id,
-                            action_type: "Login",
-                            add_info: null,
-                        });
-                        console.log("Log created");
+                    } catch (error) {
+                        console.log(error);
                     }
-                });
+                } else {
+                    await supabase.from("auditLogs").insert({
+                        user_id: user.id,
+                        action_type: "Login",
+                        add_info: null,
+                    });
+                    console.log("Log created");
+                }
+            });
+        const { data: profileData, error: profileError } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+        if (profileError || profileData === null) {
+            throw profileError;
+        } else {
+            profile = profileData;
         }
-    });
+    }
+
+    const { data: postsData, error: postsError } =
+        await postsWithCommentsAndVotesQuery;
+    if (postsError) {
+        toast.error(postsError.message, { position: "top-right" });
+        return;
+    }
+    const posts: PostWithCommentsAndVotes = postsData;
+    console.log(posts);
 
     return (
         <div
@@ -82,10 +127,14 @@ const Home: React.FC = () => {
             </Head>
             <Header />
             <Sidebar />
+            <ToastContainer />
             <div className="ml-14 mt-14 mb-10 md:ml-64">
-                <Post />
-                <PostList />
+                <PostList
+                    user={profile!}
+                    initialPosts={posts as unknown as Post[]}
+                />
             </div>
+            <ButtonAiChat />
         </div>
     );
 };

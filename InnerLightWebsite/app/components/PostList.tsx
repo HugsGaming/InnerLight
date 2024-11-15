@@ -1,140 +1,215 @@
 // components/PostList.tsx
-import React from "react";
+"use client";
+import React, { useEffect, useState, useMemo, useCallback, Suspense } from "react";
 import PostItem from "./PostItem";
-import { FaHeart, FaComment } from "react-icons/fa";
-import { HiDotsVertical } from "react-icons/hi";
+import PostComponent from "./Post";
+import { createClient } from "../utils/supabase/client";
+import { getFileExtension } from "../utils/files";
+import { v4 as uuidv4 } from "uuid";
+import { toast } from "react-toastify";
+import { Tables } from "../../database.types";
 
-const PostList: React.FC = () => {
-    const posts = [
-        {
-            id: 1,
-            title: "13 years ago today...",
-            subreddit: "r/MURICA",
-            votes: 13000,
-            comments: 214,
-            time: "6 hours ago",
-        },
-        {
-            id: 2,
-            title: "My cousin playing around...",
-            subreddit: "r/Music",
-            votes: 11700,
-            comments: 850,
-            time: "45 minutes ago",
-        },
-        // Add more posts as needed
-    ];
+export interface Post extends Tables<"posts"> {
+    comments?: Tables<"comments">[];
+    upVotes?: Tables<"postUpvotes">[];
+    downVotes?: Tables<"postDownvotes">[];
+    votes?: number;
+    user?: Tables<"profiles">;
+    image_data?: string | null;
+}
+
+export interface NewPost {
+    title: string;
+    description: string;
+    image: File | null | undefined;
+    gif: File | null | undefined;
+    user_id: string;
+}
+
+interface Comment {
+    id: number;
+    text: string;
+    votes: number;
+    user: Tables<"profiles">;
+}
+
+const PostList: React.FC<{
+    user: Tables<"profiles">;
+    initialPosts?: Post[] | null;
+}> = ({ user, initialPosts }) => {
+    const [posts, setPosts] = useState<(Post | null)[]>([]);
+    const supabase = useMemo(() => createClient(), []);
+
+    const getUser: (
+        userId: string,
+    ) => Promise<Tables<"profiles"> | null> = useCallback(async (userId: string) => {
+        const { data, error } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", userId)
+            .single();
+        if (error) {
+            console.error("Error fetching user:", error);
+            return null;
+        }
+        return data;
+    }, [supabase]);
+
+    const downloadImage = useCallback(async (post: Post) => {
+        if(!post.post_image) return null;
+
+        try {
+            const { data, error } = await supabase.storage
+                .from("post_images")
+                .download(post.post_image);
+
+            if (error) {
+                toast.error(error.message, { position: "top-right" });
+                return null;
+            }
+
+            return URL.createObjectURL(data);
+        } catch (error) {
+            toast.error("Error downloading image", { position: "top-right" });
+            return null;
+        }
+    }, [supabase]);
+
+    const processPost = useCallback(async (post: Post) => {
+        const user = await getUser(post.user_id!);
+        if(!user) return null;
+
+        const image_data = await downloadImage(post);
+        return {
+            ...post,
+            user,
+            image_data,
+            votes: 0
+        }
+
+    }, [getUser, downloadImage])
+
+    useEffect(() => {
+        const fetchPosts = async () => {
+            if (!initialPosts?.length) return;
+
+            const postWithData = await Promise.all(
+                initialPosts.map(processPost)
+            );
+            setPosts(postWithData.filter((post) => post !== null));
+        };
+
+        fetchPosts();
+        console.log(posts);
+    }, [initialPosts, processPost]);
+
+    useEffect(() => {
+        const channel = supabase
+            .channel("realtime_posts")
+            .on(
+                "postgres_changes",
+                { event: "INSERT", schema: "public", table: "posts" },
+                async (payload) => {
+                    const newPostData = payload.new as Post;
+                    const processedPost = await processPost(newPostData);
+
+                    if (processedPost) {
+                        setPosts((prevPosts) => [processedPost, ...(prevPosts ?? [])]);
+                    }
+                },
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [supabase, processPost]);
+
+    const addPost = useCallback(async (post: NewPost) => {
+        try {
+            let postImage: string | undefined;
+
+            if(post.image) {
+                const extension = getFileExtension(post.image.name);
+                const imagePath = `post_images/${uuidv4()}.${extension}`;
+
+                const { data: imageData, error: imageDataError } = await supabase.storage
+                    .from("post_images")
+                    .upload(imagePath, post.image);
+
+                if (imageDataError) throw imageDataError;
+
+                postImage = imageData.path;
+            }
+
+            const { error: postError } = await supabase
+                .from("posts")
+                .insert({
+                    title: post.title,
+                    content: post.description,
+                    post_image: postImage,
+                    user_id: user.id
+                });
+
+            if (postError) throw postError;
+            
+            toast.success("Post added successfully", { position: "top-right" });
+
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Error adding post", { position: "top-right" });
+        }
+        
+    }, [supabase, user.id])
+
+    const addComment = (postId: string, comment: Comment) => {
+        // setPosts(
+        //     posts.map((post) =>
+        //         post.id === postId
+        //             ? { ...post, comments: [...post.comments, comment] }
+        //             : post,
+        //     ),
+        // );
+        console.log("Comment added:", comment, postId);
+    };
+
+    const upvotePost = (postId: string) => {
+        // setPosts(
+        //     posts.map((post) =>
+        //         post.id === postId ? { ...post, votes: post.votes + 1 } : post,
+        //     ),
+        // );
+        console.log("Post upvoted:", postId);
+    };
+
+    const downvotePost = (postId: string) => {
+        // setPosts(
+        //     posts.map((post) =>
+        //         post.id === postId ? { ...post, votes: post.votes - 1 } : post,
+        //     ),
+        // );
+        console.log("Post downvoted:", postId);
+    };
+
+    const editPost = (postId: string) => {
+        // Implement the editPost functionality here
+        console.log("Edit post:", postId);
+    };
 
     return (
         <div className="container px-6 py-10 mx-auto bg-white dark:bg-gray-700">
-            <div className="bg-white p-8 rounded-lg shadow-md dark:bg-gray-800 ">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                        <img
-                            src="https://i.ibb.co/ZXTb2sh/1200px-Cat03.webp"
-                            alt="User Avatar"
-                            className="w-8 h-8 rounded-full"
-                        />
-                        <div>
-                            <p className="text-gray-800 font-semibold dark:text-white">
-                                John Doe
-                            </p>
-                            <p className="text-gray-500 text-sm dark:text-white">
-                                Posted 2 hours ago
-                            </p>
-                        </div>
-                    </div>
-                    <div className="text-gray-500 cursor-pointer">
-                        <button className="hover:bg-gray-50 dark:hover:bg-gray-100 first-letter:rounded-full p-1">
-                            <HiDotsVertical className="w-5 h-5 fill-current" />
-                        </button>
-                    </div>
-                </div>
-                <div className="mb-4">
-                    <p className="text-gray-800 dark:text-white">
-                        Just another day with adorable kittens! 🐱{" "}
-                        <a href="" className="text-blue-600 dark:text-white">
-                            #CuteKitten
-                        </a>
-                        <a href="" className="text-blue-600 dark:text-white">
-                            #AdventureCat
-                        </a>
-                    </p>
-                </div>
-                <div className="mb-4">
-                    <img
-                        src="https://i.ibb.co/ZXTb2sh/1200px-Cat03.webp"
-                        alt="Post Image"
-                        className="w-full h-48 object-cover rounded-md"
-                    />
-                </div>
-                <div className="flex items-center justify-between text-gray-500 dark:text-white">
-                    <div className="flex items-center space-x-2">
-                        <button className="flex justify-center items-center gap-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-400 rounded-full p-1">
-                            <FaHeart className="w-5 h-5 fill-current" />
-                            <span>42 Likes</span>
-                        </button>
-                    </div>
-                    <button className="flex justify-center items-center gap-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-400 rounded-full p-1">
-                        <FaComment className="w-5 h-5 fill-current" />
-                        <span>3 Comment</span>
-                    </button>
-                </div>
-                <hr className="mt-2 mb-2" />
-                <p className="text-gray-800 dark:text-white font-semibold">
-                    Comment
-                </p>
-                <hr className="mt-2 mb-2" />
-                <div className="mt-4">
-                    <div className="flex items-center space-x-2">
-                        <img
-                            src="https://i.ibb.co/ZXTb2sh/1200px-Cat03.webp"
-                            alt="User Avatar"
-                            className="w-6 h-6 rounded-full"
-                        />
-                        <div>
-                            <p className="text-gray-800 dark:text-white font-semibold">
-                                Jane Smith
-                            </p>
-                            <p className="text-gray-500 dark:text-white text-sm">
-                                Lovely shot! 📸
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center space-x-2 mt-2">
-                        <img
-                            src="https://i.ibb.co/ZXTb2sh/1200px-Cat03.webp"
-                            alt="User Avatar"
-                            className="w-6 h-6 rounded-full"
-                        />
-                        <div>
-                            <p className="text-gray-800 dark:text-white font-semibold">
-                                Bob Johnson
-                            </p>
-                            <p className="text-gray-500 dark:text-white text-sm">
-                                I can&apos;t handle the cuteness! Where can I
-                                get one?
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center space-x-2 mt-2 ml-6">
-                        <img
-                            src="https://i.ibb.co/ZXTb2sh/1200px-Cat03.webp"
-                            alt="User Avatar"
-                            className="w-6 h-6 rounded-full"
-                        />
-                        <div>
-                            <p className="text-gray-800 dark:text-white font-semibold">
-                                John Doe
-                            </p>
-                            <p className="text-gray-500 dark:text-white text-sm">
-                                That little furball is from a local shelter. You
-                                should check it out! 🏠😺
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <PostComponent addPost={addPost} user={user} />
+            {posts?.length === 0 && <p>No posts found.</p>}
+            {posts?.map((post) => (
+                <PostItem
+                    user={user}
+                    key={post!.id}
+                    post={post!}
+                    addComment={addComment}
+                    upvotePost={upvotePost}
+                    downvotePost={downvotePost}
+                    editPost={editPost}
+                />
+            ))}
         </div>
     );
 };
