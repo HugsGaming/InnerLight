@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     FaHeart,
     FaComment,
@@ -9,21 +9,15 @@ import {
 import { Tables } from "../../database.types";
 import { Post } from "./PostList";
 import { createClient } from "../utils/supabase/client";
+import { Comment, NewComment } from "./PostList";
 
 interface PostItemProps {
     user: Tables<"profiles">;
     post: Post;
-    addComment: (postId: string, comment: Comment) => void;
+    addComment: (postId: string, comment: NewComment) => Promise<void>;
     upvotePost: (postId: string) => void;
     downvotePost: (postId: string) => void;
     editPost: (postId: string) => void;
-}
-
-interface Comment {
-    id: number;
-    text: string;
-    votes: number; // Added votes property
-    user: Tables<"profiles">;
 }
 
 const PostItem: React.FC<PostItemProps> = ({
@@ -34,6 +28,7 @@ const PostItem: React.FC<PostItemProps> = ({
     downvotePost,
     editPost,
 }) => {
+    const [comments, setComments] = useState<Comment[]>([]);
     const [commentText, setCommentText] = useState("");
     const [showComments, setShowComments] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(false); // Assuming you have a way to toggle this
@@ -41,16 +36,79 @@ const PostItem: React.FC<PostItemProps> = ({
 
     const supabase = createClient();
 
+    const getUser = async (userId: string) => {
+        const { data, error } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", userId)
+            .single();
+        if (error) {
+            console.error("Error fetching user:", error);
+            return null;
+        }
+        return data;
+    };
+
+    const getCommentUpvotesCount = async (commentId: string) => {
+        const { data, error } = await supabase
+            .from("commentUpvote")
+            .select("id")
+            .eq("comment_id", commentId);
+        if (error) {
+            console.error("Error fetching comment upvotes:", error);
+            return 0;
+        }
+        return data.length;
+    };
+
+    const getCommentDownvotesCount = async (commentId: string) => {
+        const { data, error } = await supabase
+            .from("commentDownVote")
+            .select("id")
+            .eq("comment_id", commentId);
+        if (error) {
+            console.error("Error fetching comment downvotes:", error);
+            return 0;
+        }
+        return data.length;
+    };
+
+    const processComments = async () => {
+        const postComments = post.comments;
+
+        if (!postComments) return;
+
+        const newComments: Comment[] = await Promise.all(
+            postComments.map(async (comment) => {
+                const user = await getUser(comment.user_id!);
+                const upvotes = await getCommentUpvotesCount(comment.id);
+                const downvotes = await getCommentDownvotesCount(comment.id);
+                return {
+                    ...comment,
+                    user,
+                    votes: upvotes - downvotes,
+                };
+            }),
+        );
+
+        setComments(newComments);
+    };
+
+    useEffect(() => {
+        processComments();
+    }, []);
+
     const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setCommentText(e.target.value);
     };
 
-    const handleAddComment = () => {
-        const newComment: Comment = {
-            id: Date.now(),
-            text: commentText,
+    const handleAddComment = (e: React.FormEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        const newComment: NewComment = {
+            content: commentText,
             votes: 0, // Initialize votes to 0
-            user: user,
+            user_id: user.id,
+            post_id: post.id,
         };
         addComment(post.id, newComment);
         setCommentText("");
@@ -124,14 +182,14 @@ const PostItem: React.FC<PostItemProps> = ({
                 </div>
                 {showComments && (
                     <div className="mt-4 transition-all duration-300 ease-in-out">
-                        {post.comments?.map((comment) => (
+                        {/* {comments.map((comment) => (
                             <div key={comment.id} className="mb-2">
                                 <div
                                     className="flex items-center space-x-2 cursor-pointer"
                                     onClick={() => toggleComment(comment.id)}
                                 >
                                     <div className="text-sm">
-                                        {comment.user_id} -
+                                        {comment.user?.username}
                                     </div>
                                     <div>{comment.content}</div>
                                 </div>
@@ -141,13 +199,39 @@ const PostItem: React.FC<PostItemProps> = ({
                                             <button className="hover:text-green-500 transition-colors duration-300">
                                                 <FaArrowUp className="w-4 h-4 fill-current" />
                                             </button>
-                                            {/* <span>{comment.votes ? 0}</span> */}
+                                            <span>{comment.votes}</span>
                                             <button className="hover:text-red-500 transition-colors duration-300">
                                                 <FaArrowDown className="w-4 h-4 fill-current" />
                                             </button>
                                         </div>
                                     </div>
                                 )}
+                            </div>
+                        ))} */}
+                        {post.comments?.map((comment) => (
+                            <div key={comment.id} className="mb-2">
+                                <div
+                                    className="flex items-center space-x-2 cursor-pointer"
+                                    onClick={() => toggleComment(comment.id)}
+                                >
+                                    <div className="text-sm">
+                                        {comment.user?.username}
+                                    </div>
+                                    <div>{comment.content}</div>
+                                    {openCommentId === comment.id && (
+                                        <div className="mt-2 ml-4 transition-all duration-300 ease-in-out">
+                                            <div className="flex items-center space-x-1">
+                                                <button className="hover:text-green-500 transition-colors duration-300">
+                                                    <FaArrowUp className="w-4 h-4 fill-current" />
+                                                </button>
+                                                <span>{comment.votes}</span>
+                                                <button className="hover:text-red-500 transition-colors duration-300">
+                                                    <FaArrowDown className="w-4 h-4 fill-current" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))}
                         <div className="flex items-center space-x-2 mt-2">
