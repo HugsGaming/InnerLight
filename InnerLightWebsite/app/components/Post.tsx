@@ -39,99 +39,115 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
             gifFile: null,
         });
 
-        if(imageInputRef.current) imageInputRef.current.value = ""
-        if(gifInputRef.current) gifInputRef.current.value = ""
-    }, [])
-
-    const handleTitleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-        setFormState((prevState) => ({
-            ...prevState,
-            title: e.target.value,
-        }));
+        if (imageInputRef.current) imageInputRef.current.value = "";
+        if (gifInputRef.current) gifInputRef.current.value = "";
     }, []);
 
-    const handleDescriptionChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
-        const newValue = e.target.value;
-        if( newValue.length <= maxCharCount) {
+    const handleTitleChange = useCallback(
+        (e: ChangeEvent<HTMLInputElement>) => {
             setFormState((prevState) => ({
                 ...prevState,
-                description: newValue,
-                charCount: newValue.length,
+                title: e.target.value,
             }));
-        }
-    }, []);
+        },
+        [],
+    );
 
-    const handleFileUpload = useCallback((file: File | undefined, type: 'image' | 'gif') => {
-        if (!file) return;
+    const handleDescriptionChange = useCallback(
+        (e: ChangeEvent<HTMLTextAreaElement>) => {
+            const newValue = e.target.value;
+            if (newValue.length <= maxCharCount) {
+                setFormState((prevState) => ({
+                    ...prevState,
+                    description: newValue,
+                    charCount: newValue.length,
+                }));
+            }
+        },
+        [],
+    );
 
-        if (type === 'image' && (formState.image || formState.gif)) {
-            toast.error("You can only upload one image");
-            return;
-        }
+    const handleFileUpload = useCallback(
+        (file: File | undefined, type: "image" | "gif") => {
+            if (!file) return;
 
-        if (type === 'gif' && (formState.image || formState.gif)) {
-            toast.error("You can only upload one gif");
-            return;
-        }
+            if (type === "image" && (formState.image || formState.gif)) {
+                toast.error("You can only upload one image");
+                return;
+            }
 
-        if(type === 'image' && !file.type.startsWith("image/")) {
-            toast.error("File must be an image");
-            return;
-        }
+            if (type === "gif" && (formState.image || formState.gif)) {
+                toast.error("You can only upload one gif");
+                return;
+            }
 
-        if(type === 'gif' && !file.type.startsWith("image/gif")) {
-            toast.error("File must be a gif");
-            return;
-        }
+            if (type === "image" && !file.type.startsWith("image/")) {
+                toast.error("File must be an image");
+                return;
+            }
 
-        if (!validateFileSize(file, 50)) {
-            toast.error("File size must be less than 50MB");
-            return;
-        }
+            if (type === "gif" && !file.type.startsWith("image/gif")) {
+                toast.error("File must be a gif");
+                return;
+            }
 
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setFormState((prevState) => ({
-                ...prevState,
-                [type]: reader.result as string,
-                [`${type}File`]: file,
-            }));
-        };
-        reader.readAsDataURL(file);
+            if (!validateFileSize(file, 50)) {
+                toast.error("File size must be less than 50MB");
+                return;
+            }
 
-    },[formState.image, formState.gif]);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormState((prevState) => ({
+                    ...prevState,
+                    [type]: reader.result as string,
+                    [`${type}File`]: file,
+                }));
+            };
+            reader.readAsDataURL(file);
+        },
+        [formState.image, formState.gif],
+    );
 
-    const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-        handleFileUpload(e.target.files?.[0], 'image')
-    }, [handleFileUpload]);
+    const handleImageUpload = useCallback(
+        (e: ChangeEvent<HTMLInputElement>) => {
+            handleFileUpload(e.target.files?.[0], "image");
+        },
+        [handleFileUpload],
+    );
 
-    const handleGifUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-        handleFileUpload(e.target.files?.[0], 'gif')
-    }, [handleFileUpload]);
+    const handleGifUpload = useCallback(
+        (e: ChangeEvent<HTMLInputElement>) => {
+            handleFileUpload(e.target.files?.[0], "gif");
+        },
+        [handleFileUpload],
+    );
 
-    const removeMedia = useCallback((type: 'image' | 'gif') => {
+    const removeMedia = useCallback((type: "image" | "gif") => {
         setFormState((prevState) => ({
             ...prevState,
             [type]: null,
-            [`${type}File`]: null
+            [`${type}File`]: null,
         }));
 
-        if(type === 'image' && imageInputRef.current) imageInputRef.current.value = "";
-        if(type === 'gif' && gifInputRef.current) gifInputRef.current.value = "";
+        if (type === "image" && imageInputRef.current)
+            imageInputRef.current.value = "";
+        if (type === "gif" && gifInputRef.current)
+            gifInputRef.current.value = "";
     }, []);
 
     const handlePost = useCallback(async () => {
-        if(!formState.title.trim() || !formState.description.trim()) {
+        if (!formState.title.trim() || !formState.description.trim()) {
             toast.error("Title and description are required");
             return;
         }
 
-        const newPost : NewPost = {
+        const newPost: NewPost = {
             title: formState.title.trim(),
             description: formState.description.trim(),
             image: formState.imageFile,
             gif: formState.gifFile,
-            user_id: user.id
+            user_id: user.id,
         };
 
         try {
@@ -140,7 +156,7 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
         } catch (error) {
             toast.error("Failed to create post");
         }
-    }, [formState, user.id, addPost, resetForm])
+    }, [formState, user.id, addPost, resetForm]);
 
     const isMediaUploaded = formState.image !== null || formState.gif !== null;
 
@@ -172,10 +188,10 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                         className="w-full h-auto rounded"
                     />
                     <button
-                        onClick={() => removeMedia('image')}
+                        onClick={() => removeMedia("image")}
                         className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors"
                         aria-label="Remove Image"
-                        >
+                    >
                         <FaTimes />
                     </button>
                 </div>
@@ -183,13 +199,19 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
 
             {formState.gif && (
                 <div className="mt-4 relative">
-                    <img src={formState.gif} alt="Uploaded GIF" className="w-full h-auto rounded" />
+                    <img
+                        src={formState.gif}
+                        alt="Uploaded GIF"
+                        className="w-full h-auto rounded"
+                    />
                     <button
-                        onClick={() => {removeMedia('gif')}}
+                        onClick={() => {
+                            removeMedia("gif");
+                        }}
                         className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors"
                         aria-label="Remove GIF"
-                        >
-                            <FaTimes />
+                    >
+                        <FaTimes />
                     </button>
                 </div>
             )}
@@ -198,7 +220,9 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                 <label
                     htmlFor="image-upload"
                     className={`mr-2 cursor-pointer transition-colors ${
-                        isMediaUploaded ? "text-gray-400 cursor-not-allowed" : "hover:text-gray-700"
+                        isMediaUploaded
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "hover:text-gray-700"
                     }`}
                 >
                     <FaImage />
@@ -215,7 +239,9 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                 <label
                     htmlFor="gif-upload"
                     className={`mr-2 cursor-pointer transition-colors ${
-                        isMediaUploaded ? "text-gray-400 cursor-not-allowed" : "hover:text-gray-700"
+                        isMediaUploaded
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "hover:text-gray-700"
                     }`}
                 >
                     <PiGifFill />
@@ -245,7 +271,9 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                 <button
                     className="btn border border-indigo-500 p-1 px-4 font-semibold cursor-pointer text-gray-200 ml-2 bg-indigo-500 rounded hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handlePost}
-                    disabled={!formState.title.trim() || !formState.description.trim()}
+                    disabled={
+                        !formState.title.trim() || !formState.description.trim()
+                    }
                 >
                     Post
                 </button>

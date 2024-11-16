@@ -9,7 +9,7 @@ import {
 import { Tables } from "../../database.types";
 import { Post } from "./PostList";
 import { createClient } from "../utils/supabase/client";
-import {Comment, NewComment} from './PostList'
+import { Comment, NewComment } from "./PostList";
 
 interface PostItemProps {
     user: Tables<"profiles">;
@@ -19,8 +19,6 @@ interface PostItemProps {
     downvotePost: (postId: string) => void;
     editPost: (postId: string) => void;
 }
-
-
 
 const PostItem: React.FC<PostItemProps> = ({
     user,
@@ -78,9 +76,9 @@ const PostItem: React.FC<PostItemProps> = ({
     const processComments = async () => {
         const postComments = post.comments;
 
-        if(!postComments) return;
+        if (!postComments) return;
 
-        const newComments : Comment[] = await Promise.all(
+        const newComments: Comment[] = await Promise.all(
             postComments.map(async (comment) => {
                 const user = await getUser(comment.user_id!);
                 const upvotes = await getCommentUpvotesCount(comment.id);
@@ -88,9 +86,9 @@ const PostItem: React.FC<PostItemProps> = ({
                 return {
                     ...comment,
                     user,
-                    votes: upvotes - downvotes
+                    votes: upvotes - downvotes,
                 };
-            })
+            }),
         );
 
         setComments(newComments);
@@ -104,10 +102,10 @@ const PostItem: React.FC<PostItemProps> = ({
         setCommentText(e.target.value);
     };
 
-    const handleAddComment = (e : React.FormEvent<HTMLButtonElement>) => {
+    const handleAddComment = (e: React.FormEvent<HTMLButtonElement>) => {
         e.preventDefault();
         const newComment: NewComment = {
-            text: commentText,
+            content: commentText,
             votes: 0, // Initialize votes to 0
             user_id: user.id,
             post_id: post.id,
@@ -184,9 +182,12 @@ const PostItem: React.FC<PostItemProps> = ({
                 </div>
                 {showComments && (
                     <div className="mt-4 transition-all duration-300 ease-in-out">
-                        {comments.map((comment) => (
+                        {/* {comments.map((comment) => (
                             <div key={comment.id} className="mb-2">
-                                <div className="flex items-center space-x-2 cursor-pointer" onClick={() => toggleComment(comment.id)}>
+                                <div
+                                    className="flex items-center space-x-2 cursor-pointer"
+                                    onClick={() => toggleComment(comment.id)}
+                                >
                                     <div className="text-sm">
                                         {comment.user?.username}
                                     </div>
@@ -205,6 +206,32 @@ const PostItem: React.FC<PostItemProps> = ({
                                         </div>
                                     </div>
                                 )}
+                            </div>
+                        ))} */}
+                        {post.comments?.map((comment) => (
+                            <div key={comment.id} className="mb-2">
+                                <div
+                                    className="flex items-center space-x-2 cursor-pointer"
+                                    onClick={() => toggleComment(comment.id)}
+                                >
+                                    <div className="text-sm">
+                                        {comment.user?.username}
+                                    </div>
+                                    <div>{comment.content}</div>
+                                    {openCommentId === comment.id && (
+                                        <div className="mt-2 ml-4 transition-all duration-300 ease-in-out">
+                                            <div className="flex items-center space-x-1">
+                                                <button className="hover:text-green-500 transition-colors duration-300">
+                                                    <FaArrowUp className="w-4 h-4 fill-current" />
+                                                </button>
+                                                <span>{comment.votes}</span>
+                                                <button className="hover:text-red-500 transition-colors duration-300">
+                                                    <FaArrowDown className="w-4 h-4 fill-current" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))}
                         <div className="flex items-center space-x-2 mt-2">
