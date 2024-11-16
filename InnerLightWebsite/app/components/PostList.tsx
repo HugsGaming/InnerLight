@@ -373,8 +373,9 @@ const PostList: React.FC<{
 
     const addPost = useCallback(
         async (post: NewPost) => {
+            let newPost: Post;
             try {
-                let postImage: string | undefined;
+                let postImage: string | null = null;
 
                 if (post.image) {
                     const extension = getFileExtension(post.image.name);
@@ -390,6 +391,20 @@ const PostList: React.FC<{
                     postImage = imageData.path;
                 }
 
+                newPost = {
+                    id: `temporary-${Date.now()}`,
+                    title: post.title,
+                    content: post.description,
+                    post_image: postImage,
+                    user_id: user.id,
+                    user,
+                    created_at: new Date().toISOString(),
+                    comments:[],
+                    votes: 0
+                }
+
+                setPosts((prevPosts) => [...prevPosts, newPost]);
+
                 const { data, error: postError } = await supabase
                     .from("posts")
                     .insert({
@@ -398,27 +413,35 @@ const PostList: React.FC<{
                         post_image: postImage,
                         user_id: user.id,
                     })
-                    .select("*, user:profiles(*)")
+                    .select("*")
                     .single();
 
-                if (postError) throw postError;
+                if (postError) {
+                    console.error("Error adding post:", postError);
+                    throw postError;
+                };
 
                 const transformedPost = {
                     ...data,
-                    // Ensure user is a single object, not an array
-                    user: Array.isArray(data.user) ? data.user[0] : data.user,
+                    user,
                 };
 
                 const processedPost = await processPost(transformedPost);
 
                 if (processedPost) {
-                    setPosts((prevPosts) => [...prevPosts, processedPost]);
+                    setPosts((prevPosts) => [
+                        processedPost,
+                        ...prevPosts.filter((post) => post?.id !== newPost.id),
+                    ]);
                 }
 
                 toast.success("Post added successfully", {
                     position: "top-right",
                 });
             } catch (error) {
+                setPosts((prevPosts) =>
+                    prevPosts.filter((post) => post?.id !== newPost.id),
+                );
                 toast.error(
                     error instanceof Error
                         ? error.message
