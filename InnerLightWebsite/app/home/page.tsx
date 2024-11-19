@@ -16,14 +16,14 @@ const Home: React.FC = async () => {
 
     const postsWithCommentsAndVotesQuery = supabase
         .from("posts")
-        .select("*, comments(*), postDownvotes(*), postUpvotes(*)")
+        .select(
+            "*, comments(*, user:profiles(*), upVotes:commentUpVotes(*), upVotes_count:commentUpVotes(count), downVotes:commentDownVotes(*), downVotes_count:commentDownVotes(count)), downVotes:postDownVotes(*), downVotes_count:postDownVotes(count), upVotes:postUpVotes(*), upVotes_count:postUpVotes(count), user:profiles(*)",
+        )
         .order("created_at", { ascending: false });
 
     type PostWithCommentsAndVotes = QueryData<
         typeof postsWithCommentsAndVotesQuery
     >;
-
-    let usernameData;
     supabase.auth.getUser().then(async ({ data }) => {
         const { user } = data;
         if (!user || user === null) {

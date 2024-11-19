@@ -1,12 +1,6 @@
 // components/PostList.tsx
 "use client";
-import React, {
-    useEffect,
-    useState,
-    useMemo,
-    useCallback,
-    Suspense,
-} from "react";
+import React, { useEffect, useState, useMemo, useCallback, memo } from "react";
 import PostItem from "./PostItem";
 import PostComponent from "./Post";
 import { createClient } from "../utils/supabase/client";
@@ -14,14 +8,16 @@ import { getFileExtension } from "../utils/files";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "react-toastify";
 import { Tables } from "../../database.types";
+import { debounce } from "../utils/debounce";
 
 export interface Post extends Tables<"posts"> {
     comments?: Comment[] | null;
-    upVotes?: Tables<"postUpvotes">[];
-    downVotes?: Tables<"postDownvotes">[];
-    votes?: number;
+    upVotes?: Tables<"postUpVotes">[];
+    downVotes?: Tables<"postDownVotes">[];
     user?: Tables<"profiles">;
     image_data?: string | null;
+    downVotes_count?: { count: number }[];
+    upVotes_count?: { count: number }[];
 }
 
 export interface NewPost {
@@ -36,16 +32,17 @@ export interface NewComment {
     content: string;
     post_id: string;
     user_id: string;
-    votes: number;
 }
 
 export interface Comment extends Tables<"comments"> {
     user?: Tables<"profiles"> | null;
-    votes?: number;
-    upVotes?: Tables<"commentUpvote">[];
-    downVotes?: Tables<"commentDownVote">[];
+    upVotes?: Tables<"commentUpVotes">[];
+    downVotes?: Tables<"commentDownVotes">[];
+    downVotes_count?: { count: number }[];
+    upVotes_count?: { count: number }[];
 }
 
+// Optimized PostList component
 const PostList: React.FC<{
     user: Tables<"profiles">;
     initialPosts?: Post[] | null;
@@ -53,358 +50,144 @@ const PostList: React.FC<{
     const [posts, setPosts] = useState<(Post | null)[]>([]);
     const supabase = useMemo(() => createClient(), []);
 
-    const getUser: (userId: string) => Promise<Tables<"profiles"> | null> =
-        useCallback(
-            async (userId: string) => {
-                const { data, error } = await supabase
-                    .from("profiles")
-                    .select("*")
-                    .eq("id", userId)
-                    .single();
-                if (error) {
-                    console.error("Error fetching user:", error);
-                    return null;
-                }
-                return data;
-            },
-            [supabase],
-        );
-
-    const processComments = useCallback(
-        async (comments: Tables<"comments">[]) => {
-            const processedComments = await Promise.all(
-                comments.map(async (comment) => {
-                    const commentUser = await getUser(comment.user_id!);
-
-                    const { data: upvotes, error: upvotesError } =
-                        await supabase
-                            .from("commentUpvote")
-                            .select("id, user_id")
-                            .eq("comment_id", comment.id);
-
-                    if (upvotesError) {
-                        toast.error(upvotesError.message, {
-                            position: "top-right",
-                        });
-                        return null;
-                    }
-
-                    const { data: downvotes, error: downvotesError } =
-                        await supabase
-                            .from("commentDownVote")
-                            .select("id, user_id")
-                            .eq("comment_id", comment.id);
-
-                    if (downvotesError) {
-                        toast.error(downvotesError.message, {
-                            position: "top-right",
-                        });
-                        return null;
-                    }
-
-                    return {
-                        ...comment,
-                        user: commentUser,
-                        upVotes: upvotes,
-                        downVotes: downvotes,
-                        votes:
-                            (upvotes?.length ?? 0) - (downvotes?.length ?? 0),
-                    } as Comment;
-                }),
-            );
-            return processedComments.filter(
-                (comment): comment is Comment => comment !== null,
-            );
-        },
-        [getUser, supabase],
-    );
-
-    const downloadImage = useCallback(
-        async (post: Post) => {
-            if (!post.post_image) return null;
-
-            try {
-                const { data, error } = await supabase.storage
-                    .from("post_images")
-                    .download(post.post_image);
-
-                if (error) {
-                    toast.error(error.message, { position: "top-right" });
-                    return null;
-                }
-
-                return URL.createObjectURL(data);
-            } catch (error) {
-                toast.error("Error downloading image", {
-                    position: "top-right",
-                });
-                return null;
-            }
-        },
-        [supabase],
-    );
-
-    const processPost = useCallback(
-        async (post: Post): Promise<Post | null> => {
-            try {
-                const { data: postData, error: postError } = await supabase
-                    .from("posts")
-                    .select(
-                        "*, comments(*), upVotes:postUpvotes(*), downVotes:postDownvotes(*)",
-                    )
-                    .eq("id", post.id)
-                    .single();
-
-                if (postError) throw postError;
-
-                const user = await getUser(post.user_id!);
-                if (!user) return null;
-
-                const image_data = await downloadImage(post);
-                const processedComments = await processComments(
-                    postData.comments || [],
-                );
-
-                return {
-                    ...postData,
-                    user,
-                    image_data,
-                    comments: processedComments || [],
-                    votes:
-                        (postData.upVotes?.length ?? 0) -
-                        (postData.downVotes?.length ?? 0),
-                };
-            } catch (error) {
-                toast.error("Error processing post: " + error, {
-                    position: "top-right",
-                });
-                return null;
-            }
-        },
-        [getUser, downloadImage, processComments, supabase],
-    );
-
-    const processComment = useCallback(
-        async (comment: Comment) => {
-            const commentUser = await getUser(comment.user_id!);
-            return {
-                ...comment,
-                user: commentUser,
-                votes: 0,
-            };
-        },
-        [getUser],
-    );
-
     useEffect(() => {
-        const fetchPosts = async () => {
-            if (!initialPosts?.length) return;
+        if (initialPosts) {
+            setPosts(initialPosts.filter((post) => post !== null));
+            console.log("Initial posts set:", initialPosts);
+        }
+    }, [initialPosts]);
 
-            const postWithData = await Promise.all(
-                initialPosts.map(processPost),
-            );
-            setPosts(postWithData.filter((post) => post !== null));
-        };
+    const handleVote = useCallback(
+        async (postId: string, voteType: "up" | "down") => {
+            //Find the post to update
+            const targetPost = posts.find((post) => post?.id === postId);
+            if (!targetPost) return;
 
-        fetchPosts();
-    }, [initialPosts, processPost]);
+            //Prepare Optimistic Update
+            const optimisticUpdate = (currentPost: Post) => {
+                const currentUpVotes = currentPost.upVotes || [];
+                const currentDownVotes = currentPost.downVotes || [];
 
-    // useEffect(() => {
-    //     const channel = supabase
-    //         .channel("realtime_posts")
-    //         .on(
-    //             "postgres_changes",
-    //             { event: "INSERT", schema: "public", table: "posts" },
-    //             async (payload) => {
-    //                 const newPostData = payload.new as Post;
-    //                 const processedPost = await processPost(newPostData);
-
-    //                 if (processedPost) {
-    //                     setPosts((prevPosts) => [
-    //                         processedPost,
-    //                         ...(prevPosts ?? []),
-    //                     ]);
-    //                 }
-    //             },
-    //         )
-    //         .on('postgres_changes',
-    //             {event: 'INSERT', schema: 'public', table: 'comments'},
-    //             async (payload) => {
-    //                 const newCommentData = payload.new as Comment;
-    //                 const processedComment = await processComment(newCommentData);
-
-    //                 setPosts((prevPosts) => {
-    //                     return prevPosts.map((post) => {
-    //                         if (post?.id === newCommentData.post_id) {
-    //                             const commentExists = post.comments?.some(comment => comment.id === newCommentData.id);
-    //                             if (commentExists) return post;
-
-    //                             return {
-    //                                 ...post,
-    //                                 comments: [...(post.comments ?? []), processedComment],
-    //                             };
-    //                         }
-    //                         return post;
-    //                     })
-    //                 })
-    //             }
-    //         )
-    //         .subscribe();
-
-    //     return () => {
-    //         channel.unsubscribe();
-    //     };
-    // }, [supabase, processPost, processComment]);
-
-    const addComment = useCallback(
-        async (postId: string, comment: NewComment) => {
-            const optimisticComment = {
-                id: `temporary-${Date.now()}`,
-                content: comment.content,
-                post_id: postId,
-                user_id: user.id,
-                created_at: new Date().toISOString(),
-                user,
-                root_comment_id: null,
-                votes: 0,
-            };
-            try {
-                setPosts((prevPosts) =>
-                    prevPosts.map((post) => {
-                        if (post?.id === postId) {
-                            return {
-                                ...post,
-                                comments: [
-                                    ...(post.comments ?? []),
-                                    optimisticComment,
-                                ],
-                            };
-                        }
-                        return post;
-                    }),
+                // Remove existing votes by this user
+                const filteredUpVotes = currentUpVotes.filter(
+                    (vote) => vote.user_id !== user.id,
+                );
+                const filteredDownVotes = currentDownVotes.filter(
+                    (vote) => vote.user_id !== user.id,
                 );
 
-                console.log("Comment added:", optimisticComment);
+                const newVote = {
+                    id: `temp-${Date.now()}`,
+                    created_at: new Date().toISOString(),
+                    user_id: user.id,
+                    post_id: postId,
+                };
 
-                const { data, error } = await supabase
-                    .from("comments")
-                    .insert({
-                        content: comment.content,
-                        post_id: postId,
-                        user_id: user.id,
-                        root_comment_id: null,
-                    })
-                    .select("*")
-                    .single();
-
-                if (error) {
-                    console.error("Error adding comment:", error);
-                    throw error;
+                if (voteType === "up") {
+                    return {
+                        ...currentPost,
+                        upVotes: [...filteredUpVotes, newVote],
+                        downVotes: filteredDownVotes,
+                        upVotes_count: [{ count: filteredUpVotes.length + 1 }],
+                        downVotes_count: [{ count: filteredDownVotes.length }],
+                    } as Post;
+                } else {
+                    return {
+                        ...currentPost,
+                        upVotes: filteredUpVotes,
+                        downVotes: [...filteredDownVotes, newVote],
+                        upVotes_count: [{ count: filteredUpVotes.length }],
+                        downVotes_count: [
+                            { count: filteredDownVotes.length + 1 },
+                        ],
+                    } as Post;
                 }
+            };
 
-                const commentWithUser = await processComment(data);
+            //Apply optimistic update
+            setPosts((prevPosts) =>
+                prevPosts.map((post) =>
+                    post?.id === postId ? optimisticUpdate(post) : post,
+                ),
+            );
 
-                setPosts((prevPosts) =>
-                    prevPosts.map((post) => {
-                        if (post?.id === postId) {
-                            return {
-                                ...post,
-                                comments:
-                                    post.comments?.map((comment) =>
-                                        comment.id === optimisticComment.id
-                                            ? ({
-                                                  ...commentWithUser,
-                                                  user: commentWithUser.user,
-                                                  votes: 0,
-                                              } as Comment)
-                                            : comment,
-                                    ) || [],
-                            };
-                        }
-                        return post;
-                    }),
-                );
+            try {
+                //Remove any existing votes first
+                await Promise.all([
+                    supabase
+                        .from("postUpVotes")
+                        .delete()
+                        .match({ user_id: user.id, post_id: postId }),
+                    supabase
+                        .from("postDownVotes")
+                        .delete()
+                        .match({ user_id: user.id, post_id: postId }),
+                ]);
 
-                //Optimistically update the UI
-                // const processedComment = await processComment(data);
-                // setPosts((prevPosts) => {
-                //     return prevPosts.map((post) => {
-                //         if (post?.id === postId) {
-                //             return {
-                //                 ...post,
-                //                 comments: [...(post.comments ?? []), processedComment],
-                //             };
-                //         }
-                //         return post;
-                //     })
-                // })
+                //Insert the new vote
+                const table =
+                    voteType === "up" ? "postUpVotes" : "postDownVotes";
+                const { error } = await supabase
+                    .from(table)
+                    .insert({ post_id: postId, user_id: user.id });
 
-                toast.success("Comment added successfully", {
-                    position: "top-right",
-                });
+                if (error) throw error;
             } catch (error) {
+                //Revert the optimistic update
                 setPosts((prevPosts) =>
-                    prevPosts.map((post) => {
-                        if (post?.id === postId) {
-                            return {
-                                ...post,
-                                comments: post.comments?.filter(
-                                    (comment) =>
-                                        comment.id !== optimisticComment.id,
-                                ),
-                            };
-                        }
-                        return post;
-                    }),
+                    prevPosts.map((post) =>
+                        post?.id === postId ? targetPost : post,
+                    ),
                 );
 
-                toast.error(
-                    error instanceof Error
-                        ? error.message
-                        : "Error adding comment",
-                    {
-                        position: "top-right",
-                    },
-                );
+                toast.error("Error voting on post");
+                console.error("Error voting on post:", error);
             }
         },
-        [supabase, processComment, user],
+        [supabase, user.id, posts],
     );
 
     const addPost = useCallback(
         async (post: NewPost) => {
-            let newPost: Post;
-            try {
-                let postImage: string | null = null;
+            // Temporary ID for optimistic update
+            const tempPostId = `temp-${Date.now()}`;
 
+            // Prepare optimistic post object
+            const optimisticPost: Post = {
+                id: tempPostId,
+                title: post.title,
+                content: post.description,
+                post_image: null,
+                user_id: user.id,
+                user,
+                created_at: new Date().toISOString(),
+                comments: [],
+                upVotes_count: [{ count: 0 }],
+                downVotes_count: [{ count: 0 }],
+                upVotes: [],
+                downVotes: [],
+            };
+
+            try {
+                //Optimistically add the post to the list
+                setPosts((prevPosts) => [...prevPosts, optimisticPost]);
+
+                //Handle image upload if present
+                let postImage: string | null = null;
                 if (post.image) {
                     const extension = getFileExtension(post.image.name);
                     const imagePath = `post_images/${uuidv4()}.${extension}`;
 
-                    const { data: imageData, error: imageDataError } =
+                    const { data: imageData, error: imageError } =
                         await supabase.storage
                             .from("post_images")
                             .upload(imagePath, post.image);
 
-                    if (imageDataError) throw imageDataError;
-
-                    postImage = imageData.path;
+                    if (imageError) throw imageError;
+                    postImage = imageData?.path;
                 }
 
-                newPost = {
-                    id: `temporary-${Date.now()}`,
-                    title: post.title,
-                    content: post.description,
-                    post_image: postImage,
-                    user_id: user.id,
-                    user,
-                    created_at: new Date().toISOString(),
-                    comments:[],
-                    votes: 0
-                }
-
-                setPosts((prevPosts) => [...prevPosts, newPost]);
-
+                //Insert the post into the database
                 const { data, error: postError } = await supabase
                     .from("posts")
                     .insert({
@@ -416,65 +199,37 @@ const PostList: React.FC<{
                     .select("*")
                     .single();
 
-                if (postError) {
-                    console.error("Error adding post:", postError);
-                    throw postError;
-                };
-
-                const transformedPost = {
+                if(postError) throw postError;
+                
+                //Transform the post with full data
+                const finalPost: Post = {
                     ...data,
                     user,
+                    comments: [],
+                    upVotes_count: [{ count: 0 }],
+                    downVotes_count: [{ count: 0 }],
+                    upVotes: [],
+                    downVotes: [],
                 };
+                
+                //Update post list, replacing the temporary post with the final post
+                setPosts((prevPosts) => [
+                    finalPost,
+                    ...prevPosts.filter((post) => post?.id !== tempPostId),
+                ])
 
-                const processedPost = await processPost(transformedPost);
+                toast.success("Post added successfully");
 
-                if (processedPost) {
-                    setPosts((prevPosts) => [
-                        processedPost,
-                        ...prevPosts.filter((post) => post?.id !== newPost.id),
-                    ]);
-                }
-
-                toast.success("Post added successfully", {
-                    position: "top-right",
-                });
             } catch (error) {
-                setPosts((prevPosts) =>
-                    prevPosts.filter((post) => post?.id !== newPost.id),
+                setPosts((prevPosts) => 
+                    prevPosts.filter((post) => post?.id !== tempPostId)
                 );
-                toast.error(
-                    error instanceof Error
-                        ? error.message
-                        : "Error adding post",
-                    { position: "top-right" },
-                );
+                toast.error(error instanceof Error ? error.message : "Error adding post");
+
             }
         },
-        [supabase, user.id, processPost],
-    );
-
-    const upvotePost = (postId: string) => {
-        // setPosts(
-        //     posts.map((post) =>
-        //         post.id === postId ? { ...post, votes: post.votes + 1 } : post,
-        //     ),
-        // );
-        console.log("Post upvoted:", postId);
-    };
-
-    const downvotePost = (postId: string) => {
-        // setPosts(
-        //     posts.map((post) =>
-        //         post.id === postId ? { ...post, votes: post.votes - 1 } : post,
-        //     ),
-        // );
-        console.log("Post downvoted:", postId);
-    };
-
-    const editPost = (postId: string) => {
-        // Implement the editPost functionality here
-        console.log("Edit post:", postId);
-    };
+        [supabase, user]
+    )
 
     return (
         <div className="container px-6 py-10 mx-auto bg-white dark:bg-gray-700">
@@ -482,17 +237,14 @@ const PostList: React.FC<{
             {posts?.length === 0 && <p>No posts found.</p>}
             {posts?.map((post) => (
                 <PostItem
-                    user={user}
                     key={post!.id}
+                    user={user}
                     post={post!}
-                    addComment={addComment}
-                    upvotePost={upvotePost}
-                    downvotePost={downvotePost}
-                    editPost={editPost}
+                    onVote={handleVote}
                 />
             ))}
         </div>
     );
 };
 
-export default PostList;
+export default memo(PostList);

@@ -33,59 +33,66 @@ export type Database = {
                 };
                 Relationships: [];
             };
-            commentDownVote: {
+            commentDownVotes: {
                 Row: {
                     comment_id: string | null;
                     created_at: string;
-                    id: number;
+                    id: string;
                     user_id: string | null;
                 };
                 Insert: {
                     comment_id?: string | null;
                     created_at?: string;
-                    id?: number;
+                    id?: string;
                     user_id?: string | null;
                 };
                 Update: {
                     comment_id?: string | null;
                     created_at?: string;
-                    id?: number;
+                    id?: string;
                     user_id?: string | null;
                 };
                 Relationships: [
                     {
-                        foreignKeyName: "commentDownVote_comment_id_fkey";
+                        foreignKeyName: "commentDownVotes_comment_id_fkey";
                         columns: ["comment_id"];
                         isOneToOne: false;
                         referencedRelation: "comments";
+                        referencedColumns: ["id"];
+                    },
+                    {
+                        foreignKeyName: "new_commentDownVotes_user_id_fkey";
+                        columns: ["user_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
                         referencedColumns: ["id"];
                     },
                 ];
             };
             comments: {
                 Row: {
-                    content: string | null;
+                    content: string;
                     created_at: string;
                     id: string;
-                    post_id: string | null;
+                    post_id: string;
                     root_comment_id: string | null;
-                    user_id: string | null;
+                    user_id: string;
                 };
                 Insert: {
-                    content?: string | null;
+                    content: string;
                     created_at?: string;
                     id?: string;
-                    post_id?: string | null;
+                    post_id: string;
                     root_comment_id?: string | null;
-                    user_id?: string | null;
+                    user_id: string;
                 };
                 Update: {
-                    content?: string | null;
+                    content?: string;
                     created_at?: string;
                     id?: string;
-                    post_id?: string | null;
+                    post_id?: string;
                     root_comment_id?: string | null;
-                    user_id?: string | null;
+                    user_id?: string;
                 };
                 Relationships: [
                     {
@@ -102,9 +109,16 @@ export type Database = {
                         referencedRelation: "comments";
                         referencedColumns: ["id"];
                     },
+                    {
+                        foreignKeyName: "comments_user_id_fkey1";
+                        columns: ["user_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
+                        referencedColumns: ["id"];
+                    },
                 ];
             };
-            commentUpvote: {
+            commentUpVotes: {
                 Row: {
                     comment_id: string | null;
                     created_at: string;
@@ -125,10 +139,17 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: "commentUpvote_comment_id_fkey";
+                        foreignKeyName: "new_commentUpVotes_comment_id_fkey";
                         columns: ["comment_id"];
                         isOneToOne: false;
                         referencedRelation: "comments";
+                        referencedColumns: ["id"];
+                    },
+                    {
+                        foreignKeyName: "new_commentUpVotes_user_id_fkey";
+                        columns: ["user_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
                         referencedColumns: ["id"];
                     },
                 ];
@@ -221,31 +242,38 @@ export type Database = {
                     },
                 ];
             };
-            postDownvotes: {
+            postDownVotes: {
                 Row: {
                     created_at: string;
-                    id: number;
+                    id: string;
                     post_id: string | null;
                     user_id: string | null;
                 };
                 Insert: {
                     created_at?: string;
-                    id?: number;
+                    id?: string;
                     post_id?: string | null;
                     user_id?: string | null;
                 };
                 Update: {
                     created_at?: string;
-                    id?: number;
+                    id?: string;
                     post_id?: string | null;
                     user_id?: string | null;
                 };
                 Relationships: [
                     {
-                        foreignKeyName: "postDownvotes_post_id_fkey";
+                        foreignKeyName: "new_postDownVotes_post_id_fkey";
                         columns: ["post_id"];
                         isOneToOne: false;
                         referencedRelation: "posts";
+                        referencedColumns: ["id"];
+                    },
+                    {
+                        foreignKeyName: "new_postDownVotes_user_id_fkey";
+                        columns: ["user_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
                         referencedColumns: ["id"];
                     },
                 ];
@@ -275,33 +303,48 @@ export type Database = {
                     title?: string | null;
                     user_id?: string | null;
                 };
-                Relationships: [];
+                Relationships: [
+                    {
+                        foreignKeyName: "posts_user_id_fkey1";
+                        columns: ["user_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
+                        referencedColumns: ["id"];
+                    },
+                ];
             };
-            postUpvotes: {
+            postUpVotes: {
                 Row: {
                     created_at: string;
-                    id: number;
+                    id: string;
                     post_id: string | null;
                     user_id: string | null;
                 };
                 Insert: {
                     created_at?: string;
-                    id?: number;
+                    id?: string;
                     post_id?: string | null;
                     user_id?: string | null;
                 };
                 Update: {
                     created_at?: string;
-                    id?: number;
+                    id?: string;
                     post_id?: string | null;
                     user_id?: string | null;
                 };
                 Relationships: [
                     {
-                        foreignKeyName: "postUpvotes_post_id_fkey";
+                        foreignKeyName: "new_postUpvotes_post_id_fkey";
                         columns: ["post_id"];
                         isOneToOne: false;
                         referencedRelation: "posts";
+                        referencedColumns: ["id"];
+                    },
+                    {
+                        foreignKeyName: "new_postUpvotes_user_id_fkey";
+                        columns: ["user_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
                         referencedColumns: ["id"];
                     },
                 ];
