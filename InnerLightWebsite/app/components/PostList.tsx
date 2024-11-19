@@ -50,146 +50,12 @@ const PostList: React.FC<{
     const [posts, setPosts] = useState<(Post | null)[]>([]);
     const supabase = useMemo(() => createClient(), []);
 
-    // Cache user data
-    const userCache = useMemo(() => new Map<string, Tables<"profiles">>(), []);
-
-    const getUser = useCallback(
-        async (userId: string) => {
-            if (userCache.has(userId)) {
-                return userCache.get(userId);
-            }
-            const { data, error } = await supabase
-                .from("profiles")
-                .select("*")
-                .eq("id", userId)
-                .single();
-            if (error) {
-                console.error("Error fetching user:", error);
-                return null;
-            }
-            userCache.set(userId, data);
-            return data;
-        },
-        [supabase, userCache],
-    );
-
-    const processComments = useCallback(
-        async (comments: Tables<"comments">[]) => {
-            const commentIds = comments.map((comment) => comment.id);
-
-            // Fetch all upvotes and downvotes in parallel
-            const [upvotesResponse, downvotesResponse] = await Promise.all([
-                supabase
-                    .from("commentUpVotes")
-                    .select("comment_id, user_id")
-                    .in("comment_id", commentIds),
-                supabase
-                    .from("commentDownVotes")
-                    .select("comment_id, user_id")
-                    .in("comment_id", commentIds),
-            ]);
-
-            //Create maps for quick lookup
-            const upvotesMap = new Map();
-            const downvotesMap = new Map();
-
-            upvotesResponse.data?.forEach((upvote) => {
-                const votes = upvotesMap.get(upvote.comment_id) || [];
-                votes.push(upvote);
-                upvotesMap.set(upvote.comment_id, votes);
-            });
-
-            downvotesResponse.data?.forEach((downvote) => {
-                const votes = downvotesMap.get(downvote.comment_id) || [];
-                votes.push(downvote);
-                downvotesMap.set(downvote.comment_id, votes);
-            });
-
-            //Process all comments with cached vote data
-            const processedComments = await Promise.all(
-                comments.map(async (comment) => {
-                    const commentUser = await getUser(comment.user_id!);
-                    const upvotes = upvotesMap.get(comment.id) || [];
-                    const downvotes = downvotesMap.get(comment.id) || [];
-
-                    return {
-                        ...comment,
-                        user: commentUser,
-                        upVotes: upvotes,
-                        downVotes: downvotes,
-                        votes: upvotes.length - downvotes.length,
-                    };
-                }),
-            );
-
-            return processedComments.filter((comment) => comment !== null);
-        },
-        [getUser, supabase],
-    );
-
-    const imageCache = useMemo(() => new Map<string, string>(), []);
-
-    const downloadImage = useCallback(
-        async (post: Post) => {
-            if (!post.post_image) return null;
-
-            if (imageCache.has(post.post_image)) {
-                return imageCache.get(post.post_image);
-            }
-
-            try {
-                const { data, error } = await supabase.storage
-                    .from("post_images")
-                    .download(post.post_image);
-
-                if (error) throw error;
-                const url = URL.createObjectURL(data);
-                imageCache.set(post.post_image, url);
-                return url;
-            } catch (error) {
-                console.error("Error downloading image:", error);
-                return null;
-            }
-        },
-        [supabase, imageCache],
-    );
-
-    // Debounced post processing
-
     useEffect(() => {
         if (initialPosts) {
             setPosts(initialPosts.filter((post) => post !== null));
             console.log("Initial posts set:", initialPosts);
         }
     }, [initialPosts]);
-    // Optimized useEffect with cleanup
-    // useEffect(() => {
-    //     let mounted = true;
-    //     const abortController = new AbortController();
-
-    //     const fetchPosts = async () => {
-    //         if(!initialPosts) return;
-
-    //         const postPromises = initialPosts.map(post => debouncedProcessPost(post));
-    //         const processedPosts = await Promise.all(postPromises);
-
-    //         console.log(processedPosts);
-
-    //         if(mounted) {
-    //             setPosts(processedPosts.filter(post => post !== null));
-    //         }
-    //     };
-
-    //     fetchPosts();
-
-    //     return () => {
-    //         mounted = false;
-    //         abortController.abort();
-    //         // Cleanup image cache
-    //         imageCache.forEach(url => URL.revokeObjectURL(url));
-    //         imageCache.clear();
-    //     }
-    // }, [initialPosts, debouncedProcessPost]);
 
     const handleVote = useCallback(
         async (postId: string, voteType: "up" | "down") => {
@@ -281,113 +147,93 @@ const PostList: React.FC<{
         [supabase, user.id, posts],
     );
 
-    // const addPost = useCallback(
-    //     async (post: NewPost) => {
-    //         let newPost: Post;
-    //         try {
-    //             let postImage: string | null = null;
+    const addPost = useCallback(
+        async (post: NewPost) => {
+            // Temporary ID for optimistic update
+            const tempPostId = `temp-${Date.now()}`;
 
-    //             if (post.image) {
-    //                 const extension = getFileExtension(post.image.name);
-    //                 const imagePath = `post_images/${uuidv4()}.${extension}`;
+            // Prepare optimistic post object
+            const optimisticPost: Post = {
+                id: tempPostId,
+                title: post.title,
+                content: post.description,
+                post_image: null,
+                user_id: user.id,
+                user,
+                created_at: new Date().toISOString(),
+                comments: [],
+                upVotes_count: [{ count: 0 }],
+                downVotes_count: [{ count: 0 }],
+                upVotes: [],
+                downVotes: [],
+            };
 
-    //                 const { data: imageData, error: imageDataError } =
-    //                     await supabase.storage
-    //                         .from("post_images")
-    //                         .upload(imagePath, post.image);
+            try {
+                //Optimistically add the post to the list
+                setPosts((prevPosts) => [...prevPosts, optimisticPost]);
 
-    //                 if (imageDataError) throw imageDataError;
+                //Handle image upload if present
+                let postImage: string | null = null;
+                if (post.image) {
+                    const extension = getFileExtension(post.image.name);
+                    const imagePath = `post_images/${uuidv4()}.${extension}`;
 
-    //                 postImage = imageData.path;
-    //             }
+                    const { data: imageData, error: imageError } =
+                        await supabase.storage
+                            .from("post_images")
+                            .upload(imagePath, post.image);
 
-    //             newPost = {
-    //                 id: `temporary-${Date.now()}`,
-    //                 title: post.title,
-    //                 content: post.description,
-    //                 post_image: postImage,
-    //                 user_id: user.id,
-    //                 user,
-    //                 created_at: new Date().toISOString(),
-    //                 comments:[],
-    //                 votes: 0
-    //             }
+                    if (imageError) throw imageError;
+                    postImage = imageData?.path;
+                }
 
-    //             setPosts((prevPosts) => [...prevPosts, newPost]);
+                //Insert the post into the database
+                const { data, error: postError } = await supabase
+                    .from("posts")
+                    .insert({
+                        title: post.title,
+                        content: post.description,
+                        post_image: postImage,
+                        user_id: user.id,
+                    })
+                    .select("*")
+                    .single();
 
-    //             const { data, error: postError } = await supabase
-    //                 .from("posts")
-    //                 .insert({
-    //                     title: post.title,
-    //                     content: post.description,
-    //                     post_image: postImage,
-    //                     user_id: user.id,
-    //                 })
-    //                 .select("*")
-    //                 .single();
+                if(postError) throw postError;
+                
+                //Transform the post with full data
+                const finalPost: Post = {
+                    ...data,
+                    user,
+                    comments: [],
+                    upVotes_count: [{ count: 0 }],
+                    downVotes_count: [{ count: 0 }],
+                    upVotes: [],
+                    downVotes: [],
+                };
+                
+                //Update post list, replacing the temporary post with the final post
+                setPosts((prevPosts) => [
+                    finalPost,
+                    ...prevPosts.filter((post) => post?.id !== tempPostId),
+                ])
 
-    //             if (postError) {
-    //                 console.error("Error adding post:", postError);
-    //                 throw postError;
-    //             };
+                toast.success("Post added successfully");
 
-    //             const transformedPost = {
-    //                 ...data,
-    //                 user,
-    //             };
+            } catch (error) {
+                setPosts((prevPosts) => 
+                    prevPosts.filter((post) => post?.id !== tempPostId)
+                );
+                toast.error(error instanceof Error ? error.message : "Error adding post");
 
-    //             const processedPost = await debouncedProcessPost(transformedPost);
-
-    //             if (processedPost) {
-    //                 setPosts((prevPosts) => [
-    //                     processedPost,
-    //                     ...prevPosts.filter((post) => post?.id !== newPost.id),
-    //                 ]);
-    //             }
-
-    //             toast.success("Post added successfully", {
-    //                 position: "top-right",
-    //             });
-    //         } catch (error) {
-    //             setPosts((prevPosts) =>
-    //                 prevPosts.filter((post) => post?.id !== newPost.id),
-    //             );
-    //             toast.error(
-    //                 error instanceof Error
-    //                     ? error.message
-    //                     : "Error adding post",
-    //                 { position: "top-right" },
-    //             );
-    //         }
-    //     },
-    //     [supabase, user.id, debouncedProcessPost],
-    // );
-
-    const upvotePost = (postId: string) => {
-        // setPosts(
-        //     posts.map((post) =>
-        //         post.id === postId ? { ...post, votes: post.votes + 1 } : post,
-        //     ),
-        // );
-        console.log("Post upvoted:", postId);
-    };
-
-    const downvotePost = (postId: string) => {
-        // setPosts(
-        //     posts.map((post) =>
-        //         post.id === postId ? { ...post, votes: post.votes - 1 } : post,
-        //     ),
-        // );
-        console.log("Post downvoted:", postId);
-    };
-
-    const editPost = (postId: string) => {
-        // Implement the editPost functionality here
-        console.log("Edit post:", postId);
-    };
+            }
+        },
+        [supabase, user]
+    )
 
     return (
         <div className="container px-6 py-10 mx-auto bg-white dark:bg-gray-700">
+            <PostComponent addPost={addPost} user={user} />
             {posts?.length === 0 && <p>No posts found.</p>}
             {posts?.map((post) => (
                 <PostItem

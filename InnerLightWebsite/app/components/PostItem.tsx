@@ -20,6 +20,7 @@ import { createClient } from "../utils/supabase/client";
 import { Comment } from "./PostList";
 import { toast } from "react-toastify";
 import Image from "next/image";
+import { set } from "zod";
 
 interface VoteRecord {
     comment_id: string;
@@ -118,7 +119,7 @@ const CommentItem = memo(
                                     className={`transition-colors duration-300 ${
                                         userCurrentVote === "up"
                                             ? "text-green-500"
-                                            : "hover:text-green-500 text-500"
+                                            : "hover:text-green-500 text-gray-500"
                                     }`}
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -138,7 +139,7 @@ const CommentItem = memo(
                                     className={`transition-colors duration-300 ${
                                         userCurrentVote === "down"
                                             ? "text-red-500"
-                                            : "hover:text-red-500 text-500"
+                                            : "hover:text-red-500 text-gray-500"
                                     }`}
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -271,6 +272,14 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
     }>({
         upVotes: [],
         downVotes: []
+    });
+
+    //Track User's vote on the post
+    const [userVote, setUserVote] = useState<"up"  | "down" | null>(() => {
+        //Initialize userVote based on existing votes
+        if(post.upVotes?.some(vote => vote.user_id === user.id)) return "up";
+        if(post.downVotes?.some(vote => vote.user_id === user.id)) return "down";
+        return null;
     });
 
     const supabase = useMemo(() => createClient(), []);
@@ -444,11 +453,17 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
     }, [post.downVotes_count, post.upVotes_count]);
 
     const handleUpvote = useCallback(() => {
-        onVote(post.id, "up");
+        //If user has already voted, remove their vote
+        const newVoteType = userVote === "up"  ? null : "up";
+        setUserVote(newVoteType);
+        onVote(post.id, newVoteType || "up");
     }, [onVote, post.id]);
 
     const handleDownvote = useCallback(() => {
-        onVote(post.id, "down");
+        //If user has already voted, remove their vote
+        const newVoteType = userVote === "down" ? null : "down";
+        setUserVote(newVoteType);
+        onVote(post.id, newVoteType || "down");
     }, [onVote, post.id]);
 
     return (
@@ -456,14 +471,18 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
             <div className="flex flex-col items-center space-y-1 mr-4">
                 <button
                     onClick={handleUpvote}
-                    className="hover:text-green-500 transition-colors duration-300"
+                    className={`transition-colors duration-300  ${
+                        userVote === "up" ? "text-green-500" : "hover:text-green-500 text-gray-500"
+                    }`}
                 >
                     <FaArrowUp className="w-5 h-5  fill-current" />
                 </button>
                 <span>{postVoteCount}</span>
                 <button
                     onClick={handleDownvote}
-                    className="hover:text-red-500 transition-colors duration-300"
+                    className={`transition-colors duration-300 ${
+                        userVote === "down" ? "text-red-500" : "hover:text-red-500 text-gray-500"
+                    }`}
                 >
                     <FaArrowDown className="w-5 h-5 fill-current" />
                 </button>
