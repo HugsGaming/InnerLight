@@ -21,6 +21,11 @@ import { Comment } from "./PostList";
 import { toast } from "react-toastify";
 import Image from "next/image";
 
+interface VoteRecord {
+    comment_id: string;
+    user_id: string;
+}
+
 interface PostItemProps {
     user: Tables<"profiles">;
     post: Post;
@@ -32,9 +37,16 @@ const CommentItem = memo(
     ({
         comment,
         onVote,
+        currentUserId,
+        userVotes
     }: {
         comment: Comment;
-        onVote: (commentId: string, voteType: "up" | "down") => void;
+        onVote: (commentId: string, voteType: "up" | "down", currentVote: "up" | "down" | null) => void;
+        currentUserId: string;
+        userVotes: {
+            upVotes: VoteRecord[];
+            downVotes: VoteRecord[];
+        }
     }) => {
         const [isOpen, setIsOpen] = useState(false);
         const [localUpVotes, setLocalUpVotes] = useState(
@@ -44,13 +56,47 @@ const CommentItem = memo(
             comment.downVotes_count![0]?.count || 0,
         );
 
+        // Determine current vote state
+        const userCurrentVote = useMemo(() => {
+            if(userVotes.upVotes.some((vote) => vote.comment_id === comment.id)) {
+                return "up";
+            } else if(userVotes.downVotes.some((vote) => vote.comment_id === comment.id)) {
+                return "down";
+            } 
+            return null
+        }, [userVotes, comment.id])
+
         const handleVote = (voteType: "up" | "down") => {
-            if (voteType === "up") {
-                setLocalUpVotes(localUpVotes + 1);
+            if(!currentUserId) return;
+
+            //Optimistically update the UI
+            if(userCurrentVote === voteType) {
+                //Removing vote
+                if(voteType === "up") {
+                    setLocalUpVotes(localUpVotes - 1);
+                } else {
+                    setLocalDownVotes(localDownVotes - 1);
+                }
             } else {
-                setLocalDownVotes(localDownVotes + 1);
+                //Adding/changing vote
+                if(userCurrentVote) {
+                    // Remove old vote
+                    if(userCurrentVote === "up") {
+                        setLocalUpVotes(localUpVotes - 1);
+                    } else {
+                        setLocalDownVotes(localDownVotes - 1);
+                    }
+                }
+
+                //Add new vote
+                if(voteType === "up") {
+                    setLocalUpVotes(localUpVotes + 1);
+                } else {
+                    setLocalDownVotes(localDownVotes + 1);
+                }
             }
-            onVote(comment.id, voteType);
+
+            onVote(comment.id, voteType, userCurrentVote);
         };
 
         const voteCount = localUpVotes - localDownVotes;
@@ -69,7 +115,11 @@ const CommentItem = memo(
                         <div className="mt-2 ml-4 transition-all duration-300 ease-in-out">
                             <div className="flex items-center space-x-1">
                                 <button
-                                    className="hover:text-green-500 transition-colors duration-300"
+                                    className={`transition-colors duration-300 ${
+                                        userCurrentVote === "up"
+                                            ? "text-green-500"
+                                            : "hover:text-green-500 text-500"
+                                    }`}
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         handleVote("up");
@@ -77,9 +127,19 @@ const CommentItem = memo(
                                 >
                                     <FaArrowUp className="w-4 h-4 fill-current" />
                                 </button>
-                                <span>{voteCount}</span>
+                                <span className={`font-medium ${
+                                    voteCount > 0 
+                                    ? "text-green-500" 
+                                    : voteCount < 0 
+                                        ? "text-red-500" 
+                                        : "text-gray-500"
+                                }`}>{voteCount}</span>
                                 <button
-                                    className="hover:text-red-500 transition-colors duration-300"
+                                    className={`transition-colors duration-300 ${
+                                        userCurrentVote === "down"
+                                            ? "text-red-500"
+                                            : "hover:text-red-500 text-500"
+                                    }`}
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         handleVote("down");
@@ -146,6 +206,7 @@ CommentForm.displayName = "CommentForm";
 const PostImage = ({ post }: { post: Post }) => {
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
     const supabase = useMemo(() => createClient(), []);
 
     const downloadImage = useCallback(async () => {
@@ -204,22 +265,104 @@ const PostImage = ({ post }: { post: Post }) => {
 const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
     const [showComments, setShowComments] = useState(false);
     const [localComments, setLocalComments] = useState<Comment[]>([]);
+    const [commentVotes, setCommentVotes] = useState<{
+        upVotes: VoteRecord[];
+        downVotes: VoteRecord[];
+    }>({
+        upVotes: [],
+        downVotes: []
+    });
+
     const supabase = useMemo(() => createClient(), []);
 
-    // Memoize ccomments data transformation
-    const comments = useMemo(() => post.comments || [], [post.comments]);
+    //Fetch user's votes on comments
+    useEffect(() => {
+        const fetchUserVotes = async () => {
+            const commentIds = post.comments?.map(comment => comment.id) || [];
+            if(commentIds?.length === 0) return;
+
+            const [upVotesResponse, downVotesResponse] = await Promise.all([
+                supabase.from("commentUpVotes").select("comment_id, user_id").in("comment_id", commentIds),
+                supabase.from("commentDownVotes").select("comment_id, user_id").in("comment_id", commentIds),
+            ]);
+
+            setCommentVotes({
+                upVotes: (upVotesResponse.data as VoteRecord[]) || [],
+                downVotes: (downVotesResponse.data as VoteRecord[]) || [],
+            });
+        };
+
+        if(showComments) {
+            fetchUserVotes();
+        }
+    }, [showComments, post.comments, user.id, supabase]);
+
+    useEffect(() => {
+        setLocalComments(post.comments || []);
+    }, [post.comments]);
 
     // Optimistic comment Voting
     const handleCommentVote = useCallback(
-        async (commentId: string, voteType: "up" | "down") => {
-            const table =
-                voteType === "up" ? "commentUpVotes" : "commentDownVotes";
+        async (commentId: string, voteType: "up" | "down", currentVote: "up" | "down" | null) => {
+            const newVoteTable = voteType === "up" ? "commentUpVotes" : "commentDownVotes";
+            const oldVoteTable = currentVote === "up" ? "commentUpVotes" : "commentDownVotes";
+
             try {
-                const { error } = await supabase.from(table).insert({
-                    comment_id: commentId,
-                    user_id: user.id,
-                });
-                if (error) throw error;
+                if(currentVote === voteType) {
+                    //Remove vote
+                    const { error } = await supabase
+                        .from(newVoteTable)
+                        .delete()
+                        .eq("comment_id", commentId)
+                        .eq("user_id", user.id);
+
+                    if(error) throw error;
+
+                    //Update Local State
+                    setCommentVotes(prev => ({
+                        ...prev,
+                        [voteType === "up" ? "upVotes" : "downVotes"]:
+                            prev[voteType === "up" ? "upVotes" : "downVotes"]
+                                .filter(vote => vote.comment_id !== commentId)
+                    }));
+                } else {
+                    //Start Transaction
+                    if(currentVote) {
+                        // Remove old vote
+                        await supabase
+                            .from(oldVoteTable)
+                            .delete()
+                            .eq("comment_id", commentId)
+                            .eq("user_id", user.id);
+                    }
+
+                    //Add new vote
+                    const { error } = await supabase
+                        .from(newVoteTable)
+                        .insert({ comment_id: commentId, user_id: user.id });
+
+                    if(error) throw error;
+
+                    //Update Local State
+                    setCommentVotes(prev => {
+                        const newState = { ...prev };
+
+                        if(currentVote) {
+                            //Remove old vote
+                            newState[currentVote === "up" ? "upVotes" : "downVotes"] =
+                                newState[currentVote === "up" ? "upVotes" : "downVotes"]
+                                    .filter(vote => vote.comment_id !== commentId);
+                        }
+
+                        //Add new state
+                        newState[voteType === "up" ? "upVotes" : "downVotes"] = [
+                            ...prev[voteType === "up" ? "upVotes" : "downVotes"],
+                            { comment_id: commentId, user_id: user.id },
+                        ];
+
+                        return newState;
+                    });
+                }
             } catch (error) {
                 setLocalComments(post.comments || []);
                 toast.error("Error voting on comment");
@@ -344,17 +487,19 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
                         >
                             <FaComment className="w-5 h-5 fill-current" />
                         </button>
-                        <span>{comments.length}</span>
+                        <span>{localComments.length}</span>
                     </div>
                 </div>
 
                 {showComments && (
                     <div className="mt-4 transition-all duration-300 ease-in-out">
-                        {comments.map((comment) => (
+                        {localComments.map((comment) => (
                             <CommentItem
                                 key={comment.id}
                                 comment={comment}
                                 onVote={handleCommentVote}
+                                currentUserId={user.id}
+                                userVotes={commentVotes}
                             />
                         ))}
                         <CommentForm onSubmit={handleAddComment} />
