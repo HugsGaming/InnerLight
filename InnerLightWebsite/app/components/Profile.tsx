@@ -4,6 +4,7 @@ import { Tables } from "../../database.types";
 import { toast } from "react-toastify";
 
 import { createClient } from "../utils/supabase/client";
+import { User } from "@supabase/supabase-js";
 
 interface ProfileProps {
     user: Tables<"profiles">;
@@ -20,8 +21,10 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     const [isEditingAbout, setIsEditingAbout] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isLoadingAvatar, setIsLoadingAvatar] = useState(true);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
 
     const supabase = createClient();
+
 
     const downloadImage = useCallback(async () => {
         if (!user.avatar_url) {
@@ -47,6 +50,13 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     }, [supabase, user.avatar_url]);
 
     useEffect(() => {
+        const getCurrentUser = async () => {
+            const { data, error } = await supabase.auth.getUser();
+            if (error) throw error;
+            if(!data.user) return;
+            setCurrentUser(data.user);
+        }
+        getCurrentUser();
         if (user.avatar_url) {
             downloadImage();
         } else {
@@ -190,47 +200,50 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                     alt={`${user.username}'s avatar`}
                     className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
                 />
-                {isEditingAvatar ? (
-                    <div className="absolute top-4 right-4 flex space-x-2">
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleAvatarChange}
-                            className="hidden"
-                            id="avatarUpload"
-                        />
-                        <label
-                            htmlFor="avatarUpload"
-                            className="px-3 py-1 bg-blue-500 text-white text-sm rounded cursor-pointer"
+                {currentUser?.id === user.id && (
+                    isEditingAvatar ? (
+                        <div className="absolute top-4 right-4 flex space-x-2">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleAvatarChange}
+                                className="hidden"
+                                id="avatarUpload"
+                            />
+                            <label
+                                htmlFor="avatarUpload"
+                                className="px-3 py-1 bg-blue-500 text-white text-sm rounded cursor-pointer"
+                            >
+                                Choose File
+                            </label>
+                            {previewAvatar && (
+                                <>
+                                    <button
+                                        onClick={handleAvatarSave}
+                                        className="ml-2 px-3 py-1 bg-green-500 text-white text-sm rounded"
+                                        disabled={isSaving}
+                                    >
+                                        {isSaving ? "Saving..." : "Save"}
+                                    </button>
+                                    <button
+                                        onClick={cancelAvatarEdit}
+                                        className="ml-2 px-3 py-1 bg-red-500 text-white text-sm rounded"
+                                    >
+                                        Cancel
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setIsEditingAvatar(true)}
+                            className="absolute top-4 right-4 px-3 py-1 bg-gray-700 text-white text-sm rounded"
                         >
-                            Choose File
-                        </label>
-                        {previewAvatar && (
-                            <>
-                                <button
-                                    onClick={handleAvatarSave}
-                                    className="ml-2 px-3 py-1 bg-green-500 text-white text-sm rounded"
-                                    disabled={isSaving}
-                                >
-                                    {isSaving ? "Saving..." : "Save"}
-                                </button>
-                                <button
-                                    onClick={cancelAvatarEdit}
-                                    className="ml-2 px-3 py-1 bg-red-500 text-white text-sm rounded"
-                                >
-                                    Cancel
-                                </button>
-                            </>
-                        )}
-                    </div>
-                ) : (
-                    <button
-                        onClick={() => setIsEditingAvatar(true)}
-                        className="absolute top-4 right-4 px-3 py-1 bg-gray-700 text-white text-sm rounded"
-                    >
-                        Edit Avatar
-                    </button>
+                            Edit Avatar
+                        </button>
+                    )
                 )}
+                {}
 
                 <div>
                     <h1 className="text-3xl font-bold text-black">

@@ -1,12 +1,10 @@
 import Head from "next/head";
-import React, { use } from "react";
+import React from "react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import { createClient } from "../utils/supabase/server";
-import { QueryResult, QueryData } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
-import { toast, ToastContainer } from "react-toastify";
-import { Post } from "../components/PostList";
+import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Profile from "../components/Profile";
 
