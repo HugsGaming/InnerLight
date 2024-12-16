@@ -1,18 +1,15 @@
 "use client";
 import React, { useCallback, useEffect, useState } from "react";
 import { Tables } from "../../database.types";
-import { toast } from 'react-toastify'
+import { toast } from "react-toastify";
 
-import { createClient } from '../utils/supabase/client'
-
-
+import { createClient } from "../utils/supabase/client";
 
 interface ProfileProps {
     user: Tables<"profiles">;
 }
 
 const Profile: React.FC<ProfileProps> = ({ user }) => {
-    
     const [avatar, setAvatar] = useState(
         user.avatar_url ?? "/default-avatar.png",
     );
@@ -39,14 +36,18 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
             const url = URL.createObjectURL(data);
             setAvatarUrl(url);
         } catch (error) {
-            toast.error("Error downloading image:", error.message);
+            if (error instanceof Error) {
+                toast.error("Error downloading image:" + error.message);
+            } else {
+                toast.error("Error downloading image!");
+            }
         } finally {
             setIsLoadingAvatar(false);
         }
     }, [supabase, user.avatar_url]);
 
     useEffect(() => {
-        if(user.avatar_url) {
+        if (user.avatar_url) {
             downloadImage();
         } else {
             setIsLoadingAvatar(false);
@@ -58,8 +59,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     ) => {
         const file = event.target.files?.[0];
         if (file) {
-            if(file.type !== "image/jpeg" && file.type !== "image/png") {
-                toast.error("Only JPEG and PNG images are allowed.")
+            if (file.type !== "image/jpeg" && file.type !== "image/png") {
+                toast.error("Only JPEG and PNG images are allowed.");
             } else {
                 // Create a preview of the selected image
                 const reader = new FileReader();
@@ -96,7 +97,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
             if (error) throw error;
 
-            const {error: updateError } = await supabase
+            const { error: updateError } = await supabase
                 .from("profiles")
                 .update({ avatar_url: data?.path })
                 .eq("id", user.id);
@@ -107,7 +108,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         } catch (error) {
             setAvatarUrl(user.avatar_url ?? "/default-avatar.png");
             setIsEditingAvatar(true);
-            toast.error("Error updating avatar:", error.message);
+            if (error instanceof Error) {
+                toast.error("Error updating avatar:" + error.message);
+            } else {
+                toast.error("Error updating avatar!");
+            }
         } finally {
             setIsSaving(false);
             setPreviewAvatar(null);
@@ -131,7 +136,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
             return;
         }
 
-        const {error: updateError } = await supabase
+        const { error: updateError } = await supabase
             .from("profiles")
             .update({ avatar_url: data?.path })
             .eq("id", user.id);
@@ -174,7 +179,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
             <div className="flex justify-center items-center h-screen">
                 <p>Loading profile...</p>
             </div>
-        )
+        );
     }
 
     return (
@@ -215,7 +220,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                 >
                                     Cancel
                                 </button>
-                                
                             </>
                         )}
                     </div>
@@ -234,16 +238,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                     </h1>
                     <p className="text-lg text-black">@{user.username}</p>
                 </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="mt-6 flex justify-center border-b border-gray-300">
-                <button className="px-4 py-2 text-lg font-medium text-gray-700 hover:text-gray-900 focus:border-b-2 focus:border-blue-500">
-                    Posts
-                </button>
-                <button className="px-4 py-2 text-lg font-medium text-gray-700 hover:text-gray-900 focus:border-b-2 focus:border-blue-500">
-                    Media
-                </button>
             </div>
 
             {/* About Section */}
@@ -280,6 +274,16 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                 <p className="text-gray-800 mt-3">
                     {user.email || "No contact information available."}
                 </p>
+            </div>
+
+            {/* Tabs */}
+            <div className="mt-6 flex justify-center border-b border-gray-300">
+                <button className="px-4 py-2 text-lg font-medium text-gray-700 hover:text-gray-900 focus:border-b-2 focus:border-blue-500">
+                    Posts
+                </button>
+                <button className="px-4 py-2 text-lg font-medium text-gray-700 hover:text-gray-900 focus:border-b-2 focus:border-blue-500">
+                    Media
+                </button>
             </div>
         </div>
     );
