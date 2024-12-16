@@ -2,15 +2,17 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Tables } from "../../database.types";
 import { toast } from "react-toastify";
-
+import PostList, { Post } from "../components/PostList";
 import { createClient } from "../utils/supabase/client";
 import { User } from "@supabase/supabase-js";
 
 interface ProfileProps {
     user: Tables<"profiles">;
+    posts: Post[] | null;
+    mediaPosts: Post[] | null;
 }
 
-const Profile: React.FC<ProfileProps> = ({ user }) => {
+const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
     const [avatar, setAvatar] = useState(
         user.avatar_url ?? "/default-avatar.png",
     );
@@ -22,9 +24,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoadingAvatar, setIsLoadingAvatar] = useState(true);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [activeTab, setActiveTab] = useState<"posts" | "media">("posts");
 
     const supabase = createClient();
-
 
     const downloadImage = useCallback(async () => {
         if (!user.avatar_url) {
@@ -53,9 +55,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         const getCurrentUser = async () => {
             const { data, error } = await supabase.auth.getUser();
             if (error) throw error;
-            if(!data.user) return;
+            if (!data.user) return;
             setCurrentUser(data.user);
-        }
+        };
         getCurrentUser();
         if (user.avatar_url) {
             downloadImage();
@@ -200,8 +202,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                     alt={`${user.username}'s avatar`}
                     className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
                 />
-                {currentUser?.id === user.id && (
-                    isEditingAvatar ? (
+                {currentUser?.id === user.id &&
+                    (isEditingAvatar ? (
                         <div className="absolute top-4 right-4 flex space-x-2">
                             <input
                                 type="file"
@@ -241,8 +243,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                         >
                             Edit Avatar
                         </button>
-                    )
-                )}
+                    ))}
                 {}
 
                 <div>
@@ -291,12 +292,31 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
             {/* Tabs */}
             <div className="mt-6 flex justify-center border-b border-gray-300">
-                <button className="px-4 py-2 text-lg font-medium text-gray-700 hover:text-gray-900 focus:border-b-2 focus:border-blue-500">
+                <button
+                    onClick={() => setActiveTab("posts")}
+                    className={`px-4 py-2 text-lg font-medium hover:text-gray-900 ${activeTab === "posts" ? "text-blue-600 border-b-2 border-blue-500" : "text-gray-700"}`}
+                >
                     Posts
                 </button>
-                <button className="px-4 py-2 text-lg font-medium text-gray-700 hover:text-gray-900 focus:border-b-2 focus:border-blue-500">
+                <button
+                    onClick={() => setActiveTab("media")}
+                    className={`px-4 py-2 text-lg font-medium hover:text-gray-900 ${activeTab === "media" ? "text-blue-600 border-b-2 border-blue-500" : "text-gray-700"}`}
+                >
                     Media
                 </button>
+            </div>
+
+            {/* Tab Content */}
+            <div className="p-6">
+                {activeTab === "posts" ? (
+                    <div>
+                        <PostList user={user} initialPosts={posts} />
+                    </div>
+                ) : (
+                    <div>
+                        <PostList user={user} initialPosts={mediaPosts} />
+                    </div>
+                )}
             </div>
         </div>
     );
