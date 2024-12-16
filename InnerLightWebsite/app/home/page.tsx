@@ -24,19 +24,13 @@ const Home: React.FC = async () => {
     type PostWithCommentsAndVotes = QueryData<
         typeof postsWithCommentsAndVotesQuery
     >;
-    supabase.auth.getUser().then(async ({ data }) => {
-        const { user } = data;
-        if (!user || user === null) {
-            redirect("/auth/login");
-        } else {
-        }
-    });
     const {
         data: { user },
     } = await supabase.auth.getUser();
     let profile;
 
     if (!user || user == null) {
+        redirect("/auth/login");
     } else {
         let metadata = user.user_metadata;
         console.log(metadata);
@@ -132,6 +126,7 @@ const Home: React.FC = async () => {
                 <PostList
                     user={profile!}
                     initialPosts={posts as unknown as Post[]}
+                    showAddPost
                 />
             </div>
             <ButtonAiChat />

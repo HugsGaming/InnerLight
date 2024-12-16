@@ -46,7 +46,8 @@ export interface Comment extends Tables<"comments"> {
 const PostList: React.FC<{
     user: Tables<"profiles">;
     initialPosts?: Post[] | null;
-}> = ({ user, initialPosts }) => {
+    showAddPost?: boolean;
+}> = ({ user, initialPosts, showAddPost }) => {
     const [posts, setPosts] = useState<(Post | null)[]>([]);
     const supabase = useMemo(() => createClient(), []);
 
@@ -199,8 +200,8 @@ const PostList: React.FC<{
                     .select("*")
                     .single();
 
-                if(postError) throw postError;
-                
+                if (postError) throw postError;
+
                 //Transform the post with full data
                 const finalPost: Post = {
                     ...data,
@@ -211,29 +212,31 @@ const PostList: React.FC<{
                     upVotes: [],
                     downVotes: [],
                 };
-                
+
                 //Update post list, replacing the temporary post with the final post
                 setPosts((prevPosts) => [
                     finalPost,
                     ...prevPosts.filter((post) => post?.id !== tempPostId),
-                ])
+                ]);
 
                 toast.success("Post added successfully");
-
             } catch (error) {
-                setPosts((prevPosts) => 
-                    prevPosts.filter((post) => post?.id !== tempPostId)
+                setPosts((prevPosts) =>
+                    prevPosts.filter((post) => post?.id !== tempPostId),
                 );
-                toast.error(error instanceof Error ? error.message : "Error adding post");
-
+                toast.error(
+                    error instanceof Error
+                        ? error.message
+                        : "Error adding post",
+                );
             }
         },
-        [supabase, user]
-    )
+        [supabase, user],
+    );
 
     return (
         <div className="container px-6 py-10 mx-auto bg-white dark:bg-gray-700">
-            <PostComponent addPost={addPost} user={user} />
+            {showAddPost && <PostComponent addPost={addPost} user={user} />}
             {posts?.length === 0 && <p>No posts found.</p>}
             {posts?.map((post) => (
                 <PostItem

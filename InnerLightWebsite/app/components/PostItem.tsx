@@ -21,6 +21,7 @@ import { Comment } from "./PostList";
 import { toast } from "react-toastify";
 import Image from "next/image";
 import { set } from "zod";
+import Link from "next/link";
 
 interface VoteRecord {
     comment_id: string;
@@ -39,15 +40,19 @@ const CommentItem = memo(
         comment,
         onVote,
         currentUserId,
-        userVotes
+        userVotes,
     }: {
         comment: Comment;
-        onVote: (commentId: string, voteType: "up" | "down", currentVote: "up" | "down" | null) => void;
+        onVote: (
+            commentId: string,
+            voteType: "up" | "down",
+            currentVote: "up" | "down" | null,
+        ) => void;
         currentUserId: string;
         userVotes: {
             upVotes: VoteRecord[];
             downVotes: VoteRecord[];
-        }
+        };
     }) => {
         const [isOpen, setIsOpen] = useState(false);
         const [localUpVotes, setLocalUpVotes] = useState(
@@ -59,30 +64,36 @@ const CommentItem = memo(
 
         // Determine current vote state
         const userCurrentVote = useMemo(() => {
-            if(userVotes.upVotes.some((vote) => vote.comment_id === comment.id)) {
+            if (
+                userVotes.upVotes.some((vote) => vote.comment_id === comment.id)
+            ) {
                 return "up";
-            } else if(userVotes.downVotes.some((vote) => vote.comment_id === comment.id)) {
+            } else if (
+                userVotes.downVotes.some(
+                    (vote) => vote.comment_id === comment.id,
+                )
+            ) {
                 return "down";
-            } 
-            return null
-        }, [userVotes, comment.id])
+            }
+            return null;
+        }, [userVotes, comment.id]);
 
         const handleVote = (voteType: "up" | "down") => {
-            if(!currentUserId) return;
+            if (!currentUserId) return;
 
             //Optimistically update the UI
-            if(userCurrentVote === voteType) {
+            if (userCurrentVote === voteType) {
                 //Removing vote
-                if(voteType === "up") {
+                if (voteType === "up") {
                     setLocalUpVotes(localUpVotes - 1);
                 } else {
                     setLocalDownVotes(localDownVotes - 1);
                 }
             } else {
                 //Adding/changing vote
-                if(userCurrentVote) {
+                if (userCurrentVote) {
                     // Remove old vote
-                    if(userCurrentVote === "up") {
+                    if (userCurrentVote === "up") {
                         setLocalUpVotes(localUpVotes - 1);
                     } else {
                         setLocalDownVotes(localDownVotes - 1);
@@ -90,7 +101,7 @@ const CommentItem = memo(
                 }
 
                 //Add new vote
-                if(voteType === "up") {
+                if (voteType === "up") {
                     setLocalUpVotes(localUpVotes + 1);
                 } else {
                     setLocalDownVotes(localDownVotes + 1);
@@ -128,13 +139,17 @@ const CommentItem = memo(
                                 >
                                     <FaArrowUp className="w-4 h-4 fill-current" />
                                 </button>
-                                <span className={`font-medium ${
-                                    voteCount > 0 
-                                    ? "text-green-500" 
-                                    : voteCount < 0 
-                                        ? "text-red-500" 
-                                        : "text-gray-500"
-                                }`}>{voteCount}</span>
+                                <span
+                                    className={`font-medium ${
+                                        voteCount > 0
+                                            ? "text-green-500"
+                                            : voteCount < 0
+                                              ? "text-red-500"
+                                              : "text-gray-500"
+                                    }`}
+                                >
+                                    {voteCount}
+                                </span>
                                 <button
                                     className={`transition-colors duration-300 ${
                                         userCurrentVote === "down"
@@ -271,14 +286,15 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
         downVotes: VoteRecord[];
     }>({
         upVotes: [],
-        downVotes: []
+        downVotes: [],
     });
 
     //Track User's vote on the post
-    const [userVote, setUserVote] = useState<"up"  | "down" | null>(() => {
+    const [userVote, setUserVote] = useState<"up" | "down" | null>(() => {
         //Initialize userVote based on existing votes
-        if(post.upVotes?.some(vote => vote.user_id === user.id)) return "up";
-        if(post.downVotes?.some(vote => vote.user_id === user.id)) return "down";
+        if (post.upVotes?.some((vote) => vote.user_id === user.id)) return "up";
+        if (post.downVotes?.some((vote) => vote.user_id === user.id))
+            return "down";
         return null;
     });
 
@@ -287,12 +303,19 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
     //Fetch user's votes on comments
     useEffect(() => {
         const fetchUserVotes = async () => {
-            const commentIds = post.comments?.map(comment => comment.id) || [];
-            if(commentIds?.length === 0) return;
+            const commentIds =
+                post.comments?.map((comment) => comment.id) || [];
+            if (commentIds?.length === 0) return;
 
             const [upVotesResponse, downVotesResponse] = await Promise.all([
-                supabase.from("commentUpVotes").select("comment_id, user_id").in("comment_id", commentIds),
-                supabase.from("commentDownVotes").select("comment_id, user_id").in("comment_id", commentIds),
+                supabase
+                    .from("commentUpVotes")
+                    .select("comment_id, user_id")
+                    .in("comment_id", commentIds),
+                supabase
+                    .from("commentDownVotes")
+                    .select("comment_id, user_id")
+                    .in("comment_id", commentIds),
             ]);
 
             setCommentVotes({
@@ -301,7 +324,7 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
             });
         };
 
-        if(showComments) {
+        if (showComments) {
             fetchUserVotes();
         }
     }, [showComments, post.comments, user.id, supabase]);
@@ -312,12 +335,18 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
 
     // Optimistic comment Voting
     const handleCommentVote = useCallback(
-        async (commentId: string, voteType: "up" | "down", currentVote: "up" | "down" | null) => {
-            const newVoteTable = voteType === "up" ? "commentUpVotes" : "commentDownVotes";
-            const oldVoteTable = currentVote === "up" ? "commentUpVotes" : "commentDownVotes";
+        async (
+            commentId: string,
+            voteType: "up" | "down",
+            currentVote: "up" | "down" | null,
+        ) => {
+            const newVoteTable =
+                voteType === "up" ? "commentUpVotes" : "commentDownVotes";
+            const oldVoteTable =
+                currentVote === "up" ? "commentUpVotes" : "commentDownVotes";
 
             try {
-                if(currentVote === voteType) {
+                if (currentVote === voteType) {
                     //Remove vote
                     const { error } = await supabase
                         .from(newVoteTable)
@@ -325,18 +354,18 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
                         .eq("comment_id", commentId)
                         .eq("user_id", user.id);
 
-                    if(error) throw error;
+                    if (error) throw error;
 
                     //Update Local State
-                    setCommentVotes(prev => ({
+                    setCommentVotes((prev) => ({
                         ...prev,
-                        [voteType === "up" ? "upVotes" : "downVotes"]:
-                            prev[voteType === "up" ? "upVotes" : "downVotes"]
-                                .filter(vote => vote.comment_id !== commentId)
+                        [voteType === "up" ? "upVotes" : "downVotes"]: prev[
+                            voteType === "up" ? "upVotes" : "downVotes"
+                        ].filter((vote) => vote.comment_id !== commentId),
                     }));
                 } else {
                     //Start Transaction
-                    if(currentVote) {
+                    if (currentVote) {
                         // Remove old vote
                         await supabase
                             .from(oldVoteTable)
@@ -350,24 +379,29 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
                         .from(newVoteTable)
                         .insert({ comment_id: commentId, user_id: user.id });
 
-                    if(error) throw error;
+                    if (error) throw error;
 
                     //Update Local State
-                    setCommentVotes(prev => {
+                    setCommentVotes((prev) => {
                         const newState = { ...prev };
 
-                        if(currentVote) {
+                        if (currentVote) {
                             //Remove old vote
-                            newState[currentVote === "up" ? "upVotes" : "downVotes"] =
-                                newState[currentVote === "up" ? "upVotes" : "downVotes"]
-                                    .filter(vote => vote.comment_id !== commentId);
+                            newState[
+                                currentVote === "up" ? "upVotes" : "downVotes"
+                            ] = newState[
+                                currentVote === "up" ? "upVotes" : "downVotes"
+                            ].filter((vote) => vote.comment_id !== commentId);
                         }
 
                         //Add new state
-                        newState[voteType === "up" ? "upVotes" : "downVotes"] = [
-                            ...prev[voteType === "up" ? "upVotes" : "downVotes"],
-                            { comment_id: commentId, user_id: user.id },
-                        ];
+                        newState[voteType === "up" ? "upVotes" : "downVotes"] =
+                            [
+                                ...prev[
+                                    voteType === "up" ? "upVotes" : "downVotes"
+                                ],
+                                { comment_id: commentId, user_id: user.id },
+                            ];
 
                         return newState;
                     });
@@ -454,7 +488,7 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
 
     const handleUpvote = useCallback(() => {
         //If user has already voted, remove their vote
-        const newVoteType = userVote === "up"  ? null : "up";
+        const newVoteType = userVote === "up" ? null : "up";
         setUserVote(newVoteType);
         onVote(post.id, newVoteType || "up");
     }, [onVote, post.id]);
@@ -472,7 +506,9 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
                 <button
                     onClick={handleUpvote}
                     className={`transition-colors duration-300  ${
-                        userVote === "up" ? "text-green-500" : "hover:text-green-500 text-gray-500"
+                        userVote === "up"
+                            ? "text-green-500"
+                            : "hover:text-green-500 text-gray-500"
                     }`}
                 >
                     <FaArrowUp className="w-5 h-5  fill-current" />
@@ -481,7 +517,9 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
                 <button
                     onClick={handleDownvote}
                     className={`transition-colors duration-300 ${
-                        userVote === "down" ? "text-red-500" : "hover:text-red-500 text-gray-500"
+                        userVote === "down"
+                            ? "text-red-500"
+                            : "hover:text-red-500 text-gray-500"
                     }`}
                 >
                     <FaArrowDown className="w-5 h-5 fill-current" />
@@ -490,7 +528,12 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
             <div className="flex-1">
                 <div className="flex justify-between items-center mb-2">
                     <div className="text-sm">
-                        Posted by: {post.user?.username}
+                        Posted by:{" "}
+                        <Link href={`/profile/${post.user?.id}`} legacyBehavior>
+                            <a className="text-blue-500 hover:underline">
+                                {post.user?.username}
+                            </a>
+                        </Link>
                     </div>
                 </div>
                 <div className="text-xl font-bold mb-2">{post.title}</div>
