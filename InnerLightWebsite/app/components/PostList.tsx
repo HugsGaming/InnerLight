@@ -46,7 +46,8 @@ export interface Comment extends Tables<"comments"> {
 const PostList: React.FC<{
     user: Tables<"profiles">;
     initialPosts?: Post[] | null;
-}> = ({ user, initialPosts }) => {
+    showAddPost?: boolean;
+}> = ({ user, initialPosts, showAddPost }) => {
     const [posts, setPosts] = useState<(Post | null)[]>([]);
     const supabase = useMemo(() => createClient(), []);
 
@@ -235,7 +236,7 @@ const PostList: React.FC<{
 
     return (
         <div className="container px-6 py-10 mx-auto bg-white dark:bg-gray-700">
-            <PostComponent addPost={addPost} user={user} />
+            {showAddPost && <PostComponent addPost={addPost} user={user} />}
             {posts?.length === 0 && <p>No posts found.</p>}
             {posts?.map((post) => (
                 <PostItem

@@ -126,6 +126,7 @@ const Home: React.FC = async () => {
                 <PostList
                     user={profile!}
                     initialPosts={posts as unknown as Post[]}
+                    showAddPost
                 />
             </div>
             <ButtonAiChat />
