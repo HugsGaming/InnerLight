@@ -7,6 +7,7 @@ import Head from "next/head";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import { chatData } from "../components/ChatData";
+import ChatApplication from "../components/ChatApplication";
 
 const App = () => {
     const [selectedChat, setSelectedChat] = useState<string>("Friends Forever");
@@ -94,14 +95,7 @@ const App = () => {
             </Head>
             <Header />
             <Sidebar />
-            <div className="flex flex-1 ml-14 mt-14 mb-10 md:ml-64 h-full">
-                <ChatSidebar onSelectChat={handleSelectChat} />
-                <ChatWindow
-                    chatName={selectedChat}
-                    messages={chatMessages[selectedChat] || []}
-                    onSendMessage={handleSendMessage}
-                />
-            </div>
+            <ChatApplication />
         </div>
     );
 };
