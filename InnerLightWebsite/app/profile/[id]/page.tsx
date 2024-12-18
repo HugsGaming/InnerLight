@@ -44,29 +44,29 @@ export default async function ProfilePage({ params: { id } }: Props) {
     }
 
     const postsWithCommentsAndVotesQuery = supabase
-            .from("posts")
-            .select(
-                "*, comments(*, user:profiles(*), upVotes:commentUpVotes(*), upVotes_count:commentUpVotes(count), downVotes:commentDownVotes(*), downVotes_count:commentDownVotes(count)), downVotes:postDownVotes(*), downVotes_count:postDownVotes(count), upVotes:postUpVotes(*), upVotes_count:postUpVotes(count), user:profiles(*)",
-            )
-            .eq("user_id", id)
-            .order("created_at", { ascending: false });
-    
-        type PostWithCommentsAndVotes = QueryData<
-            typeof postsWithCommentsAndVotesQuery
-        >;
-    
-        const { data: postsData, error: postsError } =
-            await postsWithCommentsAndVotesQuery;
-        const posts = postsData as PostWithCommentsAndVotes;
-    
-        if (postsError) throw postsError;
-    
-        const { data: mediaPostsData, error: mediaPostsError } =
-            await postsWithCommentsAndVotesQuery.filter("post_image", "neq", null);
-    
-        const mediaPosts = mediaPostsData as PostWithCommentsAndVotes;
-    
-        if (mediaPostsError) throw mediaPostsError;
+        .from("posts")
+        .select(
+            "*, comments(*, user:profiles(*), upVotes:commentUpVotes(*), upVotes_count:commentUpVotes(count), downVotes:commentDownVotes(*), downVotes_count:commentDownVotes(count)), downVotes:postDownVotes(*), downVotes_count:postDownVotes(count), upVotes:postUpVotes(*), upVotes_count:postUpVotes(count), user:profiles(*)",
+        )
+        .eq("user_id", id)
+        .order("created_at", { ascending: false });
+
+    type PostWithCommentsAndVotes = QueryData<
+        typeof postsWithCommentsAndVotesQuery
+    >;
+
+    const { data: postsData, error: postsError } =
+        await postsWithCommentsAndVotesQuery;
+    const posts = postsData as PostWithCommentsAndVotes;
+
+    if (postsError) throw postsError;
+
+    const { data: mediaPostsData, error: mediaPostsError } =
+        await postsWithCommentsAndVotesQuery.filter("post_image", "neq", null);
+
+    const mediaPosts = mediaPostsData as PostWithCommentsAndVotes;
+
+    if (mediaPostsError) throw mediaPostsError;
 
     return (
         <div
