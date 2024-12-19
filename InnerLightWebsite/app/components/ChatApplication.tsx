@@ -20,6 +20,8 @@ import {
     FiSmile,
     FiMic,
 } from "react-icons/fi";
+import { toast } from "react-toastify";
+import { StringLike } from "bun";
 
 // Types
 interface ChatState {
@@ -32,6 +34,9 @@ interface ChatState {
     } | null;
     page: number;
     hasMore: boolean;
+    unreadMessages: {
+        [channelId: string]: number;
+    };
 }
 
 interface Profile {
@@ -49,7 +54,7 @@ interface MessageChannel {
     created_at: string;
 }
 
-interface Message {
+export interface Message {
     id: string;
     text_message: string | null;
     user_id: string | null;
@@ -61,16 +66,27 @@ interface Message {
     user?: Profile;
 }
 
+export interface InitialData {
+    currentUser: {
+        id: string;
+        username: string;
+    };
+    channels: MessageChannel[];
+    initialMessages: Message[];
+    initialChannel: string;
+    unreadCounts: { [channelId: string]: number };
+}
+
 // Memoized Sidebar component
 const ChatSidebar = memo(
     ({
         chats,
-        selectedChat,
         onSelectChat,
+        unreadMessages,
     }: {
         chats: MessageChannel[];
-        selectedChat: string;
         onSelectChat: (chatName: string) => void;
+        unreadMessages: { [channelId: string]: number };
     }) => {
         const renderChats = useCallback(
             (chatList: MessageChannel[], title: string) => (
@@ -81,29 +97,24 @@ const ChatSidebar = memo(
                     {chatList.map((chat) => (
                         <div
                             key={chat.name}
-                            className="flex items-center justify-between p-2 mb-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow cursor-pointer"
+                            className="relative flex items-center justify-between p-2 mb-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                             onClick={() => onSelectChat(chat.id!)}
                         >
-                            <div>
+                            <div className="flex-1">
                                 <p className="font-bold text-gray-900 dark:text-gray-100">
                                     {chat.name}
                                 </p>
-                                {/* <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                    {chat.messages[chat.messages.length - 1]
-                                        ?.text || ""}
-                                </p>
-                                <div className="text-right">
-                                    <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                        {chat.messages[chat.messages.length - 1]
-                                            ?.time || ""}
-                                    </p>
-                                </div> */}
                             </div>
+                            {unreadMessages[chat.id] > 0 && (
+                                <div className="ml-2 bg-red-500 text-white rounded-full min-w-[20px] h-5 flex items-center justify-center text-xs px-1">
+                                    {unreadMessages[chat.id]}
+                                </div>
+                            )}
                         </div>
                     ))}
                 </>
             ),
-            [selectedChat, onSelectChat],
+            [onSelectChat, unreadMessages],
         );
         return (
             <div className="bg-white dark:bg-gray-900 w-1/4 border-r dark:border-gray-700 p-4 m-1 rounded-lg">
@@ -258,180 +269,178 @@ const ChatWindow = memo(
 
 ChatWindow.displayName = "ChatWindow";
 
-export default function ChatApplication() {
+export default function ChatApplication({
+    initialData
+}: {
+    initialData: InitialData
+}) {
     const [state, setState] = useState<ChatState>({
-        channels: [],
-        selectedChannel: "",
-        messages: [],
-        currentUser: null,
+        channels: initialData.channels,
+        selectedChannel: initialData.initialChannel,
+        messages: initialData.initialMessages,
+        currentUser: initialData.currentUser,
         page: 1,
         hasMore: true,
+        unreadMessages: initialData.unreadCounts
     });
     const router = useRouter();
 
     const supabase = useMemo(() => createClient(), []);
 
-    //Initial User And Channels Fetch
+    //Mark Messages as Read
+    const markMessagesAsRead = useCallback(
+        async (channelId: string) => {
+            if (!state.currentUser) return;
+
+            const latestMessage = state.messages[state.messages.length - 1];
+            if(!latestMessage) return;
+            if(state.unreadMessages[channelId] === 0) return;
+
+            try {
+                const { error } = await supabase
+                    .from('userReadMessages')
+                    .upsert({
+                        user_id: state.currentUser.id,
+                        channel_id: channelId,
+                        message_id: latestMessage.id,
+                        last_read_at: new Date().toISOString()
+                    }, {
+                        onConflict: 'user_id, channel_id',
+                    });
+
+                if(error) {
+                    console.error(error);
+                    toast.error(error.message);
+                    return
+                }
+
+                setState((prev) => ({
+                    ...prev,
+                    unreadMessages: {
+                        ...prev.unreadMessages,
+                        [channelId]: 0
+                    },
+                }))
+            } catch (error) {
+                
+            }
+        },
+        [state.currentUser, state.messages, supabase],
+    );
+
+    //Listen for new messages
     useEffect(() => {
-        async function fetchUserAndChannels() {
-            const {
-                data: { user },
-                error,
-            } = await supabase.auth.getUser();
-            if (error || !user) {
-                router.replace("/auth/login");
-                return;
-            }
+        const messageSubscription = supabase
+            .channel('messages')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                },
+                async (payload) => {
+                    const newMessage = payload.new as Message;
 
-            const { data: profile, error: profileError } = await supabase
-                .from("profiles")
-                .select("*")
-                .eq("id", user.id)
-                .single();
+                    setState((prev) => {
+                        // If new message is from the selected channel, add it to the messages array
+                        if (newMessage.channel_id === state.selectedChannel) {
+                            return {
+                                ...prev,
+                                messages: [...prev.messages, newMessage],
+                                unreadMessages: {
+                                    ...prev.unreadMessages,
+                                    [newMessage.channel_id]:
+                                        // If the new message is from the current user, set the unread count to 0 else increment it
+                                        newMessage.user_id === state.currentUser?.id
+                                            ? prev.unreadMessages[newMessage.channel_id] || 0
+                                            : (prev.unreadMessages[newMessage.channel_id] || 0) + 1
+                                }
+                            }
+                        }
 
-            if (profileError || !profile) {
-                router.replace("/auth/login");
-                return;
-            }
+                        return {
+                            ...prev,
+                            unreadMessages: {
+                                ...prev.unreadMessages,
+                                [newMessage.channel_id!]:
+                                    // If the new message is from the current user, set the unread count to 0 else increment it
+                                    newMessage.user_id === state.currentUser?.id
+                                        ? prev.unreadMessages[newMessage.channel_id!] || 0
+                                        : (prev.unreadMessages[newMessage.channel_id!] || 0) + 1
+                            }
+                        }
+                    });
 
-            const { data: channelsData, error: channelsError } = await supabase
-                .from("user_channels")
-                .select("messageChannels(id, name, created_at)")
-                .eq("user_id", user.id);
+                    if(newMessage.channel_id === state.selectedChannel && newMessage.user_id !== state.currentUser?.id) {
+                        await markMessagesAsRead(newMessage.channel_id);
+                    }
+                }
+            )
+            .subscribe();
+        
+        return () => {
+            supabase.removeChannel(messageSubscription);
+        }
+    })
 
-            const channels =
-                channelsData?.map(
-                    (channel) => channel.messageChannels as MessageChannel,
-                ) ?? [];
+    const fetchMoreMessages = useCallback(async () => {
+        if(!state.selectedChannel || !state.hasMore) return;
 
-            if (channelsError || !channelsData) {
-                console.error(channelsError);
-                return;
+        const pageSize = 20;
+        const { data, error } = await supabase
+            .from('messages')
+            .select(`
+                *,
+                user:profiles(id, username, avatar_url)
+            `)
+            .eq('channel_id', state.selectedChannel)
+            .order('created_at', { ascending: true })
+            .range((state.page - 1) * pageSize, state.page * pageSize - 1);
+
+        if(error) {
+            console.error(error);
+            return;
+        }
+
+        setState((prev) => ({
+            ...prev,
+            messages: [...data as Message[], ...prev.messages],
+            page: prev.page + 1,
+            hasMore: data.length === pageSize
+        }))
+    }, [state.selectedChannel, state.page, state.hasMore, supabase])
+
+    //Select Channel Handler
+    const selectChannel = useCallback(
+        async (channelId: string) => {
+            const { data, error } = await supabase
+                .from('messages')
+                .select(`
+                    *,
+                    user:profiles(id, username, avatar_url)
+                `)
+                .eq('channel_id', channelId)
+                .order('created_at', { ascending: true })
+                .range(0, 19);
+
+            if(error) {
+                console.error(error);
+                return
             }
 
             setState((prev) => ({
                 ...prev,
-                currentUser: {
-                    id: profile.id,
-                    username: profile.username,
-                },
-                channels,
-                selectedChannel: channels[0]?.id || "",
+                selectedChannel: channelId,
+                messages: data as Message[] || [],
                 page: 1,
-                hasMore: true,
+                hasMore: data.length === 20,
             }));
-        }
-
-        fetchUserAndChannels();
-    }, []);
-
-    const fetchChannelMessages = useCallback(
-        async (channelId: string, page: number = 1) => {
-            const pageSize = 20; // Number of messages to load per page
-            const { data, error } = await supabase
-                .from("messages")
-                .select(
-                    `*,
-                user:profiles(id, username, avatar_url)    
-            `,
-                )
-                .eq("channel_id", channelId)
-                .order("created_at", { ascending: true })
-                .range((page - 1) * pageSize, page * pageSize - 1);
-
-            if (error) {
-                console.error(error);
-                return { messages: [], hasMore: false };
-            }
-
-            return {
-                messages: data as Message[],
-                hasMore: data.length === pageSize,
-            };
+            // Mark messages as read when switching to a new channel
+            markMessagesAsRead(channelId);
         },
-        [supabase],
+        [markMessagesAsRead, supabase],
     );
-
-    //Load more messages for infinite scroll
-    const loadMoreMessages = useCallback(async () => {
-        if (!state.selectedChannel || !state.hasMore) return;
-
-        const { messages, hasMore } = await fetchChannelMessages(
-            state.selectedChannel,
-            state.page + 1,
-        );
-
-        setState((prev) => ({
-            ...prev,
-            messages: [...messages, ...prev.messages],
-            page: prev.page + 1,
-            hasMore,
-        }));
-    }, [
-        state.selectedChannel,
-        state.page,
-        state.hasMore,
-        fetchChannelMessages,
-    ]);
-
-    //Initial Messages fetch and channel messages sync
-    useEffect(() => {
-        if (state.selectedChannel) {
-            async function initialMessagesFetch() {
-                const { messages, hasMore } = await fetchChannelMessages(
-                    state.selectedChannel,
-                    1,
-                );
-
-                setState((prev) => ({
-                    ...prev,
-                    messages,
-                    page: 1,
-                    hasMore,
-                }));
-            }
-            initialMessagesFetch();
-
-            //Real-time message subscription
-            const messageSubscription = supabase
-                .channel("messages")
-                .on(
-                    "postgres_changes",
-                    {
-                        event: "INSERT",
-                        schema: "public",
-                        table: "messages",
-                    },
-                    (payload) => {
-                        if (payload.new.channel_id === state.selectedChannel) {
-                            setState((prev) => ({
-                                ...prev,
-                                messages: [
-                                    ...prev.messages,
-                                    payload.new as Message,
-                                ],
-                            }));
-                        }
-                    },
-                )
-                .subscribe();
-
-            return () => {
-                supabase.removeChannel(messageSubscription);
-            };
-        }
-    }, [state.selectedChannel, fetchChannelMessages]);
-
-    //Select Channel Handler
-    const selectChannel = useCallback((channelId: string) => {
-        setState((prev) => ({
-            ...prev,
-            selectedChannel: channelId,
-            messages: [],
-            page: 1,
-            hasMore: true
-        }));
-    }, []);
 
     // Send Message Handler
     const sendMessage = useCallback(
@@ -455,22 +464,22 @@ export default function ChatApplication() {
                 console.error(error);
             }
         },
-        [state.currentUser, state.selectedChannel],
+        [state.currentUser, state.selectedChannel, supabase],
     );
 
     return (
         <div className="flex flex-1 ml-14 mt-14 mb-10 md:ml-64 h-full">
             <ChatSidebar
                 chats={state.channels}
-                selectedChat={state.selectedChannel}
                 onSelectChat={selectChannel}
+                unreadMessages={state.unreadMessages}
             />
             <ChatWindow
                 chatName={state.selectedChannel}
                 messages={state.messages}
                 onSendMessage={sendMessage}
                 state={state}
-                loadMoreMessages={loadMoreMessages}
+                loadMoreMessages={fetchMoreMessages}
             />
         </div>
     );

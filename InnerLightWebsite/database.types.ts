@@ -181,6 +181,13 @@ export type Database = {
                         referencedRelation: "profiles";
                         referencedColumns: ["id"];
                     },
+                    {
+                        foreignKeyName: "followers_follower_id_fkey1";
+                        columns: ["follower_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
+                        referencedColumns: ["id"];
+                    },
                 ];
             };
             messageChannels: {
@@ -427,6 +434,7 @@ export type Database = {
                     channel_id: string | null;
                     created_at: string;
                     id: string;
+                    last_read_at: string;
                     message_id: string | null;
                     user_id: string | null;
                 };
@@ -434,6 +442,7 @@ export type Database = {
                     channel_id?: string | null;
                     created_at?: string;
                     id?: string;
+                    last_read_at?: string;
                     message_id?: string | null;
                     user_id?: string | null;
                 };
@@ -441,6 +450,7 @@ export type Database = {
                     channel_id?: string | null;
                     created_at?: string;
                     id?: string;
+                    last_read_at?: string;
                     message_id?: string | null;
                     user_id?: string | null;
                 };
