@@ -6,10 +6,9 @@ import ChatApplication from "../components/ChatApplication";
 import { createClient } from '../utils/supabase/server';
 import { redirect } from "next/navigation";
 import { ToastContainer, toast } from "react-toastify";
-import { InitialData, Message } from "../components/ChatApplication";
+import { InitialData, Message, EncryptedMessage } from "../components/ChatApplication";
 import "react-toastify/dist/ReactToastify.css";
-import { EncryptionManager, EncryptedMessage } from "../utils/encryption/client";
-
+import { EncryptionManager } from "../utils/encryption/client";
 
 
 
@@ -49,7 +48,7 @@ async function getInitialData()  {
     const channels = channelsData.map((channel) => channel.messageChannels) ?? [];
 
     // Get initial messages for first channel if exists
-    let initialMessages : Message[] = [];
+    let initialMessages = [];
     let unreadCounts = {};
 
     if (channels.length > 0) {
@@ -62,29 +61,7 @@ async function getInitialData()  {
             .order('created_at', { ascending: false })
             .limit(20);
 
-        console.log(encryptedMessages);
-
-        if(encryptedMessages) {
-            //Decrypt messages
-            try {
-                initialMessages = await Promise.all(
-                    encryptedMessages.map(async (msg) => {
-                        const encryptedMessage = msg.encrypted_content as unknown as EncryptedMessage;
-                        console.log("Encrypted Message: " + encryptedMessage);
-                        const decryptedMessage = await encryptionManager.decrypt(encryptedMessage);
-                        return {
-                            ...msg,
-                            text_message: decryptedMessage,
-                        }
-                    })
-                );
-                initialMessages = initialMessages.reverse();
-            } catch (error) {
-                console.error("Error decrypting messages:", error);
-                initialMessages = [];
-            }
-        }
-
+        initialMessages = (encryptedMessages ?? []).reverse();
 
         //Fetch lastReadMessages
         const { data: lastReadMessages } = await supabase
@@ -124,7 +101,7 @@ async function getInitialData()  {
                 username: profile.username,
             },
             channels,
-            initialMessages: initialMessages as Message[] | [],
+            initialMessages: initialMessages as EncryptedMessage[] | [],
             initialChannel: channels[0]?.id || "",
             unreadCounts
         }

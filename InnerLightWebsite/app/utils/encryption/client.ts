@@ -50,23 +50,30 @@ export class EncryptionManager {
     async encrypt(message: string): Promise<EncryptedMessage> {
         if (!this.key) throw new Error('Encryption key not initialized');
 
-        const encoder = new TextEncoder();
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const encodedMessage = encoder.encode(message);
-
-        const encryptedContent = await crypto.subtle.encrypt(
-            {
-                name: 'AES-GCM', 
-                iv
-            },
-            this.key,
-            encodedMessage
-        );
-
-        return {
-            iv: Buffer.from(iv).toString('base64'),
-            content: Buffer.from(encryptedContent).toString('base64')
+        try {
+            const encoder = new TextEncoder();
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const encodedMessage = encoder.encode(message);
+    
+            const encryptedContent = await crypto.subtle.encrypt(
+                {
+                    name: 'AES-GCM', 
+                    iv
+                },
+                this.key,
+                encodedMessage
+            );
+    
+            return {
+                iv: Buffer.from(iv).toString('base64'),
+                content: Buffer.from(encryptedContent).toString('base64')
+            }
+        } catch (error) {
+            console.error('Encryption error:', error);
+            throw new Error('Failed to encrypt message');
         }
+
+        
     }
 
     /**
@@ -78,20 +85,26 @@ export class EncryptionManager {
     async decrypt(encryptedMessage: EncryptedMessage): Promise<string> {
         if (!this.key) throw new Error('Encryption key not initialized');
 
-        const iv = Buffer.from(encryptedMessage.iv, 'base64');
-        const encryptedContent = Buffer.from(encryptedMessage.content, 'base64');
+        try {
+            const iv = Buffer.from(encryptedMessage.iv, 'base64');
+            const encryptedContent = Buffer.from(encryptedMessage.content, 'base64');
 
-        const decryptedContent = await crypto.subtle.decrypt(
-            {
-                name: 'AES-GCM', 
-                iv
-            },
-            this.key,
-            encryptedContent
-        );
+            const decryptedContent = await crypto.subtle.decrypt(
+                {
+                    name: 'AES-GCM', 
+                    iv
+                },
+                this.key,
+                encryptedContent
+            );
 
-        const decoder = new TextDecoder();
-        return decoder.decode(decryptedContent);
+            const decoder = new TextDecoder();
+            return decoder.decode(decryptedContent);
+        } catch (error) {
+            console.error('Decryption error:', error);
+            throw new Error('Failed to decrypt message');
+        }
+        
     }
 }
 

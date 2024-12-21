@@ -22,7 +22,7 @@ import {
 } from "react-icons/fi";
 import { toast } from "react-toastify";
 import { StringLike } from "bun";
-import { encryptionManager } from "../utils/encryption/client";
+import { EncryptionManager, encryptionManager } from "../utils/encryption/client";
 import { Json } from "../../database.types";
 
 // Types
@@ -40,6 +40,7 @@ interface ChatState {
     unreadMessages: {
         [channelId: string]: number;
     };
+    isLoading?: boolean;
 }
 
 interface Profile {
@@ -67,7 +68,10 @@ export interface Message {
     title?: string | null;
     data?: Json | null;
     user?: Profile | null;
-    encrypted_content?: {
+}
+
+export interface EncryptedMessage extends Message {
+    encrypted_content: {
         iv: string;
         content: string;
     }
@@ -80,17 +84,12 @@ export interface InitialData {
         email: string;
     };
     channels: MessageChannel[];
-    initialMessages: Message[];
+    initialMessages: EncryptedMessage[];
     initialChannel: string;
     unreadCounts: { [channelId: string]: number };
 }
 
-interface EncryptedMessage extends Message {
-    encrypted_content: {
-        iv: string;
-        content: string;
-    }
-}
+
 
 // Memoized Sidebar component
 const ChatSidebar = memo(
@@ -162,14 +161,29 @@ const ChatWindow = memo(
         const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
         const prevMessagesLengthRef = useRef(messages.length);
         const isInitialLoadRef = useRef(true);
+        const loadingRef = useRef(false);
+
+        const scollToBottom = useCallback(() => {
+            if(messagesContainerRef.current) {
+                messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            }
+        }, []);
 
         //Initial load scoll effect
         useEffect(() => {
             if(isInitialLoadRef.current && messages.length > 0) {
-                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+                scollToBottom();
                 isInitialLoadRef.current = false;
             }
         }, [messages]);
+
+        //Reset initial load flag when channel changes
+        useEffect(() => {
+            isInitialLoadRef.current = true;
+            if(messages.length > 0) {
+                scollToBottom();
+            }
+        }, [chatName]);
 
         //Handle auto scroll
         useEffect(() => {
@@ -178,7 +192,7 @@ const ChatWindow = memo(
 
             //If new messages were added (not loaded from history)
             if (currentLenth > prevLength && shouldScrollToBottom) {
-                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+                scollToBottom();
             }
 
             prevMessagesLengthRef.current = currentLenth;
@@ -193,7 +207,10 @@ const ChatWindow = memo(
             setShouldScrollToBottom(isNearBottom);
 
             // Check if scrolled to top
-            if (container.scrollTop === 0 && state.hasMore) {
+            if (container.scrollTop <= 50 && state.hasMore && !state.isLoading && !loadingRef.current) {
+                //Set loading flag
+                loadingRef.current = true;
+
                 // Save current scoll height
                 const scrollHeightBefore = container.scrollHeight;
 
@@ -205,10 +222,15 @@ const ChatWindow = memo(
                         const newScollHeight = container.scrollHeight;
                         const scrollDiff = newScollHeight - scrollHeightBefore;
                         container.scrollTop = scrollDiff;
+
+                        //Reset loading flag
+                        setTimeout(() => {
+                            loadingRef.current = false;
+                        }, 1000); // Add a delay
                     }
                 })
             }
-        }, [loadMoreMessages, state.hasMore]);
+        }, [loadMoreMessages, state.hasMore, state.isLoading]);
 
         //Group messages by date
         const groupedMessages = useMemo(() => {
@@ -259,7 +281,7 @@ const ChatWindow = memo(
                         onScroll={handleScroll}
                         className="flex-1 overflow-y-auto scrollbar h-[600px]"
                     >
-                        {state.hasMore && (
+                        {state.hasMore && state.isLoading && (
                             <div className="text-center text-gray-500 my-2">
                                 Loading previous messages...
                             </div>
@@ -327,21 +349,59 @@ export default function ChatApplication({
     const [state, setState] = useState<ChatState>({
         channels: initialData.channels,
         selectedChannel: initialData.initialChannel,
-        messages: initialData.initialMessages,
+        messages: [], // Start Empty, will populate after decryption
         currentUser: initialData.currentUser,
         page: 1,
         hasMore: true,
+        isLoading: false,
         unreadMessages: initialData.unreadCounts
     });
 
     const supabase = useMemo(() => createClient(), []);
+    const encryptionManagerRef = useRef<EncryptionManager | null>(null);
 
     useEffect(() => {
-        const initEncryption = async () => {
-            await encryptionManager.initialize(process.env.ENCRYPTION_PASSWORD!);
+        const initializeEncryption = async () => {
+            try {
+                const manager = new EncryptionManager();
+                await manager.initialize(process.env.ENCRYPTION_PASSWORD!);
+                encryptionManagerRef.current = manager;
+    
+                // Decrypt initial messages
+                const decryptedMessages = await Promise.all(
+                    initialData.initialMessages.map(async (message) => {
+                        try {
+                            const encryptedContent = typeof message.encrypted_content === 'string'
+                                ? JSON.parse(message.encrypted_content)
+                                : message.encrypted_content;
+    
+                            const decryptedContent = await manager.decrypt(encryptedContent);
+                            return {
+                                ...message,
+                                text_message: decryptedContent
+                            }
+                        } catch (error) {
+                            console.error('Decryption error:', error);
+                            return {
+                                ...message,
+                                text_message: 'Failed to decrypt message'
+                            }
+                        }
+                    })
+                )
+
+                setState((prev) => ({
+                    ...prev,
+                    messages: decryptedMessages.reverse()
+                }))
+            } catch (error) {
+                console.error('Encryption initialization error:', error);
+                toast.error('Failed to initialize encryption');
+            }
         };
-        initEncryption();
-    }, []);
+
+        initializeEncryption();
+    }, [initialData.initialMessages]);
 
     //Mark Messages as Read
     const markMessagesAsRead = useCallback(
@@ -386,6 +446,8 @@ export default function ChatApplication({
 
     //Listen for new messages
     useEffect(() => {
+        if(!encryptionManagerRef.current) return;
+
         const messageSubscription = supabase
             .channel('messages')
             .on(
@@ -399,12 +461,23 @@ export default function ChatApplication({
                     const encryptedMessage = payload.new as EncryptedMessage;
 
                     try {
-                        //Decrypt the new message
-                        const decryptedMessage = await encryptionManager.decrypt(encryptedMessage.encrypted_content);
+                        // Parse the encrypted content if it's a string
+                        const encryptedContent = typeof encryptedMessage.encrypted_content === 'string'
+                            ? JSON.parse(encryptedMessage.encrypted_content)
+                            : encryptedMessage.encrypted_content;
+
+                        if(!encryptedContent || !encryptedContent.iv || !encryptedContent.content) throw new Error('Invalid encrypted content');
+
+                        const decryptedMessage = await encryptionManagerRef.current!.decrypt({
+                            iv: encryptedContent.iv,
+                            content: encryptedContent.content
+                        });
+
                         const newMessage = {
                             ...encryptedMessage,
                             text_message: decryptedMessage
                         }
+                        
                         setState((prev) => {
                             // If new message is from the selected channel, add it to the messages array
                             if (newMessage.channel_id === state.selectedChannel) {
@@ -454,56 +527,105 @@ export default function ChatApplication({
     })
 
     const fetchMoreMessages = useCallback(async () => {
-        if(!state.selectedChannel || !state.hasMore) return;
+        if(!state.selectedChannel || !state.hasMore || state.isLoading) return;
 
         const pageSize = 20;
-        const olderstMessageDate = state.messages[0]?.created_at;
 
-        if(!olderstMessageDate) return;
         try {
-            const { data, error } = await supabase
-            .from('messages')
-            .select(`
-                *,
-                user:profiles(id, username, avatar_url, email)
-            `)
-            .eq('channel_id', state.selectedChannel)
-            .lt('created_at', olderstMessageDate)
-            .order('created_at', { ascending: true })
-            .limit(pageSize);
+            setState((prev) => ({
+                ...prev,
+                isLoading: true
+            }))
+
+            let query = supabase
+                .from('messages')
+                .select('*, user:profiles(*)')
+                .eq('channel_id', state.selectedChannel)
+                .order('created_at', { ascending: true })
+
+            if(state.messages.length > 0) {
+                // Get the oldest message date
+                const oldestMessageDate = state.messages[0].created_at;
+                // Filter messages created after the oldest message
+                query = query.lt('created_at', oldestMessageDate);
+            }
+            
+            query = query.limit(pageSize);
+
+            const { data, error } = await query;
 
             if(error) {
                 console.error(error);
+                setState((prev) => ({
+                    ...prev,
+                    isLoading: false,
+                    hasMore: false
+                }))
                 return;
             }
 
             if(!data || data.length === 0) {
                 setState((prev) => ({
                     ...prev,
-                    hasMore: false
+                    hasMore: false,
+                    isLoading: false
                 }));
-                return
+                return;
             }
-
-            // Decrypt messages
-            const decryptedMessages = await Promise.all(
-                (data as EncryptedMessage[]).map(async (msg) => ({
-                    ...msg,
-                    text_message: await encryptionManager.decrypt(msg.encrypted_content)
-                }))
-            );
+            try {
+                // Decrypt messages
+                const decryptedMessages = await Promise.all(
+                    (data as EncryptedMessage[]).map(async (msg) => {
+                        try {
+                            const encryptedContent = typeof msg.encrypted_content === 'string'
+                                ? JSON.parse(msg.encrypted_content)
+                                : msg.encrypted_content;
     
+                            if(!encryptedContent || !encryptedContent.iv || !encryptedContent.content) throw new Error('Invalid encrypted content');
+    
+                            const decryptedContent = await encryptionManagerRef.current!.decrypt({
+                                iv: encryptedContent.iv,
+                                content: encryptedContent.content
+                            });
+    
+                            return {
+                                ...msg,
+                                text_message: decryptedContent
+                            }
+                        } catch (error) {
+                            console.error('Decryption error:', error);
+                            return {
+                                ...msg,
+                                text_message: 'Error decrypting message'
+                            }
+                        }
+                    })
+                );
+        
+                setState((prev) => ({
+                    ...prev,
+                    messages: [...decryptedMessages, ...prev.messages],
+                    page: prev.page + 1,
+                    hasMore: data.length === pageSize,
+                    isLoading: false
+                }))
+            } catch (error) {
+                console.error('Batch decryption error:', error);
+                setState((prev) => ({
+                    ...prev,
+                    isLoading: false,
+                    hasMore: false
+                }))
+            }
+        } catch (error) {
+            console.error('Error fetching messages:', error);
             setState((prev) => ({
                 ...prev,
-                messages: [...decryptedMessages as Message[], ...prev.messages],
-                page: prev.page + 1,
-                hasMore: data.length === pageSize
+                isLoading: false,
+                hasMore: false
             }))
-
-        } catch (error) {
-            console.error(error);
         }        
-    }, [state.selectedChannel, state.page, state.hasMore, supabase])
+    }, [state.selectedChannel, state.page, state.hasMore, state.isLoading, state.messages, supabase])
 
     //Select Channel Handler
     const selectChannel = useCallback(
@@ -515,51 +637,82 @@ export default function ChatApplication({
                 messages: [],
                 selectedChannel: channelId,
                 hasMore: true,
+                isLoading: true,
                 page: 1
             }))
+
+            // Get the most recent 20 messages by ordering descending, then reverse
             const { data, error } = await supabase
                 .from('messages')
                 .select(`
                     *,
-                    user:profiles(id, username, avatar_url, email)
+                    user:profiles(*)
                 `)
                 .eq('channel_id', channelId)
-                .order('created_at', { ascending: true })
-                .range(0, 19);
+                .order('created_at', { ascending: false }) // Get the most recent messages
+                .limit(20);
 
             if(error) {
                 console.error(error);
-                return
+                setState((prev) => ({
+                    ...prev,
+                    isLoading: false,
+                    hasMore: false
+                }));
+                return;
             }
 
             try {
                 // Decrypt the messages before setting them in state
                 const decryptedMessages = await Promise.all(
                     (data as EncryptedMessage[]).map(async (msg) => {
-                        const encryptedContent = JSON.parse(msg.encrypted_content?.toString() ?? '{}');
-                        const decryptedContent = await encryptionManager.decrypt(encryptedContent);
+                        try {
+                            const encryptedContent = typeof msg.encrypted_content === 'string'
+                                ? JSON.parse(msg.encrypted_content)
+                                : msg.encrypted_content;
 
-                        return {
-                            ...msg,
-                            text_message: decryptedContent
+                            if(!encryptedContent || !encryptedContent.iv || !encryptedContent.content) throw new Error('Invalid encrypted content');
+
+                            const decryptedContent = await encryptionManagerRef.current!.decrypt({
+                                iv: encryptedContent.iv,
+                                content: encryptedContent.content
+                            });
+
+                            return {
+                                ...msg,
+                                text_message: decryptedContent
+                            }
+                        } catch (error) {
+                            console.error(error);
+                            return {
+                                ...msg,
+                                text_message: 'Failed to decrypt message'
+                            }
                         }
                     })
                 );
 
+                const orderedMessages = [...decryptedMessages].reverse();
+
                 setState((prev) => ({
                     ...prev,
                     selectedChannel: channelId,
-                    messages: (decryptedMessages as Message[] || []).reverse(),
+                    messages: orderedMessages,
                     page: 1,
                     hasMore: data.length === 20,
+                    isLoading: false
                 }));
+
                 // Mark messages as read when switching to a new channel
                 markMessagesAsRead(channelId);
             } catch(error) {
-
+                console.error(error);
+                setState((prev) => ({
+                    ...prev,
+                    isLoading: false,
+                    hasMore: false
+                }));
             }
-
-            
         },
         [markMessagesAsRead, supabase],
     );
@@ -570,7 +723,7 @@ export default function ChatApplication({
             if (!state.currentUser || !state.selectedChannel) return;
 
             try {
-                const encryptedContent = await encryptionManager.encrypt(text);
+                const encryptedContent = await encryptionManagerRef.current!.encrypt(text);
                 const encryptedContentJson = JSON.stringify(encryptedContent);
 
                 const { error } = await supabase
