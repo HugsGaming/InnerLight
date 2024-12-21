@@ -8,10 +8,17 @@ import { redirect } from "next/navigation";
 import { ToastContainer, toast } from "react-toastify";
 import { InitialData, Message } from "../components/ChatApplication";
 import "react-toastify/dist/ReactToastify.css";
+import { EncryptionManager, EncryptedMessage } from "../utils/encryption/client";
+
+
 
 
 async function getInitialData()  {
     const supabase = createClient();
+
+    const encryptionManager = new EncryptionManager();
+    await encryptionManager.initialize(process.env.ENCRYPTION_PASSWORD!);
+    
 
     const { data: {user}, error: authError } = await supabase.auth.getUser();
     if(authError || !user) {
@@ -42,22 +49,42 @@ async function getInitialData()  {
     const channels = channelsData.map((channel) => channel.messageChannels) ?? [];
 
     // Get initial messages for first channel if exists
-    let initialMessages = [];
+    let initialMessages : Message[] = [];
     let unreadCounts = {};
 
     if (channels.length > 0) {
         // Fetch initial messages for the first channel
-        const { data: messages } = await supabase
+        const { data: encryptedMessages } = await supabase
             .from("messages")
-            .select("*, user:profiles(id, username, avatar_url)")
+            .select("*, user:profiles(*)")
             .eq("channel_id", channels[0]!.id)
             .gt('created_at', '1970-01-01')
             .order('created_at', { ascending: false })
             .limit(20);
 
-        initialMessages = (messages ?? []).reverse();
+        console.log(encryptedMessages);
 
-        console.log(initialMessages);
+        if(encryptedMessages) {
+            //Decrypt messages
+            try {
+                initialMessages = await Promise.all(
+                    encryptedMessages.map(async (msg) => {
+                        const encryptedMessage = msg.encrypted_content as unknown as EncryptedMessage;
+                        console.log("Encrypted Message: " + encryptedMessage);
+                        const decryptedMessage = await encryptionManager.decrypt(encryptedMessage);
+                        return {
+                            ...msg,
+                            text_message: decryptedMessage,
+                        }
+                    })
+                );
+                initialMessages = initialMessages.reverse();
+            } catch (error) {
+                console.error("Error decrypting messages:", error);
+                initialMessages = [];
+            }
+        }
+
 
         //Fetch lastReadMessages
         const { data: lastReadMessages } = await supabase

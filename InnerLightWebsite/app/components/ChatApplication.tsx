@@ -22,6 +22,8 @@ import {
 } from "react-icons/fi";
 import { toast } from "react-toastify";
 import { StringLike } from "bun";
+import { encryptionManager } from "../utils/encryption/client";
+import { Json } from "../../database.types";
 
 // Types
 interface ChatState {
@@ -31,6 +33,7 @@ interface ChatState {
     currentUser: {
         id: string;
         username: string;
+        email: string;
     } | null;
     page: number;
     hasMore: boolean;
@@ -62,19 +65,31 @@ export interface Message {
     created_at: string;
     type?: string | null;
     title?: string | null;
-    data?: JSON | null;
-    user?: Profile;
+    data?: Json | null;
+    user?: Profile | null;
+    encrypted_content?: {
+        iv: string;
+        content: string;
+    }
 }
 
 export interface InitialData {
     currentUser: {
         id: string;
         username: string;
+        email: string;
     };
     channels: MessageChannel[];
     initialMessages: Message[];
     initialChannel: string;
     unreadCounts: { [channelId: string]: number };
+}
+
+interface EncryptedMessage extends Message {
+    encrypted_content: {
+        iv: string;
+        content: string;
+    }
 }
 
 // Memoized Sidebar component
@@ -318,9 +333,15 @@ export default function ChatApplication({
         hasMore: true,
         unreadMessages: initialData.unreadCounts
     });
-    const router = useRouter();
 
     const supabase = useMemo(() => createClient(), []);
+
+    useEffect(() => {
+        const initEncryption = async () => {
+            await encryptionManager.initialize(process.env.ENCRYPTION_PASSWORD!);
+        };
+        initEncryption();
+    }, []);
 
     //Mark Messages as Read
     const markMessagesAsRead = useCallback(
@@ -375,41 +396,54 @@ export default function ChatApplication({
                     table: 'messages',
                 },
                 async (payload) => {
-                    const newMessage = payload.new as Message;
+                    const encryptedMessage = payload.new as EncryptedMessage;
 
-                    setState((prev) => {
-                        // If new message is from the selected channel, add it to the messages array
-                        if (newMessage.channel_id === state.selectedChannel) {
-                            return {
-                                ...prev,
-                                messages: [...prev.messages, newMessage],
-                                unreadMessages: {
-                                    ...prev.unreadMessages,
-                                    [newMessage.channel_id]:
-                                        // If the new message is from the current user, set the unread count to 0 else increment it
-                                        newMessage.user_id === state.currentUser?.id
-                                            ? prev.unreadMessages[newMessage.channel_id] || 0
-                                            : (prev.unreadMessages[newMessage.channel_id] || 0) + 1
+                    try {
+                        //Decrypt the new message
+                        const decryptedMessage = await encryptionManager.decrypt(encryptedMessage.encrypted_content);
+                        const newMessage = {
+                            ...encryptedMessage,
+                            text_message: decryptedMessage
+                        }
+                        setState((prev) => {
+                            // If new message is from the selected channel, add it to the messages array
+                            if (newMessage.channel_id === state.selectedChannel) {
+                                return {
+                                    ...prev,
+                                    messages: [...prev.messages, newMessage],
+                                    unreadMessages: {
+                                        ...prev.unreadMessages,
+                                        [newMessage.channel_id]:
+                                            // If the new message is from the current user, set the unread count to 0 else increment it
+                                            newMessage.user_id === state.currentUser?.id
+                                                ? prev.unreadMessages[newMessage.channel_id] || 0
+                                                : (prev.unreadMessages[newMessage.channel_id] || 0) + 1
+                                    }
                                 }
                             }
-                        }
-
-                        return {
-                            ...prev,
-                            unreadMessages: {
-                                ...prev.unreadMessages,
-                                [newMessage.channel_id!]:
-                                    // If the new message is from the current user, set the unread count to 0 else increment it
-                                    newMessage.user_id === state.currentUser?.id
-                                        ? prev.unreadMessages[newMessage.channel_id!] || 0
-                                        : (prev.unreadMessages[newMessage.channel_id!] || 0) + 1
+    
+                            return {
+                                ...prev,
+                                unreadMessages: {
+                                    ...prev.unreadMessages,
+                                    [newMessage.channel_id!]:
+                                        // If the new message is from the current user, set the unread count to 0 else increment it
+                                        newMessage.user_id === state.currentUser?.id
+                                            ? prev.unreadMessages[newMessage.channel_id!] || 0
+                                            : (prev.unreadMessages[newMessage.channel_id!] || 0) + 1
+                                }
                             }
+                        });
+    
+                        if(newMessage.channel_id === state.selectedChannel && newMessage.user_id !== state.currentUser?.id) {
+                            await markMessagesAsRead(newMessage.channel_id);
                         }
-                    });
-
-                    if(newMessage.channel_id === state.selectedChannel && newMessage.user_id !== state.currentUser?.id) {
-                        await markMessagesAsRead(newMessage.channel_id);
+                    } catch(error) {
+                        console.error(error);
+                        toast.error('Error decrypting message');
                     }
+
+                    
                 }
             )
             .subscribe();
@@ -431,7 +465,7 @@ export default function ChatApplication({
             .from('messages')
             .select(`
                 *,
-                user:profiles(id, username, avatar_url)
+                user:profiles(id, username, avatar_url, email)
             `)
             .eq('channel_id', state.selectedChannel)
             .lt('created_at', olderstMessageDate)
@@ -450,27 +484,44 @@ export default function ChatApplication({
                 }));
                 return
             }
+
+            // Decrypt messages
+            const decryptedMessages = await Promise.all(
+                (data as EncryptedMessage[]).map(async (msg) => ({
+                    ...msg,
+                    text_message: await encryptionManager.decrypt(msg.encrypted_content)
+                }))
+            );
     
             setState((prev) => ({
                 ...prev,
-                messages: [...data as Message[], ...prev.messages],
+                messages: [...decryptedMessages as Message[], ...prev.messages],
                 page: prev.page + 1,
                 hasMore: data.length === pageSize
             }))
 
         } catch (error) {
-            
+            console.error(error);
         }        
     }, [state.selectedChannel, state.page, state.hasMore, supabase])
 
     //Select Channel Handler
     const selectChannel = useCallback(
+        
+
         async (channelId: string) => {
+            setState((prev) => ({
+                ...prev,
+                messages: [],
+                selectedChannel: channelId,
+                hasMore: true,
+                page: 1
+            }))
             const { data, error } = await supabase
                 .from('messages')
                 .select(`
                     *,
-                    user:profiles(id, username, avatar_url)
+                    user:profiles(id, username, avatar_url, email)
                 `)
                 .eq('channel_id', channelId)
                 .order('created_at', { ascending: true })
@@ -481,15 +532,34 @@ export default function ChatApplication({
                 return
             }
 
-            setState((prev) => ({
-                ...prev,
-                selectedChannel: channelId,
-                messages: (data as Message[] || []).reverse(),
-                page: 1,
-                hasMore: data.length === 20,
-            }));
-            // Mark messages as read when switching to a new channel
-            markMessagesAsRead(channelId);
+            try {
+                // Decrypt the messages before setting them in state
+                const decryptedMessages = await Promise.all(
+                    (data as EncryptedMessage[]).map(async (msg) => {
+                        const encryptedContent = JSON.parse(msg.encrypted_content?.toString() ?? '{}');
+                        const decryptedContent = await encryptionManager.decrypt(encryptedContent);
+
+                        return {
+                            ...msg,
+                            text_message: decryptedContent
+                        }
+                    })
+                );
+
+                setState((prev) => ({
+                    ...prev,
+                    selectedChannel: channelId,
+                    messages: (decryptedMessages as Message[] || []).reverse(),
+                    page: 1,
+                    hasMore: data.length === 20,
+                }));
+                // Mark messages as read when switching to a new channel
+                markMessagesAsRead(channelId);
+            } catch(error) {
+
+            }
+
+            
         },
         [markMessagesAsRead, supabase],
     );
@@ -499,10 +569,14 @@ export default function ChatApplication({
         async (text: string) => {
             if (!state.currentUser || !state.selectedChannel) return;
 
-            const { error } = await supabase
+            try {
+                const encryptedContent = await encryptionManager.encrypt(text);
+                const encryptedContentJson = JSON.stringify(encryptedContent);
+
+                const { error } = await supabase
                 .from("messages")
                 .insert({
-                    text_message: text,
+                    encrypted_content: encryptedContentJson,
                     user_id: state.currentUser.id,
                     channel_id: state.selectedChannel,
                     type: "text",
@@ -512,9 +586,16 @@ export default function ChatApplication({
                 .select()
                 .single();
 
-            if (error) {
+                if (error) {
+                    console.error(error);
+                    toast.error('Failed to send message. Please try again.');
+                }
+            } catch (error) {
                 console.error(error);
+                toast.error('Failed to send message. Please try again.');
             }
+
+            
         },
         [state.currentUser, state.selectedChannel, supabase],
     );
