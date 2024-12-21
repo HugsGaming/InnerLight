@@ -144,20 +144,54 @@ const ChatWindow = memo(
         const [newMessage, setNewMessage] = useState("");
         const messagesEndRef = useRef<HTMLDivElement>(null);
         const messagesContainerRef = useRef<HTMLDivElement>(null);
+        const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
+        const prevMessagesLengthRef = useRef(messages.length);
+        const isInitialLoadRef = useRef(true);
 
+        //Initial load scoll effect
         useEffect(() => {
-            if (messagesEndRef.current) {
-                messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+            if(isInitialLoadRef.current && messages.length > 0) {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+                isInitialLoadRef.current = false;
             }
+        }, [messages]);
+
+        //Handle auto scroll
+        useEffect(() => {
+            const currentLenth = messages.length;
+            const prevLength = prevMessagesLengthRef.current;
+
+            //If new messages were added (not loaded from history)
+            if (currentLenth > prevLength && shouldScrollToBottom) {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }
+
+            prevMessagesLengthRef.current = currentLenth;
         }, [messages]);
 
         const handleScroll = useCallback(() => {
             const container = messagesContainerRef.current;
             if (!container) return;
 
+            //Calculate if we're near the bottom
+            const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+            setShouldScrollToBottom(isNearBottom);
+
             // Check if scrolled to top
             if (container.scrollTop === 0 && state.hasMore) {
+                // Save current scoll height
+                const scrollHeightBefore = container.scrollHeight;
+
                 loadMoreMessages();
+
+                // After loading more messages, restore scroll position
+                requestAnimationFrame(() => {
+                    if(container) {
+                        const newScollHeight = container.scrollHeight;
+                        const scrollDiff = newScollHeight - scrollHeightBefore;
+                        container.scrollTop = scrollDiff;
+                    }
+                })
             }
         }, [loadMoreMessages, state.hasMore]);
 
@@ -180,6 +214,7 @@ const ChatWindow = memo(
             (e: React.FormEvent<HTMLFormElement>) => {
                 e.preventDefault();
                 if (newMessage.trim() === "") return;
+                setShouldScrollToBottom(true);
                 onSendMessage(newMessage);
                 setNewMessage("");
             },
@@ -388,27 +423,44 @@ export default function ChatApplication({
         if(!state.selectedChannel || !state.hasMore) return;
 
         const pageSize = 20;
-        const { data, error } = await supabase
+        const olderstMessageDate = state.messages[0]?.created_at;
+
+        if(!olderstMessageDate) return;
+        try {
+            const { data, error } = await supabase
             .from('messages')
             .select(`
                 *,
                 user:profiles(id, username, avatar_url)
             `)
             .eq('channel_id', state.selectedChannel)
+            .lt('created_at', olderstMessageDate)
             .order('created_at', { ascending: true })
-            .range((state.page - 1) * pageSize, state.page * pageSize - 1);
+            .limit(pageSize);
 
-        if(error) {
-            console.error(error);
-            return;
-        }
+            if(error) {
+                console.error(error);
+                return;
+            }
 
-        setState((prev) => ({
-            ...prev,
-            messages: [...data as Message[], ...prev.messages],
-            page: prev.page + 1,
-            hasMore: data.length === pageSize
-        }))
+            if(!data || data.length === 0) {
+                setState((prev) => ({
+                    ...prev,
+                    hasMore: false
+                }));
+                return
+            }
+    
+            setState((prev) => ({
+                ...prev,
+                messages: [...data as Message[], ...prev.messages],
+                page: prev.page + 1,
+                hasMore: data.length === pageSize
+            }))
+
+        } catch (error) {
+            
+        }        
     }, [state.selectedChannel, state.page, state.hasMore, supabase])
 
     //Select Channel Handler
@@ -432,7 +484,7 @@ export default function ChatApplication({
             setState((prev) => ({
                 ...prev,
                 selectedChannel: channelId,
-                messages: data as Message[] || [],
+                messages: (data as Message[] || []).reverse(),
                 page: 1,
                 hasMore: data.length === 20,
             }));

@@ -49,15 +49,15 @@ async function getInitialData()  {
         // Fetch initial messages for the first channel
         const { data: messages } = await supabase
             .from("messages")
-            .select(`
-                *,
-                user:profiles(id, username, avatar_url),
-            `)
+            .select("*, user:profiles(id, username, avatar_url)")
             .eq("channel_id", channels[0]!.id)
-            .order('created_at', { ascending: true })
-            .range(0, 19);
+            .gt('created_at', '1970-01-01')
+            .order('created_at', { ascending: false })
+            .limit(20);
 
-        initialMessages = messages ?? [];
+        initialMessages = (messages ?? []).reverse();
+
+        console.log(initialMessages);
 
         //Fetch lastReadMessages
         const { data: lastReadMessages } = await supabase
