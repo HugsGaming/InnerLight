@@ -214,6 +214,7 @@ export type Database = {
                     created_at: string;
                     data: Json | null;
                     encrypted_content: Json | null;
+                    file_metadata: Json | null;
                     id: string;
                     text_message: string | null;
                     title: string | null;
@@ -225,6 +226,7 @@ export type Database = {
                     created_at?: string;
                     data?: Json | null;
                     encrypted_content?: Json | null;
+                    file_metadata?: Json | null;
                     id?: string;
                     text_message?: string | null;
                     title?: string | null;
@@ -236,6 +238,7 @@ export type Database = {
                     created_at?: string;
                     data?: Json | null;
                     encrypted_content?: Json | null;
+                    file_metadata?: Json | null;
                     id?: string;
                     text_message?: string | null;
                     title?: string | null;
