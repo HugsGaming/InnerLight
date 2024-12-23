@@ -5,13 +5,10 @@ import React, {
     useCallback,
     useEffect,
     useMemo,
-    useReducer,
     useRef,
     useState,
 } from "react";
 import { createClient } from "../utils/supabase/client";
-import { useRouter } from "next/navigation";
-import { produce } from "immer";
 import {
     FiPhone,
     FiVideo,
@@ -19,11 +16,17 @@ import {
     FiPaperclip,
     FiSmile,
     FiMic,
+    FiSend,
 } from "react-icons/fi";
 import { toast } from "react-toastify";
-import { StringLike } from "bun";
-import { EncryptionManager, encryptionManager } from "../utils/encryption/client";
+import { EncryptionManager } from "../utils/encryption/client";
 import { Json } from "../../database.types";
+import { FileMetadata, FileService } from "../utils/encryption/fileservice";
+import { MdSettingsSuggest } from "react-icons/md";
+import { Play, FileText, Download, Send } from "lucide-react";
+import { formatFileSize } from "../utils/files";
+import ChatFileUploadPreview from "./ChatFileUploadPreview";
+import { v4 as uuidv4 } from "uuid";
 
 // Types
 interface ChatState {
@@ -64,9 +67,14 @@ export interface Message {
     user_id: string | null;
     channel_id: string | null;
     created_at: string;
-    type?: string | null;
+    type?: "text" | "image" | "video" | "file";
     title?: string | null;
     data?: Json | null;
+    file_metadata?: FileMetadata;
+    encrypted_content: {
+        iv: string;
+        content: string;
+    };
     user?: Profile | null;
 }
 
@@ -74,7 +82,7 @@ export interface EncryptedMessage extends Message {
     encrypted_content: {
         iv: string;
         content: string;
-    }
+    };
 }
 
 export interface InitialData {
@@ -84,12 +92,10 @@ export interface InitialData {
         email: string;
     };
     channels: MessageChannel[];
-    initialMessages: EncryptedMessage[];
+    initialMessages: Message[];
     initialChannel: string;
     unreadCounts: { [channelId: string]: number };
 }
-
-
 
 // Memoized Sidebar component
 const ChatSidebar = memo(
@@ -147,15 +153,26 @@ const ChatWindow = memo(
         messages,
         state,
         onSendMessage,
+        onSendFile,
         loadMoreMessages,
+        fileService,
     }: {
         chatName: string;
         messages: Message[];
         state: ChatState;
         onSendMessage: (text: string) => void;
+        onSendFile: (file: File) => Promise<void>;
         loadMoreMessages: () => void;
+        fileService: FileService;
     }) => {
         const [newMessage, setNewMessage] = useState("");
+        const [isUploadingFile, setIsUploadingFile] = useState(false);
+        const [decryptedFiles, setDecryptedFiles] = useState<{
+            [key: string]: string;
+        }>({});
+        const [isDecrypting, setIsDecrypting] = useState<{
+            [key: string]: boolean;
+        }>({});
         const messagesEndRef = useRef<HTMLDivElement>(null);
         const messagesContainerRef = useRef<HTMLDivElement>(null);
         const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
@@ -163,15 +180,77 @@ const ChatWindow = memo(
         const isInitialLoadRef = useRef(true);
         const loadingRef = useRef(false);
 
+        const supabase = useMemo(() => {
+            return createClient();
+        }, []);
+
+        const handleFileView = useCallback(
+            async (msg: Message) => {
+                if (!msg.file_metadata?.encyptedUrl) return;
+
+                try {
+                    // Check if we already have decrypted this file
+                    if (decryptedFiles[msg.id]) {
+                        if (msg.type === "image") {
+                            window.open(decryptedFiles[msg.id], "_blank");
+                        }
+                        return;
+                    }
+
+                    setIsDecrypting((prev) => ({
+                        ...prev,
+                        [msg.id]: true,
+                    }));
+
+                    const { data: encryptedData, error: downloadError } =
+                        await supabase.storage
+                            .from("chat-files")
+                            .download(msg.file_metadata.encyptedUrl);
+
+                    if (downloadError) throw downloadError;
+
+                    const encryptedContent = {
+                        iv: msg.file_metadata.iv!,
+                        content: await encryptedData.text(),
+                    };
+
+                    const previewUrl = await fileService.createPreviewUrl(
+                        encryptedData,
+                        msg.file_metadata.fileType,
+                        encryptedContent,
+                    );
+
+                    setDecryptedFiles((prev) => ({
+                        ...prev,
+                        [msg.id]: previewUrl,
+                    }));
+
+                    if (msg.type === "image") {
+                        window.open(previewUrl, "_blank");
+                    }
+                } catch (error) {
+                    console.error(error);
+                    toast.error("Failed to decrypt file!");
+                } finally {
+                    setIsDecrypting((prev) => ({
+                        ...prev,
+                        [msg.id]: false,
+                    }));
+                }
+            },
+            [fileService, supabase, decryptedFiles],
+        );
+
         const scollToBottom = useCallback(() => {
-            if(messagesContainerRef.current) {
-                messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            if (messagesContainerRef.current) {
+                messagesContainerRef.current.scrollTop =
+                    messagesContainerRef.current.scrollHeight;
             }
         }, []);
 
         //Initial load scoll effect
         useEffect(() => {
-            if(isInitialLoadRef.current && messages.length > 0) {
+            if (isInitialLoadRef.current && messages.length > 0) {
                 scollToBottom();
                 isInitialLoadRef.current = false;
             }
@@ -180,7 +259,7 @@ const ChatWindow = memo(
         //Reset initial load flag when channel changes
         useEffect(() => {
             isInitialLoadRef.current = true;
-            if(messages.length > 0) {
+            if (messages.length > 0) {
                 scollToBottom();
             }
         }, [chatName]);
@@ -203,11 +282,20 @@ const ChatWindow = memo(
             if (!container) return;
 
             //Calculate if we're near the bottom
-            const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+            const isNearBottom =
+                container.scrollHeight -
+                    container.scrollTop -
+                    container.clientHeight <
+                100;
             setShouldScrollToBottom(isNearBottom);
 
             // Check if scrolled to top
-            if (container.scrollTop <= 50 && state.hasMore && !state.isLoading && !loadingRef.current) {
+            if (
+                container.scrollTop <= 50 &&
+                state.hasMore &&
+                !state.isLoading &&
+                !loadingRef.current
+            ) {
                 //Set loading flag
                 loadingRef.current = true;
 
@@ -218,7 +306,7 @@ const ChatWindow = memo(
 
                 // After loading more messages, restore scroll position
                 requestAnimationFrame(() => {
-                    if(container) {
+                    if (container) {
                         const newScollHeight = container.scrollHeight;
                         const scrollDiff = newScollHeight - scrollHeightBefore;
                         container.scrollTop = scrollDiff;
@@ -228,7 +316,7 @@ const ChatWindow = memo(
                             loadingRef.current = false;
                         }, 1000); // Add a delay
                     }
-                })
+                });
             }
         }, [loadMoreMessages, state.hasMore, state.isLoading]);
 
@@ -258,6 +346,161 @@ const ChatWindow = memo(
             [newMessage, onSendMessage],
         );
 
+        const handleFileUpload = useCallback(
+            async (file: File) => {
+                try {
+                    setIsUploadingFile(true);
+                    await onSendFile(file);
+                } finally {
+                    setIsUploadingFile(false);
+                }
+            },
+            [onSendFile],
+        );
+
+        const renderMessageContent = useCallback(
+            (msg: Message) => {
+                const isDecryptingFile = isDecrypting[msg.id];
+                const decryptedUrl = decryptedFiles[msg.id];
+
+                switch (msg.type) {
+                    case "image":
+                        return (
+                            <div className="relative">
+                                {isDecryptingFile ? (
+                                    <div className="flex items-center justify-center p-4">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+                                    </div>
+                                ) : (
+                                    <>
+                                        <img
+                                            src={
+                                                msg.file_metadata?.thumbnailUrl
+                                            }
+                                            alt={msg.file_metadata?.fileName}
+                                            className="rounded-lg max-w-full cursor-pointer"
+                                        />
+                                        <div className="text-xs mt-1">
+                                            {msg.file_metadata?.fileName}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        );
+                    case "video":
+                        return (
+                            <div className="relative">
+                                {isDecryptingFile ? (
+                                    <div className="flex items-center justify-center p-4">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+                                    </div>
+                                ) : decryptedUrl ? (
+                                    <>
+                                        <video
+                                            controls
+                                            className="rounded-lg max-w-full"
+                                            src={decryptedUrl}
+                                        />
+                                        <div className="text-xs mt-1">
+                                            {msg.file_metadata?.fileName}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <button
+                                        onClick={() => handleFileView(msg)}
+                                        className="flex items-center space-x-2 p-2 bg-gray-100 dark:bg-gray-800 rounded"
+                                    >
+                                        <Play className="w-6 h-6" />
+                                        <span>Click to load video</span>
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    case "file":
+                        return (
+                            <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                                <FileText className="w-6 h-6" />
+                                <div>
+                                    <div className="text-sm font-medium">
+                                        {msg.file_metadata?.fileName}
+                                    </div>
+                                    <div className="text-xs">
+                                        {formatFileSize(
+                                            msg.file_metadata?.fileSize || 0,
+                                        )}
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => handleFileView(msg)}
+                                    disabled={isDecryptingFile}
+                                    className="ml-auto text-blue-500 hover:text-blue-600 disabled:opacity-50"
+                                >
+                                    {isDecryptingFile ? (
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" />
+                                    ) : (
+                                        <Download className="w-5 h-5" />
+                                    )}
+                                </button>
+                            </div>
+                        );
+                    default:
+                        return (
+                            <p className="whitespace-pre-wrap">
+                                {msg.text_message}
+                            </p>
+                        );
+                }
+            },
+            [handleFileView, isDecrypting, decryptedFiles, formatFileSize],
+        );
+
+        const renderMessage = useCallback(
+            (msg: Message) => {
+                const isOwnMessage = msg.user_id === state.currentUser?.id;
+                return (
+                    <div
+                        key={msg.id}
+                        className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} mb-4`}
+                    >
+                        {!isOwnMessage && (
+                            <div className="flex flex-col items-start mr-2">
+                                <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                                    {msg.user?.username
+                                        .charAt(0)
+                                        .toUpperCase() || "?"}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="max-w-[60%]">
+                            {!isOwnMessage && (
+                                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1 ml-1">
+                                    {msg.user?.username || "Unknown User"}
+                                </div>
+                            )}
+
+                            <div
+                                className={`rounded-lg px-4 py-2 break-words ${
+                                    isOwnMessage
+                                        ? "bg-blue-500 text-white"
+                                        : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                                }`}
+                            >
+                                {renderMessageContent(msg)}
+
+                                <p className="text-xs text-right mt-2 opacity-75">
+                                    {new Date(
+                                        msg.created_at,
+                                    ).toLocaleTimeString()}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            },
+            [state.currentUser, renderMessageContent],
+        );
+
         return (
             <div className="flex-1 p-4 flex flex-col justify-between bg-white dark:bg-gray-900 m-1 rounded-lg">
                 <div>
@@ -266,15 +509,15 @@ const ChatWindow = memo(
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                                 {chatName}
                             </h2>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {/* <p className="text-sm text-gray-500 dark:text-gray-400">
                                 Online - Last seen, 2:02pm
-                            </p>
+                            </p> */}
                         </div>
-                        <div className="flex space-x-3 text-gray-900 dark:text-gray-100">
+                        {/* <div className="flex space-x-3 text-gray-900 dark:text-gray-100">
                             <FiPhone />
                             <FiVideo />
                             <FiMoreHorizontal />
-                        </div>
+                        </div> */}
                     </div>
                     <div
                         ref={messagesContainerRef}
@@ -294,23 +537,7 @@ const ChatWindow = memo(
                                             {date}
                                         </span>
                                     </div>
-                                    {dateMessages.map((msg) => (
-                                        <div
-                                            key={msg.id}
-                                            className={`flex ${msg.user_id === state.currentUser?.id ? "justify-end" : "justify-start"} mb-4`}
-                                        >
-                                            <div
-                                                className={`rounded-lg p-2 max-w-[70%] ${msg.user_id === state.currentUser?.id ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-800 dark:text-gray-100"}`}
-                                            >
-                                                <p>{msg.text_message}</p>
-                                                <p className="text-xs text-right">
-                                                    {new Date(
-                                                        msg.created_at,
-                                                    ).toLocaleTimeString()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
+                                    {dateMessages.map(renderMessage)}
                                 </div>
                             ),
                         )}
@@ -321,7 +548,13 @@ const ChatWindow = memo(
                     onSubmit={handleSendMessage}
                     className="flex items-center p-4 bg-gray-100 dark:bg-gray-800 rounded-full"
                 >
-                    <FiPaperclip className="mr-3 text-gray-900 dark:text-gray-100" />
+                    <div className="relative">
+                        <ChatFileUploadPreview
+                            onSend={handleFileUpload}
+                            onCancel={() => {}}
+                            isUploading={isUploadingFile}
+                        />
+                    </div>
                     <input
                         type="text"
                         value={newMessage}
@@ -331,7 +564,7 @@ const ChatWindow = memo(
                     />
                     <FiSmile className="mr-3 text-gray-900 dark:text-gray-100" />
                     <button type="submit">
-                        <FiMic className="text-gray-900 dark:text-gray-100" />
+                        <FiSend className="text-gray-900 dark:text-gray-100" />
                     </button>
                 </form>
             </div>
@@ -342,9 +575,9 @@ const ChatWindow = memo(
 ChatWindow.displayName = "ChatWindow";
 
 export default function ChatApplication({
-    initialData
+    initialData,
 }: {
-    initialData: InitialData
+    initialData: InitialData;
 }) {
     const [state, setState] = useState<ChatState>({
         channels: initialData.channels,
@@ -354,11 +587,18 @@ export default function ChatApplication({
         page: 1,
         hasMore: true,
         isLoading: false,
-        unreadMessages: initialData.unreadCounts
+        unreadMessages: initialData.unreadCounts,
     });
 
     const supabase = useMemo(() => createClient(), []);
     const encryptionManagerRef = useRef<EncryptionManager | null>(null);
+    const fileService = useMemo(
+        () =>
+            encryptionManagerRef.current
+                ? new FileService(encryptionManagerRef.current)
+                : null,
+        [encryptionManagerRef.current],
+    );
 
     useEffect(() => {
         const initializeEncryption = async () => {
@@ -366,37 +606,44 @@ export default function ChatApplication({
                 const manager = new EncryptionManager();
                 await manager.initialize(process.env.ENCRYPTION_PASSWORD!);
                 encryptionManagerRef.current = manager;
-    
+
                 // Decrypt initial messages
                 const decryptedMessages = await Promise.all(
                     initialData.initialMessages.map(async (message) => {
                         try {
-                            const encryptedContent = typeof message.encrypted_content === 'string'
-                                ? JSON.parse(message.encrypted_content)
-                                : message.encrypted_content;
-    
-                            const decryptedContent = await manager.decrypt(encryptedContent);
+                            if (message.type !== "text")
+                                return {
+                                    ...message,
+                                    text_message: null,
+                                };
+                            const encryptedContent =
+                                typeof message.encrypted_content === "string"
+                                    ? JSON.parse(message.encrypted_content)
+                                    : message.encrypted_content;
+
+                            const decryptedContent =
+                                await manager.decrypt(encryptedContent);
                             return {
                                 ...message,
-                                text_message: decryptedContent
-                            }
+                                text_message: decryptedContent,
+                            };
                         } catch (error) {
-                            console.error('Decryption error:', error);
+                            console.error("Decryption error:", error);
                             return {
                                 ...message,
-                                text_message: 'Failed to decrypt message'
-                            }
+                                text_message: "Failed to decrypt message",
+                            };
                         }
-                    })
-                )
+                    }),
+                );
 
                 setState((prev) => ({
                     ...prev,
-                    messages: decryptedMessages.reverse()
-                }))
+                    messages: decryptedMessages.reverse(),
+                }));
             } catch (error) {
-                console.error('Encryption initialization error:', error);
-                toast.error('Failed to initialize encryption');
+                console.error("Encryption initialization error:", error);
+                toast.error("Failed to initialize encryption");
             }
         };
 
@@ -409,78 +656,99 @@ export default function ChatApplication({
             if (!state.currentUser) return;
 
             const latestMessage = state.messages[state.messages.length - 1];
-            if(!latestMessage) return;
-            if(state.unreadMessages[channelId] === 0) return;
+            if (!latestMessage) return;
+            if (state.unreadMessages[channelId] === 0) return;
 
             try {
                 const { error } = await supabase
-                    .from('userReadMessages')
-                    .upsert({
-                        user_id: state.currentUser.id,
-                        channel_id: channelId,
-                        message_id: latestMessage.id,
-                        last_read_at: new Date().toISOString()
-                    }, {
-                        onConflict: 'user_id, channel_id',
-                    });
+                    .from("userReadMessages")
+                    .upsert(
+                        {
+                            user_id: state.currentUser.id,
+                            channel_id: channelId,
+                            message_id: latestMessage.id,
+                            last_read_at: new Date().toISOString(),
+                        },
+                        {
+                            onConflict: "user_id, channel_id",
+                        },
+                    );
 
-                if(error) {
+                if (error) {
                     console.error(error);
                     toast.error(error.message);
-                    return
+                    return;
                 }
 
                 setState((prev) => ({
                     ...prev,
                     unreadMessages: {
                         ...prev.unreadMessages,
-                        [channelId]: 0
+                        [channelId]: 0,
                     },
-                }))
-            } catch (error) {
-                
-            }
+                }));
+            } catch (error) {}
         },
         [state.currentUser, state.messages, supabase],
     );
 
     //Listen for new messages
     useEffect(() => {
-        if(!encryptionManagerRef.current) return;
+        if (!encryptionManagerRef.current) return;
 
         const messageSubscription = supabase
-            .channel('messages')
+            .channel("messages")
             .on(
-                'postgres_changes',
+                "postgres_changes",
                 {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'messages',
+                    event: "INSERT",
+                    schema: "public",
+                    table: "messages",
                 },
                 async (payload) => {
-                    const encryptedMessage = payload.new as EncryptedMessage;
+                    const encryptedMessage = payload.new as Message;
 
                     try {
-                        // Parse the encrypted content if it's a string
-                        const encryptedContent = typeof encryptedMessage.encrypted_content === 'string'
-                            ? JSON.parse(encryptedMessage.encrypted_content)
-                            : encryptedMessage.encrypted_content;
+                        let newMessage: Message;
+                        if (encryptedMessage.type === "text") {
+                            // Parse the encrypted content if it's a string
+                            const encryptedContent =
+                                typeof encryptedMessage.encrypted_content ===
+                                "string"
+                                    ? JSON.parse(
+                                          encryptedMessage.encrypted_content,
+                                      )
+                                    : encryptedMessage.encrypted_content;
 
-                        if(!encryptedContent || !encryptedContent.iv || !encryptedContent.content) throw new Error('Invalid encrypted content');
+                            if (
+                                !encryptedContent ||
+                                !encryptedContent.iv ||
+                                !encryptedContent.content
+                            )
+                                throw new Error("Invalid encrypted content");
 
-                        const decryptedMessage = await encryptionManagerRef.current!.decrypt({
-                            iv: encryptedContent.iv,
-                            content: encryptedContent.content
-                        });
+                            const decryptedMessage =
+                                await encryptionManagerRef.current!.decrypt({
+                                    iv: encryptedContent.iv,
+                                    content: encryptedContent.content,
+                                });
 
-                        const newMessage = {
-                            ...encryptedMessage,
-                            text_message: decryptedMessage
+                            newMessage = {
+                                ...encryptedMessage,
+                                text_message: decryptedMessage,
+                            };
+                        } else {
+                            newMessage = {
+                                ...encryptedMessage,
+                                text_message: null,
+                            };
                         }
-                        
+
                         setState((prev) => {
                             // If new message is from the selected channel, add it to the messages array
-                            if (newMessage.channel_id === state.selectedChannel) {
+                            if (
+                                newMessage.channel_id === state.selectedChannel
+                            ) {
                                 return {
                                     ...prev,
                                     messages: [...prev.messages, newMessage],
@@ -488,149 +756,172 @@ export default function ChatApplication({
                                         ...prev.unreadMessages,
                                         [newMessage.channel_id]:
                                             // If the new message is from the current user, set the unread count to 0 else increment it
-                                            newMessage.user_id === state.currentUser?.id
-                                                ? prev.unreadMessages[newMessage.channel_id] || 0
-                                                : (prev.unreadMessages[newMessage.channel_id] || 0) + 1
-                                    }
-                                }
+                                            newMessage.user_id ===
+                                            state.currentUser?.id
+                                                ? prev.unreadMessages[
+                                                      newMessage.channel_id
+                                                  ] || 0
+                                                : (prev.unreadMessages[
+                                                      newMessage.channel_id
+                                                  ] || 0) + 1,
+                                    },
+                                };
                             }
-    
+
                             return {
                                 ...prev,
                                 unreadMessages: {
                                     ...prev.unreadMessages,
                                     [newMessage.channel_id!]:
                                         // If the new message is from the current user, set the unread count to 0 else increment it
-                                        newMessage.user_id === state.currentUser?.id
-                                            ? prev.unreadMessages[newMessage.channel_id!] || 0
-                                            : (prev.unreadMessages[newMessage.channel_id!] || 0) + 1
-                                }
-                            }
+                                        newMessage.user_id ===
+                                        state.currentUser?.id
+                                            ? prev.unreadMessages[
+                                                  newMessage.channel_id!
+                                              ] || 0
+                                            : (prev.unreadMessages[
+                                                  newMessage.channel_id!
+                                              ] || 0) + 1,
+                                },
+                            };
                         });
-    
-                        if(newMessage.channel_id === state.selectedChannel && newMessage.user_id !== state.currentUser?.id) {
+
+                        if (
+                            newMessage.channel_id === state.selectedChannel &&
+                            newMessage.user_id !== state.currentUser?.id
+                        ) {
                             await markMessagesAsRead(newMessage.channel_id);
                         }
-                    } catch(error) {
+                    } catch (error) {
                         console.error(error);
-                        toast.error('Error decrypting message');
+                        toast.error("Error decrypting message");
                     }
-
-                    
-                }
+                },
             )
             .subscribe();
-        
+
         return () => {
             supabase.removeChannel(messageSubscription);
-        }
-    })
+        };
+    });
 
     const fetchMoreMessages = useCallback(async () => {
-        if(!state.selectedChannel || !state.hasMore || state.isLoading) return;
+        if (!state.selectedChannel || !state.hasMore || state.isLoading) return;
 
         const pageSize = 20;
 
         try {
             setState((prev) => ({
                 ...prev,
-                isLoading: true
-            }))
+                isLoading: true,
+            }));
 
             let query = supabase
-                .from('messages')
-                .select('*, user:profiles(*)')
-                .eq('channel_id', state.selectedChannel)
-                .order('created_at', { ascending: true })
+                .from("messages")
+                .select("*, user:profiles(*)")
+                .eq("channel_id", state.selectedChannel)
+                .order("created_at", { ascending: true });
 
-            if(state.messages.length > 0) {
+            if (state.messages.length > 0) {
                 // Get the oldest message date
                 const oldestMessageDate = state.messages[0].created_at;
                 // Filter messages created after the oldest message
-                query = query.lt('created_at', oldestMessageDate);
+                query = query.lt("created_at", oldestMessageDate);
             }
-            
+
             query = query.limit(pageSize);
 
             const { data, error } = await query;
 
-            if(error) {
+            if (error) {
                 console.error(error);
                 setState((prev) => ({
                     ...prev,
                     isLoading: false,
-                    hasMore: false
-                }))
+                    hasMore: false,
+                }));
                 return;
             }
 
-            if(!data || data.length === 0) {
+            if (!data || data.length === 0) {
                 setState((prev) => ({
                     ...prev,
                     hasMore: false,
-                    isLoading: false
+                    isLoading: false,
                 }));
                 return;
             }
             try {
                 // Decrypt messages
                 const decryptedMessages = await Promise.all(
-                    (data as EncryptedMessage[]).map(async (msg) => {
+                    (data as unknown as Message[]).map(async (msg) => {
                         try {
-                            const encryptedContent = typeof msg.encrypted_content === 'string'
-                                ? JSON.parse(msg.encrypted_content)
-                                : msg.encrypted_content;
-    
-                            if(!encryptedContent || !encryptedContent.iv || !encryptedContent.content) throw new Error('Invalid encrypted content');
-    
-                            const decryptedContent = await encryptionManagerRef.current!.decrypt({
-                                iv: encryptedContent.iv,
-                                content: encryptedContent.content
-                            });
-    
+                            const encryptedContent =
+                                typeof msg.encrypted_content === "string"
+                                    ? JSON.parse(msg.encrypted_content)
+                                    : msg.encrypted_content;
+
+                            if (
+                                !encryptedContent ||
+                                !encryptedContent.iv ||
+                                !encryptedContent.content
+                            )
+                                throw new Error("Invalid encrypted content");
+
+                            const decryptedContent =
+                                await encryptionManagerRef.current!.decrypt({
+                                    iv: encryptedContent.iv,
+                                    content: encryptedContent.content,
+                                });
+
                             return {
                                 ...msg,
-                                text_message: decryptedContent
-                            }
+                                text_message: decryptedContent,
+                            };
                         } catch (error) {
-                            console.error('Decryption error:', error);
+                            console.error("Decryption error:", error);
                             return {
                                 ...msg,
-                                text_message: 'Error decrypting message'
-                            }
+                                text_message: "Error decrypting message",
+                            };
                         }
-                    })
+                    }),
                 );
-        
+
                 setState((prev) => ({
                     ...prev,
                     messages: [...decryptedMessages, ...prev.messages],
                     page: prev.page + 1,
                     hasMore: data.length === pageSize,
-                    isLoading: false
-                }))
+                    isLoading: false,
+                }));
             } catch (error) {
-                console.error('Batch decryption error:', error);
+                console.error("Batch decryption error:", error);
                 setState((prev) => ({
                     ...prev,
                     isLoading: false,
-                    hasMore: false
-                }))
+                    hasMore: false,
+                }));
             }
         } catch (error) {
-            console.error('Error fetching messages:', error);
+            console.error("Error fetching messages:", error);
             setState((prev) => ({
                 ...prev,
                 isLoading: false,
-                hasMore: false
-            }))
-        }        
-    }, [state.selectedChannel, state.page, state.hasMore, state.isLoading, state.messages, supabase])
+                hasMore: false,
+            }));
+        }
+    }, [
+        state.selectedChannel,
+        state.page,
+        state.hasMore,
+        state.isLoading,
+        state.messages,
+        supabase,
+    ]);
 
     //Select Channel Handler
     const selectChannel = useCallback(
-        
-
         async (channelId: string) => {
             setState((prev) => ({
                 ...prev,
@@ -638,26 +929,28 @@ export default function ChatApplication({
                 selectedChannel: channelId,
                 hasMore: true,
                 isLoading: true,
-                page: 1
-            }))
+                page: 1,
+            }));
 
             // Get the most recent 20 messages by ordering descending, then reverse
             const { data, error } = await supabase
-                .from('messages')
-                .select(`
+                .from("messages")
+                .select(
+                    `
                     *,
                     user:profiles(*)
-                `)
-                .eq('channel_id', channelId)
-                .order('created_at', { ascending: false }) // Get the most recent messages
+                `,
+                )
+                .eq("channel_id", channelId)
+                .order("created_at", { ascending: false }) // Get the most recent messages
                 .limit(20);
 
-            if(error) {
+            if (error) {
                 console.error(error);
                 setState((prev) => ({
                     ...prev,
                     isLoading: false,
-                    hasMore: false
+                    hasMore: false,
                 }));
                 return;
             }
@@ -665,31 +958,43 @@ export default function ChatApplication({
             try {
                 // Decrypt the messages before setting them in state
                 const decryptedMessages = await Promise.all(
-                    (data as EncryptedMessage[]).map(async (msg) => {
+                    (data as unknown as Message[]).map(async (msg) => {
                         try {
-                            const encryptedContent = typeof msg.encrypted_content === 'string'
-                                ? JSON.parse(msg.encrypted_content)
-                                : msg.encrypted_content;
+                            if (msg.type !== "text")
+                                return {
+                                    ...msg,
+                                    text_message: null,
+                                };
+                            const encryptedContent =
+                                typeof msg.encrypted_content === "string"
+                                    ? JSON.parse(msg.encrypted_content)
+                                    : msg.encrypted_content;
 
-                            if(!encryptedContent || !encryptedContent.iv || !encryptedContent.content) throw new Error('Invalid encrypted content');
+                            if (
+                                !encryptedContent ||
+                                !encryptedContent.iv ||
+                                !encryptedContent.content
+                            )
+                                throw new Error("Invalid encrypted content");
 
-                            const decryptedContent = await encryptionManagerRef.current!.decrypt({
-                                iv: encryptedContent.iv,
-                                content: encryptedContent.content
-                            });
+                            const decryptedContent =
+                                await encryptionManagerRef.current!.decrypt({
+                                    iv: encryptedContent.iv,
+                                    content: encryptedContent.content,
+                                });
 
                             return {
                                 ...msg,
-                                text_message: decryptedContent
-                            }
+                                text_message: decryptedContent,
+                            };
                         } catch (error) {
                             console.error(error);
                             return {
                                 ...msg,
-                                text_message: 'Failed to decrypt message'
-                            }
+                                text_message: "Failed to decrypt message",
+                            };
                         }
-                    })
+                    }),
                 );
 
                 const orderedMessages = [...decryptedMessages].reverse();
@@ -700,17 +1005,17 @@ export default function ChatApplication({
                     messages: orderedMessages,
                     page: 1,
                     hasMore: data.length === 20,
-                    isLoading: false
+                    isLoading: false,
                 }));
 
                 // Mark messages as read when switching to a new channel
                 markMessagesAsRead(channelId);
-            } catch(error) {
+            } catch (error) {
                 console.error(error);
                 setState((prev) => ({
                     ...prev,
                     isLoading: false,
-                    hasMore: false
+                    hasMore: false,
                 }));
             }
         },
@@ -723,35 +1028,93 @@ export default function ChatApplication({
             if (!state.currentUser || !state.selectedChannel) return;
 
             try {
-                const encryptedContent = await encryptionManagerRef.current!.encrypt(text);
+                const encryptedContent =
+                    await encryptionManagerRef.current!.encrypt(text);
                 const encryptedContentJson = JSON.stringify(encryptedContent);
 
                 const { error } = await supabase
-                .from("messages")
-                .insert({
-                    encrypted_content: encryptedContentJson,
-                    user_id: state.currentUser.id,
-                    channel_id: state.selectedChannel,
-                    type: "text",
-                    data: null,
-                    title: null,
-                })
-                .select()
-                .single();
+                    .from("messages")
+                    .insert({
+                        encrypted_content: encryptedContentJson,
+                        user_id: state.currentUser.id,
+                        channel_id: state.selectedChannel,
+                        type: "text",
+                        data: null,
+                        title: null,
+                    })
+                    .select()
+                    .single();
 
                 if (error) {
                     console.error(error);
-                    toast.error('Failed to send message. Please try again.');
+                    toast.error("Failed to send message. Please try again.");
                 }
             } catch (error) {
                 console.error(error);
-                toast.error('Failed to send message. Please try again.');
+                toast.error("Failed to send message. Please try again.");
             }
-
-            
         },
         [state.currentUser, state.selectedChannel, supabase],
     );
+
+    const handleFileSend = useCallback(
+        async (file: File) => {
+            if (!state.currentUser || !state.selectedChannel || !fileService)
+                return;
+
+            try {
+                // Generate encryption parameters
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+
+                // Encrypt the file
+                const { encryptedBlob, metadata } =
+                    await fileService.encryptFile(file, {
+                        iv: Buffer.from(iv).toString("base64"),
+                    });
+
+                // Upload encrypted file
+                const fileName = `${uuidv4()}-${metadata.fileName}`;
+                const filePath = `${state.selectedChannel}/${fileName}`;
+
+                const { data: uploadData, error: uploadError } =
+                    await supabase.storage
+                        .from("chat-files")
+                        .upload(filePath, encryptedBlob);
+
+                if (uploadError) {
+                    console.error(uploadError);
+                    toast.error("Failed to upload file. Please try again.");
+                    return;
+                }
+
+                // Create message entry
+                const { error: messageError } = await supabase
+                    .from("messages")
+                    .insert({
+                        user_id: state.currentUser.id,
+                        channel_id: state.selectedChannel,
+                        type: metadata.fileType.startsWith("image/")
+                            ? "image"
+                            : metadata.fileType.startsWith("video/")
+                              ? "video"
+                              : "file",
+                        file_metadata: {
+                            ...metadata,
+                            encyptedUrl: uploadData?.path,
+                            iv: Buffer.from(iv).toString("base64"),
+                        },
+                    });
+            } catch (error) {
+                console.error("Error sending file:", error);
+                toast.error("Failed to send file. Please try again.");
+            }
+        },
+        [state.currentUser, state.selectedChannel, fileService, supabase],
+    );
+
+    if (!fileService) {
+        return <div>Loading...</div>;
+    }
 
     return (
         <div className="flex flex-1 ml-14 mt-14 mb-10 md:ml-64 h-full">
@@ -764,8 +1127,10 @@ export default function ChatApplication({
                 chatName={state.selectedChannel}
                 messages={state.messages}
                 onSendMessage={sendMessage}
+                onSendFile={handleFileSend}
                 state={state}
                 loadMoreMessages={fetchMoreMessages}
+                fileService={fileService}
             />
         </div>
     );

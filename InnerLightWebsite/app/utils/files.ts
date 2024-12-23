@@ -1,15 +1,15 @@
 /**
- * Converts a file size in bytes to a human-readable string format.
- * @example formatFileSize(1024) => "1 KB"
- * @example formatFileSize(1048576) => "1 MB"
- * @param {number} bytes - The size of the file in bytes.
- * @returns {string} - The formatted file size as a string with the appropriate unit.
+ * Converts a number of bytes into a human-readable string
+ * @param {number} bytes
+ * @returns {string}
+ * @example formatFileSize(1024) => "1.00 KB"
+ * @example formatFileSize(123456789) => "117.74 MB"
  */
 export function formatFileSize(bytes: number) {
     const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
     if (bytes === 0) return "n/a";
     const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)).toString());
-    return Math.round(bytes / Math.pow(1024, i)) + " " + sizes[i];
+    return (bytes / Math.pow(1024, i)).toFixed(2) + " " + sizes[i];
 }
 
 /**

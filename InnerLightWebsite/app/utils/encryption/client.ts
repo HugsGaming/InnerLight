@@ -1,4 +1,4 @@
-import { Buffer } from 'buffer'
+import { Buffer } from "buffer";
 
 export interface EncryptedMessage {
     iv: string;
@@ -14,29 +14,29 @@ export class EncryptionManager {
      * @param {string} password - The password to use for deriving the encryption key.
      * @returns {Promise<void>} - A promise that resolves when the encryption manager is initialized.
      */
-    async initialize(password: string) : Promise<void> {
+    async initialize(password: string): Promise<void> {
         // Derive encryption key from password using PBKDF2
         const encoder = new TextEncoder();
         const salt = encoder.encode(process.env.ENCRYPTION_SALT); // In production, use a proper salt management strategy
         const keyMaterial = await crypto.subtle.importKey(
-            'raw',
+            "raw",
             encoder.encode(password),
-            {name: 'PBKDF2'},
+            { name: "PBKDF2" },
             false,
-            ['deriveBits', 'deriveKey']
+            ["deriveBits", "deriveKey"],
         );
 
         this.key = await crypto.subtle.deriveKey(
             {
-                name: 'PBKDF2',
+                name: "PBKDF2",
                 salt,
                 iterations: 100000,
-                hash: 'SHA-256'
+                hash: "SHA-256",
             },
             keyMaterial,
-            {name: 'AES-GCM', length: 256},
+            { name: "AES-GCM", length: 256 },
             false,
-            ['encrypt', 'decrypt']
+            ["encrypt", "decrypt"],
         );
     }
 
@@ -48,32 +48,30 @@ export class EncryptionManager {
      * @throws {Error} - If the encryption key has not been initialized.
      */
     async encrypt(message: string): Promise<EncryptedMessage> {
-        if (!this.key) throw new Error('Encryption key not initialized');
+        if (!this.key) throw new Error("Encryption key not initialized");
 
         try {
             const encoder = new TextEncoder();
             const iv = crypto.getRandomValues(new Uint8Array(12));
             const encodedMessage = encoder.encode(message);
-    
+
             const encryptedContent = await crypto.subtle.encrypt(
                 {
-                    name: 'AES-GCM', 
-                    iv
+                    name: "AES-GCM",
+                    iv,
                 },
                 this.key,
-                encodedMessage
+                encodedMessage,
             );
-    
-            return {
-                iv: Buffer.from(iv).toString('base64'),
-                content: Buffer.from(encryptedContent).toString('base64')
-            }
-        } catch (error) {
-            console.error('Encryption error:', error);
-            throw new Error('Failed to encrypt message');
-        }
 
-        
+            return {
+                iv: Buffer.from(iv).toString("base64"),
+                content: Buffer.from(encryptedContent).toString("base64"),
+            };
+        } catch (error) {
+            console.error("Encryption error:", error);
+            throw new Error("Failed to encrypt message");
+        }
     }
 
     /**
@@ -83,28 +81,30 @@ export class EncryptionManager {
      * @throws {Error} - If the encryption key has not been initialized.
      */
     async decrypt(encryptedMessage: EncryptedMessage): Promise<string> {
-        if (!this.key) throw new Error('Encryption key not initialized');
+        if (!this.key) throw new Error("Encryption key not initialized");
 
         try {
-            const iv = Buffer.from(encryptedMessage.iv, 'base64');
-            const encryptedContent = Buffer.from(encryptedMessage.content, 'base64');
+            const iv = Buffer.from(encryptedMessage.iv, "base64");
+            const encryptedContent = Buffer.from(
+                encryptedMessage.content,
+                "base64",
+            );
 
             const decryptedContent = await crypto.subtle.decrypt(
                 {
-                    name: 'AES-GCM', 
-                    iv
+                    name: "AES-GCM",
+                    iv,
                 },
                 this.key,
-                encryptedContent
+                encryptedContent,
             );
 
             const decoder = new TextDecoder();
             return decoder.decode(decryptedContent);
         } catch (error) {
-            console.error('Decryption error:', error);
-            throw new Error('Failed to decrypt message');
+            console.error("Decryption error:", error);
+            throw new Error("Failed to decrypt message");
         }
-        
     }
 }
 
