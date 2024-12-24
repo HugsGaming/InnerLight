@@ -56,13 +56,16 @@ export class EncryptionManager {
         if (!this.key) throw new Error("Encryption key not initialized");
 
         try {
-            console.log('Encrypt - Starting with message length:', message.length);
+            console.log(
+                "Encrypt - Starting with message length:",
+                message.length,
+            );
 
             const encoder = new TextEncoder();
             const iv = crypto.getRandomValues(new Uint8Array(12));
             const encodedMessage = encoder.encode(message);
 
-            console.log('Encoded message length:', encodedMessage.length);
+            console.log("Encoded message length:", encodedMessage.length);
 
             const encryptedContent = await crypto.subtle.encrypt(
                 {
@@ -73,18 +76,18 @@ export class EncryptionManager {
                 encodedMessage,
             );
 
-            console.log('Encrypted content size:', encryptedContent.byteLength);
+            console.log("Encrypted content size:", encryptedContent.byteLength);
 
             const result = {
                 iv: Buffer.from(iv).toString("base64"),
                 content: Buffer.from(encryptedContent).toString("base64"),
             };
 
-            console.log('Final encrypted result:', {
+            console.log("Final encrypted result:", {
                 ivLength: result.iv.length,
-                contentLength: result.content.length
+                contentLength: result.content.length,
             });
-    
+
             return result;
         } catch (error) {
             console.error("Encryption error:", error);
@@ -102,7 +105,7 @@ export class EncryptionManager {
         if (!this.key) throw new Error("Encryption key not initialized");
 
         try {
-            console.log('Decrypt - Starting with:', {
+            console.log("Decrypt - Starting with:", {
                 ivLength: encryptedMessage.iv.length,
                 contentLength: encryptedMessage.content.length,
             });
@@ -113,9 +116,9 @@ export class EncryptionManager {
                 "base64",
             );
 
-            console.log('Decoded buffers:', {
+            console.log("Decoded buffers:", {
                 ivLength: iv.length,
-                contentLength: encryptedContent.length
+                contentLength: encryptedContent.length,
             });
 
             const decryptedContent = await crypto.subtle.decrypt(
@@ -127,10 +130,10 @@ export class EncryptionManager {
                 encryptedContent,
             );
 
-            console.log('Decrypted content size:', decryptedContent.byteLength);
+            console.log("Decrypted content size:", decryptedContent.byteLength);
 
             const result = Buffer.from(decryptedContent).toString();
-        
+
             return result;
         } catch (error) {
             console.error("Decryption error:", error);

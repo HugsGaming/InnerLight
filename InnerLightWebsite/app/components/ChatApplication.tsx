@@ -9,10 +9,7 @@ import React, {
     useState,
 } from "react";
 import { createClient } from "../utils/supabase/client";
-import {
-    FiSmile,
-    FiSend,
-} from "react-icons/fi";
+import { FiSmile, FiSend } from "react-icons/fi";
 import { toast } from "react-toastify";
 import { EncryptionManager } from "../utils/encryption/client";
 import { Json } from "../../database.types";
@@ -182,19 +179,19 @@ const ChatWindow = memo(
             return createClient();
         }, []);
 
-        type FileType = 'image' | 'video' | 'file'
+        type FileType = "image" | "video" | "file";
 
         const isValidFileType = (type: string): type is FileType => {
-            return ['image', 'video', 'file'].includes(type);
-        }
+            return ["image", "video", "file"].includes(type);
+        };
 
         const handleFileView = useCallback(
             async (msg: Message) => {
                 // Validate file type
-                if(msg.type && !isValidFileType(msg.type)) {
+                if (msg.type && !isValidFileType(msg.type)) {
                     console.error(`Invalid file type: ${msg.type}`);
                     toast.error(`Invalid file type: ${msg.type}`);
-                    return
+                    return;
                 }
 
                 if (!msg.file_metadata?.encyptedUrl) return;
@@ -221,27 +218,37 @@ const ChatWindow = memo(
                     if (downloadError) throw downloadError;
 
                     const encryptedBlob = new Blob([encryptedData], {
-                        type: msg.type === 'video' ? 'video/encrypted' : "application/encrypted"
-                    })
+                        type:
+                            msg.type === "video"
+                                ? "video/encrypted"
+                                : "application/encrypted",
+                    });
 
-                    if(!msg.file_metadata) {
-                        throw new Error('File metadata not found');
+                    if (!msg.file_metadata) {
+                        throw new Error("File metadata not found");
                     }
 
                     try {
                         // Choose appropriate preview method based on file type
-                        const previewURL = msg.type === 'video'
-                            ? await fileService.createVideoPreviewUrl(encryptedBlob, msg.file_metadata)
-                            : await fileService.createPreviewUrl(encryptedBlob, msg.file_metadata.fileType || '', msg.file_metadata);
+                        const previewURL =
+                            msg.type === "video"
+                                ? await fileService.createVideoPreviewUrl(
+                                      encryptedBlob,
+                                      msg.file_metadata,
+                                  )
+                                : await fileService.createPreviewUrl(
+                                      encryptedBlob,
+                                      msg.file_metadata.fileType || "",
+                                      msg.file_metadata,
+                                  );
 
                         setDecryptedFiles((prev) => ({
                             ...prev,
-                            [msg.id]: previewURL
-                        }))
-
+                            [msg.id]: previewURL,
+                        }));
                     } catch (error) {
-                        console.error('Decryption error:', error);
-                        throw new Error('Failed to decrypt file');
+                        console.error("Decryption error:", error);
+                        throw new Error("Failed to decrypt file");
                     }
                 } catch (error) {
                     console.error(error);
@@ -411,12 +418,17 @@ const ChatWindow = memo(
                                         fileMetadata={msg.file_metadata!}
                                         isDecrypting={isDecryptingFile}
                                         onError={(error) => {
-                                            console.error('Video Playback Error:', error);
+                                            console.error(
+                                                "Video Playback Error:",
+                                                error,
+                                            );
                                             setDecryptedFiles((prevFiles) => {
-                                                const newFiles = { ...prevFiles };
+                                                const newFiles = {
+                                                    ...prevFiles,
+                                                };
                                                 delete newFiles[msg.id];
                                                 return newFiles;
-                                            })
+                                            });
                                         }}
                                     />
                                 ) : (
@@ -1081,21 +1093,22 @@ export default function ChatApplication({
                 const iv = crypto.getRandomValues(new Uint8Array(12));
                 const ivBase64 = Buffer.from(iv).toString("base64");
 
-                if(file.type.startsWith("video/")) {
-
-                    const { encryptedBlob, metadata } = await fileService.encryptVideo(file, {
-                        iv: ivBase64
-                    });
+                if (file.type.startsWith("video/")) {
+                    const { encryptedBlob, metadata } =
+                        await fileService.encryptVideo(file, {
+                            iv: ivBase64,
+                        });
 
                     // Upload encrypted file
                     const fileName = `${uuidv4()}-${metadata.fileName}`;
                     const filePath = `${state.selectedChannel}/${fileName}`;
 
-                    const { data: uploadData, error: uploadError } = await supabase.storage
-                        .from("chat-files")
-                        .upload(filePath, encryptedBlob, {
-                            contentType: "video/encrypted",
-                        });
+                    const { data: uploadData, error: uploadError } =
+                        await supabase.storage
+                            .from("chat-files")
+                            .upload(filePath, encryptedBlob, {
+                                contentType: "video/encrypted",
+                            });
 
                     if (uploadError) {
                         console.error(uploadError);
@@ -1105,69 +1118,66 @@ export default function ChatApplication({
 
                     // Create message entry
                     const { error: messageError } = await supabase
-                        .from('messages')
+                        .from("messages")
                         .insert({
                             user_id: state.currentUser.id,
                             channel_id: state.selectedChannel,
-                            type: 'video',
+                            type: "video",
                             file_metadata: {
                                 ...metadata,
                                 encyptedUrl: uploadData?.path,
-                            }
+                            },
                         });
 
-                    if(messageError) {
+                    if (messageError) {
                         console.error(messageError);
                         toast.error("Failed to upload file. Please try again.");
                     }
-
                 } else {
                     // Encrypt the file
                     const { encryptedBlob, metadata } =
-                    await fileService.encryptFile(file, {
-                        iv: ivBase64,
-                    });
+                        await fileService.encryptFile(file, {
+                            iv: ivBase64,
+                        });
 
                     // Upload encrypted file
                     const fileName = `${uuidv4()}-${metadata.fileName}`;
                     const filePath = `${state.selectedChannel}/${fileName}`;
 
                     const { data: uploadData, error: uploadError } =
-                    await supabase.storage
-                        .from("chat-files")
-                        .upload(filePath, encryptedBlob);
+                        await supabase.storage
+                            .from("chat-files")
+                            .upload(filePath, encryptedBlob);
 
                     if (uploadError) {
-                    console.error(uploadError);
-                    toast.error("Failed to upload file. Please try again.");
-                    return;
+                        console.error(uploadError);
+                        toast.error("Failed to upload file. Please try again.");
+                        return;
                     }
 
                     // Create message entry
                     const { error: messageError } = await supabase
-                    .from("messages")
-                    .insert({
-                        user_id: state.currentUser.id,
-                        channel_id: state.selectedChannel,
-                        type: metadata.fileType.startsWith("image/")
-                            ? "image"
-                            : metadata.fileType.startsWith("video/")
-                            ? "video"
-                            : "file",
-                        file_metadata: {
-                            ...metadata,
-                            encyptedUrl: uploadData?.path,
-                            iv: ivBase64,
-                        },
-                    });
+                        .from("messages")
+                        .insert({
+                            user_id: state.currentUser.id,
+                            channel_id: state.selectedChannel,
+                            type: metadata.fileType.startsWith("image/")
+                                ? "image"
+                                : metadata.fileType.startsWith("video/")
+                                  ? "video"
+                                  : "file",
+                            file_metadata: {
+                                ...metadata,
+                                encyptedUrl: uploadData?.path,
+                                iv: ivBase64,
+                            },
+                        });
 
                     if (messageError) {
-                    console.error('Error creating message:', messageError);
-                    toast.error("Failed to send file. Please try again.");
+                        console.error("Error creating message:", messageError);
+                        toast.error("Failed to send file. Please try again.");
                     }
                 }
-
-                
             } catch (error) {
                 console.error("Error sending file:", error);
                 toast.error("Failed to send file. Please try again.");

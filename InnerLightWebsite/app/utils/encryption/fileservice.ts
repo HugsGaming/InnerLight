@@ -29,65 +29,75 @@ interface EncryptionParams {
 export class FileService {
     constructor(private encryptionManager: EncryptionManager) {}
 
-    private async extractVideoMetadata(file: File): Promise<FileMetadata['videoMetadata']> {
+    private async extractVideoMetadata(
+        file: File,
+    ): Promise<FileMetadata["videoMetadata"]> {
         let objectURL: string | null = null;
-        const video = document.createElement('video');
+        const video = document.createElement("video");
 
         try {
             objectURL = URL.createObjectURL(file);
-            
-            const metadata = await new Promise<FileMetadata['videoMetadata']>((resolve, reject) => {
-                const timeOutId = setTimeout(() => {
-                    cleanup();
-                    resolve({});
-                }, 5000);
 
-                const cleanup = () => {
-                    video.removeEventListener('loadedmetadata', handleMetadata);
-                    video.removeEventListener('loadeddata', handleLoadedData);
-                    video.removeEventListener('error', handleError);
-                    clearTimeout(timeOutId);
-                    if(objectURL) URL.revokeObjectURL(objectURL);
-                };
+            const metadata = await new Promise<FileMetadata["videoMetadata"]>(
+                (resolve, reject) => {
+                    const timeOutId = setTimeout(() => {
+                        cleanup();
+                        resolve({});
+                    }, 5000);
 
-                const handleMetadata = () => {
-                    if(video.videoWidth && video.videoHeight) {
+                    const cleanup = () => {
+                        video.removeEventListener(
+                            "loadedmetadata",
+                            handleMetadata,
+                        );
+                        video.removeEventListener(
+                            "loadeddata",
+                            handleLoadedData,
+                        );
+                        video.removeEventListener("error", handleError);
+                        clearTimeout(timeOutId);
+                        if (objectURL) URL.revokeObjectURL(objectURL);
+                    };
+
+                    const handleMetadata = () => {
+                        if (video.videoWidth && video.videoHeight) {
+                            cleanup();
+                            resolve({
+                                width: video.videoWidth,
+                                height: video.videoHeight,
+                                duration: video.duration,
+                            });
+                        }
+                    };
+
+                    const handleLoadedData = () => {
                         cleanup();
                         resolve({
                             width: video.videoWidth,
                             height: video.videoHeight,
-                            duration: video.duration
+                            duration: video.duration,
                         });
-                    }
-                }
+                    };
 
-                const handleLoadedData = () => {
-                    cleanup();
-                    resolve({
-                        width: video.videoWidth,
-                        height: video.videoHeight,
-                        duration: video.duration
-                    });
-                }
+                    const handleError = () => {
+                        cleanup();
+                        reject(new Error("Failed to extract video metadata"));
+                    };
 
-                const handleError = () => {
-                    cleanup();
-                    reject(new Error('Failed to extract video metadata'));
-                };
-
-                video.preload = 'metadata';
-                video.addEventListener('loadedmetadata', handleMetadata);
-                video.addEventListener('loadeddata', handleLoadedData);
-                video.addEventListener('error', handleError);
-                video.src = objectURL;
-            });
+                    video.preload = "metadata";
+                    video.addEventListener("loadedmetadata", handleMetadata);
+                    video.addEventListener("loadeddata", handleLoadedData);
+                    video.addEventListener("error", handleError);
+                    video.src = objectURL!;
+                },
+            );
 
             return metadata;
         } catch (error) {
-            console.warn('Failed to extract video metadata', error);
+            console.warn("Failed to extract video metadata", error);
             return {};
         } finally {
-            if(objectURL) URL.revokeObjectURL(objectURL);
+            if (objectURL) URL.revokeObjectURL(objectURL);
         }
     }
 
@@ -111,39 +121,42 @@ export class FileService {
         try {
             //Read file as array buffer
             const arrayBuffer = await file.arrayBuffer();
-            console.log('Original array buffer size: ', arrayBuffer.byteLength);
+            console.log("Original array buffer size: ", arrayBuffer.byteLength);
 
             // For video files, we need to preserve the original MIME type
             const isVideo = file.type.startsWith("video/");
-            let videoMetadata: FileMetadata['videoMetadata'] | undefined;
+            let videoMetadata: FileMetadata["videoMetadata"] | undefined;
 
-            if(isVideo) {
+            if (isVideo) {
                 //Extract video metadata before encryption
                 videoMetadata = await this.extractVideoMetadata(file);
-                console.log('Extracted video metadata:', videoMetadata);
+                console.log("Extracted video metadata:", videoMetadata);
 
                 // Verify we go valid metadata
                 if (!videoMetadata?.width || !videoMetadata?.height) {
-                    console.warn('Failed to extract video dimensions, will try again during playback');
+                    console.warn(
+                        "Failed to extract video dimensions, will try again during playback",
+                    );
                 }
             }
 
             //Encrypt the binary data directly
-            const iv = new Uint8Array(Buffer.from(encryptionParams.iv, "base64"));
+            const iv = new Uint8Array(
+                Buffer.from(encryptionParams.iv, "base64"),
+            );
             const encryptedData = await crypto.subtle.encrypt(
                 {
                     name: "AES-GCM",
                     iv,
                 },
                 await this.encryptionManager.getKey(),
-                arrayBuffer
-            )
+                arrayBuffer,
+            );
 
             // Create encrypted blob
-            const encryptedBlob = new Blob(
-                [encryptedData],
-                { type: isVideo ? "video/encrypted" : "application/encrypted" },
-            );
+            const encryptedBlob = new Blob([encryptedData], {
+                type: isVideo ? "video/encrypted" : "application/encrypted",
+            });
 
             // Gennerate thumbnail for images if needed
             let thumbnailUrl: string | undefined;
@@ -158,7 +171,7 @@ export class FileService {
                 thumbnailUrl,
                 iv: encryptionParams.iv,
                 mimeType: file.type,
-                videoMetadata
+                videoMetadata,
             };
 
             return {
@@ -186,19 +199,19 @@ export class FileService {
     async decryptFile(
         encryptedBlob: Blob,
         fileType: string,
-        metadata: FileMetadata
+        metadata: FileMetadata,
     ): Promise<Blob> {
         try {
-            if(!metadata.iv) {
+            if (!metadata.iv) {
                 throw new Error("No IV found in metadata");
             }
 
             // Read encrypted data as ArrayBuffer
             const encryptedData = await encryptedBlob.arrayBuffer();
-            console.log('Decrypting data: ', {
+            console.log("Decrypting data: ", {
                 size: encryptedData.byteLength,
                 fileType,
-                metadata
+                metadata,
             });
 
             // Convert IV from base64
@@ -211,16 +224,15 @@ export class FileService {
                     iv,
                 },
                 await this.encryptionManager.getKey(),
-                encryptedData
+                encryptedData,
             );
 
             // Use the stored MIME for video, otherwise use the provided file type
             const finalType = metadata.mimeType || fileType;
-            console.log('Creating video blob with type: ', finalType);
+            console.log("Creating video blob with type: ", finalType);
 
             // Create blob from binary data with proper type
             return new Blob([decryptedData], { type: finalType });
-           
         } catch (error) {
             console.error("Error decrypting file:", error);
             throw new Error("Failed to decrypt file!");
@@ -292,12 +304,19 @@ export class FileService {
     async createPreviewUrl(
         encryptedBlob: Blob,
         fileType: string,
-        metadata: FileMetadata
+        metadata: FileMetadata,
     ): Promise<string> {
         try {
-            const decryptedBlob = await this.decryptFile(encryptedBlob, fileType, metadata);
-            console.log('Decryption successful, blob size:', decryptedBlob.size);
-            console.log('Decrypted blob type:', decryptedBlob.type);
+            const decryptedBlob = await this.decryptFile(
+                encryptedBlob,
+                fileType,
+                metadata,
+            );
+            console.log(
+                "Decryption successful, blob size:",
+                decryptedBlob.size,
+            );
+            console.log("Decrypted blob type:", decryptedBlob.type);
 
             // Create and return the object URL
             return URL.createObjectURL(decryptedBlob);
@@ -333,17 +352,22 @@ export class FileService {
         }
     }
 
-    async encryptVideo(file: File, encryptionParams: EncryptionParams): Promise<EncryptedFile> {
+    async encryptVideo(
+        file: File,
+        encryptionParams: EncryptionParams,
+    ): Promise<EncryptedFile> {
         try {
             // Extract video metadata
             const videoMetadata = await this.extractVideoMetadata(file);
-            console.log('Extracted video metadata:', videoMetadata);
+            console.log("Extracted video metadata:", videoMetadata);
 
             // Read file as ArrayBuffer for encryption
             const arrayBuffer = await file.arrayBuffer();
 
             // Use Web Crypto API for encryption with AES-GCM
-            const iv = new Uint8Array(Buffer.from(encryptionParams.iv, "base64"));
+            const iv = new Uint8Array(
+                Buffer.from(encryptionParams.iv, "base64"),
+            );
             const encryptedData = await crypto.subtle.encrypt(
                 {
                     name: "AES-GCM",
@@ -351,17 +375,16 @@ export class FileService {
                     tagLength: 128,
                 },
                 await this.encryptionManager.getKey(),
-                arrayBuffer
+                arrayBuffer,
             );
 
             // Create blob with custom type
-            const encryptedBlob = new Blob(
-                [encryptedData],
-                { type: "video/encrypted" }
-            )
+            const encryptedBlob = new Blob([encryptedData], {
+                type: "video/encrypted",
+            });
 
             // Generate video metadata with additional security information
-            const metadata : FileMetadata = {
+            const metadata: FileMetadata = {
                 fileName: file.name,
                 fileType: file.type,
                 fileSize: file.size,
@@ -369,7 +392,7 @@ export class FileService {
                 mimeType: file.type,
                 videoMetadata: videoMetadata,
             };
-            
+
             return { encryptedBlob, metadata };
         } catch (error) {
             console.error("Error encrypting video:", error);
@@ -377,9 +400,12 @@ export class FileService {
         }
     }
 
-    async decryptVideo(encryptedBlob: Blob, metadata: FileMetadata) : Promise<Blob> {
+    async decryptVideo(
+        encryptedBlob: Blob,
+        metadata: FileMetadata,
+    ): Promise<Blob> {
         try {
-            if(!metadata.iv) throw new Error("Missing IV in metadata");
+            if (!metadata.iv) throw new Error("Missing IV in metadata");
 
             // Read encrypted data as ArrayBuffer
             const encryptedData = await encryptedBlob.arrayBuffer();
@@ -395,34 +421,44 @@ export class FileService {
                     tagLength: 128,
                 },
                 await this.encryptionManager.getKey(),
-                encryptedData
+                encryptedData,
             );
 
             // Create blob with original MIME type
-            return new Blob([decryptedData], { type: metadata.fileType || 'video/mp4' });
+            return new Blob([decryptedData], {
+                type: metadata.fileType || "video/mp4",
+            });
         } catch (error) {
             console.error("Error decrypting video:", error);
             throw new Error("Failed to decrypt video!");
         }
     }
 
-    async createVideoPreviewUrl(encryptedBlob: Blob, metadata: FileMetadata): Promise<string> {
+    async createVideoPreviewUrl(
+        encryptedBlob: Blob,
+        metadata: FileMetadata,
+    ): Promise<string> {
         try {
             // Decrypt the video
-            const decryptedBlob = await this.decryptVideo(encryptedBlob, metadata);
+            const decryptedBlob = await this.decryptVideo(
+                encryptedBlob,
+                metadata,
+            );
 
             // Validate the decrypted contnent
-            if(decryptedBlob.size === 0) {
+            if (decryptedBlob.size === 0) {
                 throw new Error("Decryption resulted in empty content");
             }
 
             // Create a new blob with explicit video type
-            const videoBlob = new Blob([decryptedBlob], { type: metadata.fileType || 'video/mp4' });
+            const videoBlob = new Blob([decryptedBlob], {
+                type: metadata.fileType || "video/mp4",
+            });
 
-            console.log('Video blob created: ', {
+            console.log("Video blob created: ", {
                 size: videoBlob.size,
                 type: videoBlob.type,
-                originalMimeType: metadata.fileType
+                originalMimeType: metadata.fileType,
             });
 
             // Create object URL
@@ -448,8 +484,8 @@ export class FileService {
             }, 5000);
 
             const cleanup = () => {
-                video.removeEventListener('loadedmetadata', handleLoad);
-                video.removeEventListener('error', handleError);
+                video.removeEventListener("loadedmetadata", handleLoad);
+                video.removeEventListener("error", handleError);
                 clearTimeout(timeoutId);
             };
 
@@ -463,8 +499,8 @@ export class FileService {
                 reject(new Error("Failed to validate video URL"));
             };
 
-            video.addEventListener('loadedmetadata', handleLoad);
-            video.addEventListener('error', handleError);
+            video.addEventListener("loadedmetadata", handleLoad);
+            video.addEventListener("error", handleError);
             video.src = url;
         });
     }
