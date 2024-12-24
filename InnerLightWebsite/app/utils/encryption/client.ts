@@ -8,6 +8,11 @@ export interface EncryptedMessage {
 export class EncryptionManager {
     private key: CryptoKey | null = null;
 
+    async getKey(): Promise<CryptoKey> {
+        if (!this.key) throw new Error("Encryption key not initialized");
+        return this.key;
+    }
+
     /**
      * Initializes the encryption manager with a password. The password is used to derive an
      * AES-GCM encryption key using PBKDF2. The derived key is then used for encryption and decryption.
@@ -51,9 +56,13 @@ export class EncryptionManager {
         if (!this.key) throw new Error("Encryption key not initialized");
 
         try {
+            console.log('Encrypt - Starting with message length:', message.length);
+
             const encoder = new TextEncoder();
             const iv = crypto.getRandomValues(new Uint8Array(12));
             const encodedMessage = encoder.encode(message);
+
+            console.log('Encoded message length:', encodedMessage.length);
 
             const encryptedContent = await crypto.subtle.encrypt(
                 {
@@ -64,10 +73,19 @@ export class EncryptionManager {
                 encodedMessage,
             );
 
-            return {
+            console.log('Encrypted content size:', encryptedContent.byteLength);
+
+            const result = {
                 iv: Buffer.from(iv).toString("base64"),
                 content: Buffer.from(encryptedContent).toString("base64"),
             };
+
+            console.log('Final encrypted result:', {
+                ivLength: result.iv.length,
+                contentLength: result.content.length
+            });
+    
+            return result;
         } catch (error) {
             console.error("Encryption error:", error);
             throw new Error("Failed to encrypt message");
@@ -84,11 +102,21 @@ export class EncryptionManager {
         if (!this.key) throw new Error("Encryption key not initialized");
 
         try {
+            console.log('Decrypt - Starting with:', {
+                ivLength: encryptedMessage.iv.length,
+                contentLength: encryptedMessage.content.length,
+            });
+
             const iv = Buffer.from(encryptedMessage.iv, "base64");
             const encryptedContent = Buffer.from(
                 encryptedMessage.content,
                 "base64",
             );
+
+            console.log('Decoded buffers:', {
+                ivLength: iv.length,
+                contentLength: encryptedContent.length
+            });
 
             const decryptedContent = await crypto.subtle.decrypt(
                 {
@@ -99,8 +127,11 @@ export class EncryptionManager {
                 encryptedContent,
             );
 
-            const decoder = new TextDecoder();
-            return decoder.decode(decryptedContent);
+            console.log('Decrypted content size:', decryptedContent.byteLength);
+
+            const result = Buffer.from(decryptedContent).toString();
+        
+            return result;
         } catch (error) {
             console.error("Decryption error:", error);
             throw new Error("Failed to decrypt message");
