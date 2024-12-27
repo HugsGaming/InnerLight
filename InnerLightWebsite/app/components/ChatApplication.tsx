@@ -19,6 +19,7 @@ import { formatFileSize } from "../utils/files";
 import ChatFileUploadPreview from "./ChatFileUploadPreview";
 import { v4 as uuidv4 } from "uuid";
 import EnhancedVideoPlayer from "./EnhancedVideoPlayer";
+import CreateChannelDialog from "./chat/CreateChannelDialog";
 
 // Types
 interface ChatState {
@@ -95,10 +96,14 @@ const ChatSidebar = memo(
         chats,
         onSelectChat,
         unreadMessages,
+        onChannelCreated,
+        currentUser
     }: {
         chats: MessageChannel[];
         onSelectChat: (chatName: string) => void;
         unreadMessages: { [channelId: string]: number };
+        onChannelCreated: (channel: MessageChannel) => void;
+        currentUser: { id: string; username: string; email: string };
     }) => {
         const renderChats = useCallback(
             (chatList: MessageChannel[], title: string) => (
@@ -106,6 +111,10 @@ const ChatSidebar = memo(
                     <h2 className="text-lg font-semibold mb-4 mt-8 text-gray-900 dark:text-gray-100">
                         {title}
                     </h2>
+                    <CreateChannelDialog
+                        onChannelCreated={onChannelCreated}
+                        currentUser={currentUser}
+                    />
                     {chatList.map((chat) => (
                         <div
                             key={chat.name}
@@ -1046,10 +1055,13 @@ export default function ChatApplication({
     );
 
     // Get channel name
-    const getChannelName = useCallback((channelId: string) => {
-        const channel = state.channels.find((c) => c.id === channelId);
-        return channel ? channel.name : "Unnaded Chat";
-    }, [state.channels]);
+    const getChannelName = useCallback(
+        (channelId: string) => {
+            const channel = state.channels.find((c) => c.id === channelId);
+            return channel ? channel.name : "Unnaded Chat";
+        },
+        [state.channels],
+    );
 
     // Send Message Handler
     const sendMessage = useCallback(
@@ -1189,6 +1201,19 @@ export default function ChatApplication({
         [state.currentUser, state.selectedChannel, fileService, supabase],
     );
 
+    const handleChannelCreated = useCallback((newChannel: MessageChannel) => {
+        setState((prev) => ({
+            ...prev,
+            channels: [...prev.channels, newChannel],
+            selectedChannel: newChannel.id,
+            messages: [],
+            unreadMessages: {
+                ...prev.unreadMessages,
+                [newChannel.id]: 0
+            }
+        }));
+    }, [])
+
     if (!fileService) {
         return <div>Loading...</div>;
     }
@@ -1199,6 +1224,8 @@ export default function ChatApplication({
                 chats={state.channels}
                 onSelectChat={selectChannel}
                 unreadMessages={state.unreadMessages}
+                onChannelCreated={handleChannelCreated}
+                currentUser={state.currentUser!}
             />
             <ChatWindow
                 chatName={getChannelName(state.selectedChannel)!}
