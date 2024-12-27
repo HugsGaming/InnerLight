@@ -301,6 +301,15 @@ export class FileService {
         }
     }
 
+    /**
+     * Creates a preview URL for a given encrypted blob, file type, and metadata.
+     *
+     * @param encryptedBlob The encrypted blob to decrypt and generate a preview URL for.
+     * @param fileType The type of file the blob is (e.g. "image/jpeg", "video/mp4", etc.).
+     * @param metadata The FileMetadata object containing the IV and other encryption-related data.
+     * @returns A string representing the preview URL.
+     * @throws {Error} If the decryption process fails.
+     */
     async createPreviewUrl(
         encryptedBlob: Blob,
         fileType: string,

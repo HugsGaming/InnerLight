@@ -18,9 +18,6 @@ import { Play, FileText, Download } from "lucide-react";
 import { formatFileSize } from "../utils/files";
 import ChatFileUploadPreview from "./ChatFileUploadPreview";
 import { v4 as uuidv4 } from "uuid";
-import { createSemanticDiagnosticsBuilderProgram } from "typescript";
-import { read } from "fs";
-import { current } from "immer";
 import EnhancedVideoPlayer from "./EnhancedVideoPlayer";
 
 // Types
@@ -533,7 +530,7 @@ const ChatWindow = memo(
                     <div className="flex items-center justify-between border-b dark:border-gray-700 pb-2 mb-4">
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                {chatName}
+                                {chatName || "Chat"}
                             </h2>
                             {/* <p className="text-sm text-gray-500 dark:text-gray-400">
                                 Online - Last seen, 2:02pm
@@ -1048,6 +1045,12 @@ export default function ChatApplication({
         [markMessagesAsRead, supabase],
     );
 
+    // Get channel name
+    const getChannelName = useCallback((channelId: string) => {
+        const channel = state.channels.find((c) => c.id === channelId);
+        return channel ? channel.name : "Unnaded Chat";
+    }, [state.channels]);
+
     // Send Message Handler
     const sendMessage = useCallback(
         async (text: string) => {
@@ -1198,7 +1201,7 @@ export default function ChatApplication({
                 unreadMessages={state.unreadMessages}
             />
             <ChatWindow
-                chatName={state.selectedChannel}
+                chatName={getChannelName(state.selectedChannel)!}
                 messages={state.messages}
                 onSendMessage={sendMessage}
                 onSendFile={handleFileSend}
