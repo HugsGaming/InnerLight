@@ -20,6 +20,8 @@ import ChatFileUploadPreview from "./ChatFileUploadPreview";
 import { v4 as uuidv4 } from "uuid";
 import EnhancedVideoPlayer from "./EnhancedVideoPlayer";
 import CreateChannelDialog from "./chat/CreateChannelDialog";
+import { UserPlus } from "lucide-react";
+import ManageChannelMember from "./chat/ManageChannelMember";
 
 // Types
 interface ChatState {
@@ -177,6 +179,7 @@ const ChatWindow = memo(
         const messagesEndRef = useRef<HTMLDivElement>(null);
         const messagesContainerRef = useRef<HTMLDivElement>(null);
         const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
+        const [isManagingMembers, setIsManagingMembers] = useState(false);
         const prevMessagesLengthRef = useRef(messages.length);
         const isInitialLoadRef = useRef(true);
         const loadingRef = useRef(false);
@@ -545,6 +548,13 @@ const ChatWindow = memo(
                                 Online - Last seen, 2:02pm
                             </p> */}
                         </div>
+                        <button
+                            onClick={() => setIsManagingMembers(true)}
+                            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                            >
+                                <UserPlus className="w-5 h-5" />
+                            </button>
+
                         {/* <div className="flex space-x-3 text-gray-900 dark:text-gray-100">
                             <FiPhone />
                             <FiVideo />
@@ -599,6 +609,12 @@ const ChatWindow = memo(
                         <FiSend className="text-gray-900 dark:text-gray-100" />
                     </button>
                 </form>
+                <ManageChannelMember
+                    channelId={state.selectedChannel}
+                    isOpen={isManagingMembers}
+                    onClose={() => setIsManagingMembers(false)}
+                    currentUser={state.currentUser!}
+                />
             </div>
         );
     },
