@@ -9,7 +9,13 @@ interface Profile {
     avatar_url?: string;
 }
 
-export default function CreateChannelDialog({ onChannelCreated, currentUser } : { onChannelCreated: (channel: any) => void, currentUser: { id: string; username: string; email: string; } }) {
+export default function CreateChannelDialog({
+    onChannelCreated,
+    currentUser,
+}: {
+    onChannelCreated: (channel: any) => void;
+    currentUser: { id: string; username: string; email: string };
+}) {
     const [isOpen, setIsOpen] = useState(false);
     const [channelName, setChannelName] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
@@ -20,41 +26,44 @@ export default function CreateChannelDialog({ onChannelCreated, currentUser } : 
 
     const supabase = useMemo(() => createClient(), []);
 
-    const searchUsers = useCallback(async (query: string) => {
-        if (!query.trim()) {
-            setSearchResults([]);
-            return;
-        }
+    const searchUsers = useCallback(
+        async (query: string) => {
+            if (!query.trim()) {
+                setSearchResults([]);
+                return;
+            }
 
-        setIsSearching(true);
-        try {
-            const { data, error } = await supabase
-                .from("profiles")
-                .select('id, username, email, avatar_url')
-                .or(`username.ilike.%${query}%`)
-                .or(`email.ilike.%${query}%`)
-                .limit(5);
+            setIsSearching(true);
+            try {
+                const { data, error } = await supabase
+                    .from("profiles")
+                    .select("id, username, email, avatar_url")
+                    .or(`username.ilike.%${query}%`)
+                    .or(`email.ilike.%${query}%`)
+                    .limit(5);
 
-            if (error) throw error;
-            setSearchResults(data as Profile[] || []);
-        } catch (error) {
-            console.error("Error searching users:", error);
-        } finally {
-            setIsSearching(false);
-        }
-    }, [currentUser.id]);
+                if (error) throw error;
+                setSearchResults((data as Profile[]) || []);
+            } catch (error) {
+                console.error("Error searching users:", error);
+            } finally {
+                setIsSearching(false);
+            }
+        },
+        [currentUser.id],
+    );
 
     const handleCreateChannel = async (e: FormEvent) => {
         e.preventDefault();
-        if(!channelName.trim()) return;
+        if (!channelName.trim()) return;
 
         setIsLoading(true);
         try {
             // Create the channel
             const { data: channelData, error: channelError } = await supabase
-                .from('messageChannels')
+                .from("messageChannels")
                 .insert({
-                    name: channelName.trim()
+                    name: channelName.trim(),
                 })
                 .select()
                 .single();
@@ -66,12 +75,12 @@ export default function CreateChannelDialog({ onChannelCreated, currentUser } : 
                 { channel_id: channelData.id, user_id: currentUser.id },
                 ...selectedUsers.map((user) => ({
                     channel_id: channelData.id,
-                    user_id: user.id
-                }))
+                    user_id: user.id,
+                })),
             ];
 
             const { error: userChannelError } = await supabase
-                .from('user_channels')
+                .from("user_channels")
                 .insert(userChannelInserts);
 
             if (userChannelError) throw userChannelError;
@@ -95,20 +104,20 @@ export default function CreateChannelDialog({ onChannelCreated, currentUser } : 
 
     const removeUser = (userId: string) => {
         setSelectedUsers((prevUsers) =>
-            prevUsers.filter((user) => user.id !== userId)
+            prevUsers.filter((user) => user.id !== userId),
         );
-    }
+    };
 
     if (!isOpen) {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="w-full flex items-center justify-center gap-2 p-2 mb-4 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"    
+                className="w-full flex items-center justify-center gap-2 p-2 mb-4 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             >
                 <Plus className="w-4 h-4" />
                 <span>Create Channel</span>
             </button>
-        )
+        );
     }
 
     return (
@@ -162,9 +171,13 @@ export default function CreateChannelDialog({ onChannelCreated, currentUser } : 
                                         key={user.id}
                                         onClick={() => handleUserSelect(user)}
                                         className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-                                        >
-                                            <div className="font-medium">{user.username}</div>
-                                            <div className="text-sm text-gray-500">{user.email}</div>
+                                    >
+                                        <div className="font-medium">
+                                            {user.username}
+                                        </div>
+                                        <div className="text-sm text-gray-500">
+                                            {user.email}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -177,14 +190,17 @@ export default function CreateChannelDialog({ onChannelCreated, currentUser } : 
                                 <div
                                     key={user.id}
                                     className="flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900 rounded-full"
+                                >
+                                    <span className="text-sm">
+                                        {user.username}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeUser(user.id)}
+                                        className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-blue-200 dark:hover:bg-blue-800"
                                     >
-                                        <span className="text-sm">{user.username}</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => removeUser(user.id)}
-                                            className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-blue-200 dark:hover:bg-blue-800">
-                                                <X className="w-3 h-3" />
-                                        </button>
+                                        <X className="w-3 h-3" />
+                                    </button>
                                 </div>
                             ))}
                         </div>
@@ -200,10 +216,11 @@ export default function CreateChannelDialog({ onChannelCreated, currentUser } : 
                             Cancel
                         </button>
                         <button
-                            type='submit'
+                            type="submit"
                             disabled={isLoading || !channelName.trim()}
-                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed">
-                                {isLoading ? "Creating..." : "Create Channel"}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isLoading ? "Creating..." : "Create Channel"}
                         </button>
                     </div>
                 </form>

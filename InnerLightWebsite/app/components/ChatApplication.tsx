@@ -99,7 +99,7 @@ const ChatSidebar = memo(
         onSelectChat,
         unreadMessages,
         onChannelCreated,
-        currentUser
+        currentUser,
     }: {
         chats: MessageChannel[];
         onSelectChat: (chatName: string) => void;
@@ -551,9 +551,9 @@ const ChatWindow = memo(
                         <button
                             onClick={() => setIsManagingMembers(true)}
                             className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-                            >
-                                <UserPlus className="w-5 h-5" />
-                            </button>
+                        >
+                            <UserPlus className="w-5 h-5" />
+                        </button>
 
                         {/* <div className="flex space-x-3 text-gray-900 dark:text-gray-100">
                             <FiPhone />
@@ -845,6 +845,66 @@ export default function ChatApplication({
                         toast.error("Error decrypting message");
                     }
                 },
+            )
+            .on('postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'user_channels',
+                    filter: `user_id=eq.${state.currentUser?.id}`,
+                },
+                async (payload) => {
+                    try {
+                        // Fetch the channel details
+                        const { data, error } = await supabase
+                            .from('messageChannels')
+                            .select('*')
+                            .eq('id', payload.new.channel_id)
+                            .single();
+
+                        if (error) throw error;
+
+                        setState((prev) => ({
+                            ...prev,
+                            channels: [...prev.channels, data],
+                            unreadMessages: {
+                                ...prev.unreadMessages,
+                                [data.id]: 0
+                            },
+                        }));
+
+                        // Show Notification
+                        toast.info(`You have been added to ${data.name}`);
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'user_channels',
+                    filter: `user_id=eq.${state.currentUser?.id}`,
+                },
+                async (payload) => {
+                    setState((prev) => ({
+                        ...prev,
+                        channels: prev.channels.filter(
+                            (channel) => channel.id !== payload.old.channel_id,
+                        ),
+                        // If we're currently viewing the deleted channel, clear it
+                        selectedChannel:
+                            prev.selectedChannel === payload.old.channel_id
+                                ? ''
+                                : prev.selectedChannel,
+                        messages:
+                            prev.selectedChannel === payload.old.channel_id
+                                ? []
+                                : prev.messages,
+                    }));
+                }
             )
             .subscribe();
 
@@ -1225,10 +1285,10 @@ export default function ChatApplication({
             messages: [],
             unreadMessages: {
                 ...prev.unreadMessages,
-                [newChannel.id]: 0
-            }
+                [newChannel.id]: 0,
+            },
         }));
-    }, [])
+    }, []);
 
     if (!fileService) {
         return <div>Loading...</div>;
