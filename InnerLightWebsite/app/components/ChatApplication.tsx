@@ -9,24 +9,19 @@ import React, {
     useState,
 } from "react";
 import { createClient } from "../utils/supabase/client";
-import {
-    FiPhone,
-    FiVideo,
-    FiMoreHorizontal,
-    FiPaperclip,
-    FiSmile,
-    FiMic,
-    FiSend,
-} from "react-icons/fi";
+import { FiSmile, FiSend } from "react-icons/fi";
 import { toast } from "react-toastify";
 import { EncryptionManager } from "../utils/encryption/client";
 import { Json } from "../../database.types";
 import { FileMetadata, FileService } from "../utils/encryption/fileservice";
-import { MdSettingsSuggest } from "react-icons/md";
-import { Play, FileText, Download, Send } from "lucide-react";
+import { Play, FileText, Download } from "lucide-react";
 import { formatFileSize } from "../utils/files";
 import ChatFileUploadPreview from "./ChatFileUploadPreview";
 import { v4 as uuidv4 } from "uuid";
+import EnhancedVideoPlayer from "./EnhancedVideoPlayer";
+import CreateChannelDialog from "./chat/CreateChannelDialog";
+import { UserPlus } from "lucide-react";
+import ManageChannelMember from "./chat/ManageChannelMember";
 
 // Types
 interface ChatState {
@@ -103,10 +98,14 @@ const ChatSidebar = memo(
         chats,
         onSelectChat,
         unreadMessages,
+        onChannelCreated,
+        currentUser,
     }: {
         chats: MessageChannel[];
         onSelectChat: (chatName: string) => void;
         unreadMessages: { [channelId: string]: number };
+        onChannelCreated: (channel: MessageChannel) => void;
+        currentUser: { id: string; username: string; email: string };
     }) => {
         const renderChats = useCallback(
             (chatList: MessageChannel[], title: string) => (
@@ -114,6 +113,10 @@ const ChatSidebar = memo(
                     <h2 className="text-lg font-semibold mb-4 mt-8 text-gray-900 dark:text-gray-100">
                         {title}
                     </h2>
+                    <CreateChannelDialog
+                        onChannelCreated={onChannelCreated}
+                        currentUser={currentUser}
+                    />
                     {chatList.map((chat) => (
                         <div
                             key={chat.name}
@@ -176,6 +179,7 @@ const ChatWindow = memo(
         const messagesEndRef = useRef<HTMLDivElement>(null);
         const messagesContainerRef = useRef<HTMLDivElement>(null);
         const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
+        const [isManagingMembers, setIsManagingMembers] = useState(false);
         const prevMessagesLengthRef = useRef(messages.length);
         const isInitialLoadRef = useRef(true);
         const loadingRef = useRef(false);
@@ -184,8 +188,21 @@ const ChatWindow = memo(
             return createClient();
         }, []);
 
+        type FileType = "image" | "video" | "file";
+
+        const isValidFileType = (type: string): type is FileType => {
+            return ["image", "video", "file"].includes(type);
+        };
+
         const handleFileView = useCallback(
             async (msg: Message) => {
+                // Validate file type
+                if (msg.type && !isValidFileType(msg.type)) {
+                    console.error(`Invalid file type: ${msg.type}`);
+                    toast.error(`Invalid file type: ${msg.type}`);
+                    return;
+                }
+
                 if (!msg.file_metadata?.encyptedUrl) return;
 
                 try {
@@ -209,24 +226,38 @@ const ChatWindow = memo(
 
                     if (downloadError) throw downloadError;
 
-                    const encryptedContent = {
-                        iv: msg.file_metadata.iv!,
-                        content: await encryptedData.text(),
-                    };
+                    const encryptedBlob = new Blob([encryptedData], {
+                        type:
+                            msg.type === "video"
+                                ? "video/encrypted"
+                                : "application/encrypted",
+                    });
 
-                    const previewUrl = await fileService.createPreviewUrl(
-                        encryptedData,
-                        msg.file_metadata.fileType,
-                        encryptedContent,
-                    );
+                    if (!msg.file_metadata) {
+                        throw new Error("File metadata not found");
+                    }
 
-                    setDecryptedFiles((prev) => ({
-                        ...prev,
-                        [msg.id]: previewUrl,
-                    }));
+                    try {
+                        // Choose appropriate preview method based on file type
+                        const previewURL =
+                            msg.type === "video"
+                                ? await fileService.createVideoPreviewUrl(
+                                      encryptedBlob,
+                                      msg.file_metadata,
+                                  )
+                                : await fileService.createPreviewUrl(
+                                      encryptedBlob,
+                                      msg.file_metadata.fileType || "",
+                                      msg.file_metadata,
+                                  );
 
-                    if (msg.type === "image") {
-                        window.open(previewUrl, "_blank");
+                        setDecryptedFiles((prev) => ({
+                            ...prev,
+                            [msg.id]: previewURL,
+                        }));
+                    } catch (error) {
+                        console.error("Decryption error:", error);
+                        throw new Error("Failed to decrypt file");
                     }
                 } catch (error) {
                     console.error(error);
@@ -389,22 +420,26 @@ const ChatWindow = memo(
                         );
                     case "video":
                         return (
-                            <div className="relative">
-                                {isDecryptingFile ? (
-                                    <div className="flex items-center justify-center p-4">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-                                    </div>
-                                ) : decryptedUrl ? (
-                                    <>
-                                        <video
-                                            controls
-                                            className="rounded-lg max-w-full"
-                                            src={decryptedUrl}
-                                        />
-                                        <div className="text-xs mt-1">
-                                            {msg.file_metadata?.fileName}
-                                        </div>
-                                    </>
+                            <div className="relative w-full max-w-xl">
+                                {decryptedUrl ? (
+                                    <EnhancedVideoPlayer
+                                        url={decryptedUrl}
+                                        fileMetadata={msg.file_metadata!}
+                                        isDecrypting={isDecryptingFile}
+                                        onError={(error) => {
+                                            console.error(
+                                                "Video Playback Error:",
+                                                error,
+                                            );
+                                            setDecryptedFiles((prevFiles) => {
+                                                const newFiles = {
+                                                    ...prevFiles,
+                                                };
+                                                delete newFiles[msg.id];
+                                                return newFiles;
+                                            });
+                                        }}
+                                    />
                                 ) : (
                                     <button
                                         onClick={() => handleFileView(msg)}
@@ -507,12 +542,19 @@ const ChatWindow = memo(
                     <div className="flex items-center justify-between border-b dark:border-gray-700 pb-2 mb-4">
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                {chatName}
+                                {chatName || "Chat"}
                             </h2>
                             {/* <p className="text-sm text-gray-500 dark:text-gray-400">
                                 Online - Last seen, 2:02pm
                             </p> */}
                         </div>
+                        <button
+                            onClick={() => setIsManagingMembers(true)}
+                            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                        >
+                            <UserPlus className="w-5 h-5" />
+                        </button>
+
                         {/* <div className="flex space-x-3 text-gray-900 dark:text-gray-100">
                             <FiPhone />
                             <FiVideo />
@@ -567,6 +609,12 @@ const ChatWindow = memo(
                         <FiSend className="text-gray-900 dark:text-gray-100" />
                     </button>
                 </form>
+                <ManageChannelMember
+                    channelId={state.selectedChannel}
+                    isOpen={isManagingMembers}
+                    onClose={() => setIsManagingMembers(false)}
+                    currentUser={state.currentUser!}
+                />
             </div>
         );
     },
@@ -798,6 +846,66 @@ export default function ChatApplication({
                     }
                 },
             )
+            .on('postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'user_channels',
+                    filter: `user_id=eq.${state.currentUser?.id}`,
+                },
+                async (payload) => {
+                    try {
+                        // Fetch the channel details
+                        const { data, error } = await supabase
+                            .from('messageChannels')
+                            .select('*')
+                            .eq('id', payload.new.channel_id)
+                            .single();
+
+                        if (error) throw error;
+
+                        setState((prev) => ({
+                            ...prev,
+                            channels: [...prev.channels, data],
+                            unreadMessages: {
+                                ...prev.unreadMessages,
+                                [data.id]: 0
+                            },
+                        }));
+
+                        // Show Notification
+                        toast.info(`You have been added to ${data.name}`);
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'user_channels',
+                    filter: `user_id=eq.${state.currentUser?.id}`,
+                },
+                async (payload) => {
+                    setState((prev) => ({
+                        ...prev,
+                        channels: prev.channels.filter(
+                            (channel) => channel.id !== payload.old.channel_id,
+                        ),
+                        // If we're currently viewing the deleted channel, clear it
+                        selectedChannel:
+                            prev.selectedChannel === payload.old.channel_id
+                                ? ''
+                                : prev.selectedChannel,
+                        messages:
+                            prev.selectedChannel === payload.old.channel_id
+                                ? []
+                                : prev.messages,
+                    }));
+                }
+            )
             .subscribe();
 
         return () => {
@@ -1022,6 +1130,15 @@ export default function ChatApplication({
         [markMessagesAsRead, supabase],
     );
 
+    // Get channel name
+    const getChannelName = useCallback(
+        (channelId: string) => {
+            const channel = state.channels.find((c) => c.id === channelId);
+            return channel ? channel.name : "Unnaded Chat";
+        },
+        [state.channels],
+    );
+
     // Send Message Handler
     const sendMessage = useCallback(
         async (text: string) => {
@@ -1065,45 +1182,93 @@ export default function ChatApplication({
             try {
                 // Generate encryption parameters
                 const iv = crypto.getRandomValues(new Uint8Array(12));
+                const ivBase64 = Buffer.from(iv).toString("base64");
 
-                // Encrypt the file
-                const { encryptedBlob, metadata } =
-                    await fileService.encryptFile(file, {
-                        iv: Buffer.from(iv).toString("base64"),
-                    });
+                if (file.type.startsWith("video/")) {
+                    const { encryptedBlob, metadata } =
+                        await fileService.encryptVideo(file, {
+                            iv: ivBase64,
+                        });
 
-                // Upload encrypted file
-                const fileName = `${uuidv4()}-${metadata.fileName}`;
-                const filePath = `${state.selectedChannel}/${fileName}`;
+                    // Upload encrypted file
+                    const fileName = `${uuidv4()}-${metadata.fileName}`;
+                    const filePath = `${state.selectedChannel}/${fileName}`;
 
-                const { data: uploadData, error: uploadError } =
-                    await supabase.storage
-                        .from("chat-files")
-                        .upload(filePath, encryptedBlob);
+                    const { data: uploadData, error: uploadError } =
+                        await supabase.storage
+                            .from("chat-files")
+                            .upload(filePath, encryptedBlob, {
+                                contentType: "video/encrypted",
+                            });
 
-                if (uploadError) {
-                    console.error(uploadError);
-                    toast.error("Failed to upload file. Please try again.");
-                    return;
+                    if (uploadError) {
+                        console.error(uploadError);
+                        toast.error("Failed to upload file. Please try again.");
+                        return;
+                    }
+
+                    // Create message entry
+                    const { error: messageError } = await supabase
+                        .from("messages")
+                        .insert({
+                            user_id: state.currentUser.id,
+                            channel_id: state.selectedChannel,
+                            type: "video",
+                            file_metadata: {
+                                ...metadata,
+                                encyptedUrl: uploadData?.path,
+                            },
+                        });
+
+                    if (messageError) {
+                        console.error(messageError);
+                        toast.error("Failed to upload file. Please try again.");
+                    }
+                } else {
+                    // Encrypt the file
+                    const { encryptedBlob, metadata } =
+                        await fileService.encryptFile(file, {
+                            iv: ivBase64,
+                        });
+
+                    // Upload encrypted file
+                    const fileName = `${uuidv4()}-${metadata.fileName}`;
+                    const filePath = `${state.selectedChannel}/${fileName}`;
+
+                    const { data: uploadData, error: uploadError } =
+                        await supabase.storage
+                            .from("chat-files")
+                            .upload(filePath, encryptedBlob);
+
+                    if (uploadError) {
+                        console.error(uploadError);
+                        toast.error("Failed to upload file. Please try again.");
+                        return;
+                    }
+
+                    // Create message entry
+                    const { error: messageError } = await supabase
+                        .from("messages")
+                        .insert({
+                            user_id: state.currentUser.id,
+                            channel_id: state.selectedChannel,
+                            type: metadata.fileType.startsWith("image/")
+                                ? "image"
+                                : metadata.fileType.startsWith("video/")
+                                  ? "video"
+                                  : "file",
+                            file_metadata: {
+                                ...metadata,
+                                encyptedUrl: uploadData?.path,
+                                iv: ivBase64,
+                            },
+                        });
+
+                    if (messageError) {
+                        console.error("Error creating message:", messageError);
+                        toast.error("Failed to send file. Please try again.");
+                    }
                 }
-
-                // Create message entry
-                const { error: messageError } = await supabase
-                    .from("messages")
-                    .insert({
-                        user_id: state.currentUser.id,
-                        channel_id: state.selectedChannel,
-                        type: metadata.fileType.startsWith("image/")
-                            ? "image"
-                            : metadata.fileType.startsWith("video/")
-                              ? "video"
-                              : "file",
-                        file_metadata: {
-                            ...metadata,
-                            encyptedUrl: uploadData?.path,
-                            iv: Buffer.from(iv).toString("base64"),
-                        },
-                    });
             } catch (error) {
                 console.error("Error sending file:", error);
                 toast.error("Failed to send file. Please try again.");
@@ -1111,6 +1276,19 @@ export default function ChatApplication({
         },
         [state.currentUser, state.selectedChannel, fileService, supabase],
     );
+
+    const handleChannelCreated = useCallback((newChannel: MessageChannel) => {
+        setState((prev) => ({
+            ...prev,
+            channels: [...prev.channels, newChannel],
+            selectedChannel: newChannel.id,
+            messages: [],
+            unreadMessages: {
+                ...prev.unreadMessages,
+                [newChannel.id]: 0,
+            },
+        }));
+    }, []);
 
     if (!fileService) {
         return <div>Loading...</div>;
@@ -1122,9 +1300,11 @@ export default function ChatApplication({
                 chats={state.channels}
                 onSelectChat={selectChannel}
                 unreadMessages={state.unreadMessages}
+                onChannelCreated={handleChannelCreated}
+                currentUser={state.currentUser!}
             />
             <ChatWindow
-                chatName={state.selectedChannel}
+                chatName={getChannelName(state.selectedChannel)!}
                 messages={state.messages}
                 onSendMessage={sendMessage}
                 onSendFile={handleFileSend}
