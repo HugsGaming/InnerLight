@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FileMetadata } from "../utils/encryption/fileservice";
 
 interface VideoPlayerProps {
@@ -6,6 +6,21 @@ interface VideoPlayerProps {
     fileMetadata: FileMetadata;
     onError?: (error: string) => void;
     isDecrypting: boolean;
+}
+
+// Cache for video URLs to prevent re-fetching
+const videoURLCache = new Map<string, { url: string; lastAccessed: number}>();
+
+// Cleanup old cache entries periodically
+const cleanUpCache = () => {
+    const now = Date.now();
+    const maxAge = 5 * 60 * 1000; // 5 minutes in milliseconds
+    for (const [key, value] of videoURLCache.entries()) {
+        if (now - value.lastAccessed > maxAge) {
+            URL.revokeObjectURL(value.url);
+            videoURLCache.delete(key);
+        }
+    }
 }
 
 export default function EnhancedVideoPlayer({
@@ -24,87 +39,88 @@ export default function EnhancedVideoPlayer({
     const videoRef = useRef<HTMLVideoElement>(null);
     const loadingTimeoutRef = useRef<NodeJS.Timeout>();
     const [videoURL, setVideoURL] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
+
+    const cleanUp = useCallback(() => {
+        if (loadingTimeoutRef.current) {
+            clearTimeout(loadingTimeoutRef.current);
+        }
+    }, []);
+
+    const loadVideo = useCallback(async () => {
+        if (!url || isMountedRef.current) return;
+
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            // Check cache first
+            const cachedData = videoURLCache.get(url);
+            if(cachedData) {
+                cachedData.lastAccessed = Date.now();
+                setVideoURL(cachedData.url);
+                setIsLoading(false);
+                return;
+            }
+
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(
+                    `HTTP error! status: ${response.statusText}`,
+                );
+            }
+
+            const videoBlob = await response.blob();
+            const videoWithType = new Blob([videoBlob], {
+                type: fileMetadata.mimeType || "video/mp4",
+            });
+
+            const objectUrl = URL.createObjectURL(videoWithType);
+            videoURLCache.set(url, { url: objectUrl, lastAccessed: Date.now() });
+
+            if (isMountedRef.current) {
+                setVideoURL(objectUrl);
+                setIsLoading(false);
+            }
+
+            cleanUpCache();
+        } catch (error) {
+            if (!isMountedRef.current) return;
+            const errorMessage = error instanceof Error ? error.message : "Failed to load video"
+            console.error("Video loading error:", error);
+            setError(errorMessage);
+            onError?.(errorMessage);
+        } finally {
+            if (isMountedRef.current) {
+                setIsLoading(false);
+            }
+        }
+    }, [url, fileMetadata.mimeType, onError]);
 
     useEffect(() => {
-        let mounted = true;
-        let objectUrl: string | null = null;
-
-        const loadvideo = async () => {
-            if (!url) return;
-
-            try {
-                setIsLoading(true);
-                setError(null);
-
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(
-                        `HTTP error! status: ${response.statusText}`,
-                    );
-                }
-
-                const videoBlob = await response.blob();
-                console.log("Video blob:", {
-                    size: videoBlob.size,
-                    type: videoBlob.type,
-                });
-
-                // Create a new blob with explicit video type
-                const videoWithType = new Blob([videoBlob], {
-                    type: fileMetadata.mimeType || "video/mp4",
-                });
-
-                objectUrl = URL.createObjectURL(videoBlob);
-
-                if (mounted) {
-                    setVideoURL(objectUrl);
-                    setIsLoading(false);
-                }
-            } catch (error: any) {
-                if (!mounted) return;
-                const errorMessage = error.message || "Failed to load video";
-                console.error("Video loading error:", error);
-                setError(errorMessage);
-                onError?.(errorMessage);
-                console.error("Detailed video loading error:", {
-                    error,
-                    message: error.message,
-                    stack: error.stack,
-                });
-            } finally {
-                if (mounted) {
-                    setIsLoading(false);
-                }
-            }
-        };
-
-        loadvideo();
+        isMountedRef.current = true;
+        loadVideo();
 
         return () => {
-            mounted = false;
-            if (videoURL) {
-                URL.revokeObjectURL(videoURL);
-            }
-        };
-    }, [url, onError, isDecrypting, fileMetadata.mimeType]);
+            isMountedRef.current = false;
+            cleanUp();
+        }
+    }, [loadVideo, cleanUp])
 
     const handleLoadedMetadata = () => {
-        if (videoRef.current) {
-            const video = videoRef.current;
-            if (loadingTimeoutRef.current) {
-                clearTimeout(loadingTimeoutRef.current);
-            }
+        if (!videoRef.current || !isMountedRef.current) return;
 
-            if (video.videoWidth && video.videoHeight) {
-                setAspectRatio(`${video.videoWidth}/${video.videoHeight}`);
-            }
-            setIsLoading(false);
-            setError(null);
+        const video = videoRef.current;
+        if(video.videoWidth !== 0 && video.videoHeight !== 0) {
+            setAspectRatio(`${video.videoWidth}/${video.videoHeight}`);
         }
+        setIsLoading(false);
+        setError(null);
     };
 
     const handleError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
         const video = e.currentTarget;
+        const errorMessage = `Video loading error: ${video.error?.message || "Unknown error"} (${video.error?.code})`;
         console.error("Video error:", {
             error: video.error?.message || "Unknown error",
             code: video.error?.code,
@@ -112,10 +128,10 @@ export default function EnhancedVideoPlayer({
             readyState: video.readyState,
         });
         setError(
-            `Failed to load video: ${video.error?.message || "Unknown error"}`,
+            errorMessage
         );
         onError?.(
-            `Video loading failed: ${video.error?.message || "Unknown error"}`,
+            errorMessage
         );
         setIsLoading(false);
     };
@@ -135,6 +151,7 @@ export default function EnhancedVideoPlayer({
                     className="rounded-lg w-full min-w-[320px] min-h-[180px] bg-black"
                     controls
                     playsInline
+                    preload="metadata"
                     onLoadedMetadata={handleLoadedMetadata}
                     onError={handleError}
                     src={videoURL ?? url}
