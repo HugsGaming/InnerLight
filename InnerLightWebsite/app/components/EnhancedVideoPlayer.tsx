@@ -9,7 +9,7 @@ interface VideoPlayerProps {
 }
 
 // Cache for video URLs to prevent re-fetching
-const videoURLCache = new Map<string, { url: string; lastAccessed: number}>();
+const videoURLCache = new Map<string, { url: string; lastAccessed: number }>();
 
 // Cleanup old cache entries periodically
 const cleanUpCache = () => {
@@ -21,7 +21,7 @@ const cleanUpCache = () => {
             videoURLCache.delete(key);
         }
     }
-}
+};
 
 export default function EnhancedVideoPlayer({
     url,
@@ -56,7 +56,7 @@ export default function EnhancedVideoPlayer({
 
             // Check cache first
             const cachedData = videoURLCache.get(url);
-            if(cachedData) {
+            if (cachedData) {
                 cachedData.lastAccessed = Date.now();
                 setVideoURL(cachedData.url);
                 setIsLoading(false);
@@ -65,9 +65,7 @@ export default function EnhancedVideoPlayer({
 
             const response = await fetch(url);
             if (!response.ok) {
-                throw new Error(
-                    `HTTP error! status: ${response.statusText}`,
-                );
+                throw new Error(`HTTP error! status: ${response.statusText}`);
             }
 
             const videoBlob = await response.blob();
@@ -76,7 +74,10 @@ export default function EnhancedVideoPlayer({
             });
 
             const objectUrl = URL.createObjectURL(videoWithType);
-            videoURLCache.set(url, { url: objectUrl, lastAccessed: Date.now() });
+            videoURLCache.set(url, {
+                url: objectUrl,
+                lastAccessed: Date.now(),
+            });
 
             if (isMountedRef.current) {
                 setVideoURL(objectUrl);
@@ -86,7 +87,8 @@ export default function EnhancedVideoPlayer({
             cleanUpCache();
         } catch (error) {
             if (!isMountedRef.current) return;
-            const errorMessage = error instanceof Error ? error.message : "Failed to load video"
+            const errorMessage =
+                error instanceof Error ? error.message : "Failed to load video";
             console.error("Video loading error:", error);
             setError(errorMessage);
             onError?.(errorMessage);
@@ -104,14 +106,14 @@ export default function EnhancedVideoPlayer({
         return () => {
             isMountedRef.current = false;
             cleanUp();
-        }
-    }, [loadVideo, cleanUp])
+        };
+    }, [loadVideo, cleanUp]);
 
     const handleLoadedMetadata = () => {
         if (!videoRef.current || !isMountedRef.current) return;
 
         const video = videoRef.current;
-        if(video.videoWidth !== 0 && video.videoHeight !== 0) {
+        if (video.videoWidth !== 0 && video.videoHeight !== 0) {
             setAspectRatio(`${video.videoWidth}/${video.videoHeight}`);
         }
         setIsLoading(false);
@@ -127,12 +129,8 @@ export default function EnhancedVideoPlayer({
             networkState: video.networkState,
             readyState: video.readyState,
         });
-        setError(
-            errorMessage
-        );
-        onError?.(
-            errorMessage
-        );
+        setError(errorMessage);
+        onError?.(errorMessage);
         setIsLoading(false);
     };
 

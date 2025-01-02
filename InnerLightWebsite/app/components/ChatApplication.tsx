@@ -846,20 +846,21 @@ export default function ChatApplication({
                     }
                 },
             )
-            .on('postgres_changes',
+            .on(
+                "postgres_changes",
                 {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'user_channels',
+                    event: "INSERT",
+                    schema: "public",
+                    table: "user_channels",
                     filter: `user_id=eq.${state.currentUser?.id}`,
                 },
                 async (payload) => {
                     try {
                         // Fetch the channel details
                         const { data, error } = await supabase
-                            .from('messageChannels')
-                            .select('*')
-                            .eq('id', payload.new.channel_id)
+                            .from("messageChannels")
+                            .select("*")
+                            .eq("id", payload.new.channel_id)
                             .single();
 
                         if (error) throw error;
@@ -869,7 +870,7 @@ export default function ChatApplication({
                             channels: [...prev.channels, data],
                             unreadMessages: {
                                 ...prev.unreadMessages,
-                                [data.id]: 0
+                                [data.id]: 0,
                             },
                         }));
 
@@ -878,14 +879,14 @@ export default function ChatApplication({
                     } catch (error) {
                         console.error(error);
                     }
-                }
+                },
             )
             .on(
-                'postgres_changes',
+                "postgres_changes",
                 {
-                    event: 'DELETE',
-                    schema: 'public',
-                    table: 'user_channels',
+                    event: "DELETE",
+                    schema: "public",
+                    table: "user_channels",
                     filter: `user_id=eq.${state.currentUser?.id}`,
                 },
                 async (payload) => {
@@ -897,14 +898,14 @@ export default function ChatApplication({
                         // If we're currently viewing the deleted channel, clear it
                         selectedChannel:
                             prev.selectedChannel === payload.old.channel_id
-                                ? ''
+                                ? ""
                                 : prev.selectedChannel,
                         messages:
                             prev.selectedChannel === payload.old.channel_id
                                 ? []
                                 : prev.messages,
                     }));
-                }
+                },
             )
             .subscribe();
 
