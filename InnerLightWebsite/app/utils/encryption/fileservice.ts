@@ -416,26 +416,26 @@ export class FileService {
         metadata: FileMetadata,
     ): Promise<Blob> {
         try {
-            console.log('Starting video decryption:', {
+            console.log("Starting video decryption:", {
                 encryptedSize: encryptedBlob.size,
                 encryptedType: encryptedBlob.type,
                 metadataType: metadata.fileType,
-                mimeType: metadata.mimeType
+                mimeType: metadata.mimeType,
             });
 
             if (!metadata.iv) throw new Error("Missing IV in metadata");
 
             // Read encrypted data as ArrayBuffer
             const encryptedData = await encryptedBlob.arrayBuffer();
-            console.log('Read encrypted data:', {
-                arrayBufferSize: encryptedData.byteLength
+            console.log("Read encrypted data:", {
+                arrayBufferSize: encryptedData.byteLength,
             });
 
             // Prepare iv for decryption
             const iv = new Uint8Array(Buffer.from(metadata.iv, "base64"));
-            console.log('Prepared IV:', {
+            console.log("Prepared IV:", {
                 ivLength: iv.length,
-                ivBase64Length: metadata.iv.length
+                ivBase64Length: metadata.iv.length,
             });
 
             // Use Web Crypto API for decryption with AES-GCM
@@ -449,31 +449,31 @@ export class FileService {
                 encryptedData,
             );
 
-            console.log('Decryption completed:', {
+            console.log("Decryption completed:", {
                 decryptedSize: decryptedData.byteLength,
-                expectedSize: metadata.fileSize
+                expectedSize: metadata.fileSize,
             });
 
-            const finalType = metadata.mimeType || metadata.fileType || "video/mp4";
+            const finalType =
+                metadata.mimeType || metadata.fileType || "video/mp4";
 
             const decryptedBlob = new Blob([decryptedData], {
-                type: finalType
+                type: finalType,
             });
 
-            console.log('Created decrypted blob:', {
+            console.log("Created decrypted blob:", {
                 blobSize: decryptedBlob.size,
                 blobType: decryptedBlob.type,
-                originalType: metadata.fileType
+                originalType: metadata.fileType,
             });
 
             // Create blob with original MIME type
             return decryptedBlob;
-        } catch (error : any) {
-
-            console.error('Video decryption error:', {
+        } catch (error: any) {
+            console.error("Video decryption error:", {
                 error,
                 errorMessage: error.message,
-                errorStack: error.stack
+                errorStack: error.stack,
             });
             throw new Error("Failed to decrypt video!");
         }
@@ -484,14 +484,14 @@ export class FileService {
         metadata: FileMetadata,
     ): Promise<string> {
         try {
-            console.log('Starting video preview creation:', {
+            console.log("Starting video preview creation:", {
                 encryptedBlobSize: encryptedBlob.size,
                 encryptedBlobType: encryptedBlob.type,
                 metadata: {
                     fileType: metadata.fileType,
                     mimeType: metadata.mimeType,
                     fileSize: metadata.fileSize,
-                }
+                },
             });
 
             // Decrypt the video
@@ -500,11 +500,11 @@ export class FileService {
                 metadata,
             );
 
-            console.log('Decrypted blob details:', {
+            console.log("Decrypted blob details:", {
                 size: decryptedBlob.size,
                 type: decryptedBlob.type,
                 validSize: decryptedBlob.size > 0,
-                expectedType: metadata.mimeType || metadata.fileType
+                expectedType: metadata.mimeType || metadata.fileType,
             });
 
             // Validate the decrypted contnent
@@ -526,27 +526,27 @@ export class FileService {
             // Create object URL
             const objectURL = URL.createObjectURL(videoBlob);
 
-            console.log('Created object URL:', {
-                urlType: objectURL.startsWith('blob:') ? 'blob' : 'other',
-                urlLength: objectURL.length
+            console.log("Created object URL:", {
+                urlType: objectURL.startsWith("blob:") ? "blob" : "other",
+                urlLength: objectURL.length,
             });
 
             try {
                 // Validate video URL
                 await this.validateVideoUrl(objectURL);
-                console.log('Video URL validated successfully');
+                console.log("Video URL validated successfully");
                 return objectURL;
             } catch (validationError) {
-                console.error('Video validation failed:', validationError);
-            // Cleanup the object URL if validation fails
+                console.error("Video validation failed:", validationError);
+                // Cleanup the object URL if validation fails
                 URL.revokeObjectURL(objectURL);
                 throw validationError;
             }
-        } catch (error : any) {
-            console.error('Preview URL Creation Error:', {
+        } catch (error: any) {
+            console.error("Preview URL Creation Error:", {
                 error,
                 errorMessage: error.message,
-                errorStack: error.stack
+                errorStack: error.stack,
             });
             throw new Error("Failed to create preview URL!");
         }
@@ -568,29 +568,34 @@ export class FileService {
             };
 
             const events = [
-                'loadstart', 'durationchange', 'loadedmetadata',
-                'loadeddata', 'canplay', 'canplaythrough', 'progress',
+                "loadstart",
+                "durationchange",
+                "loadedmetadata",
+                "loadeddata",
+                "canplay",
+                "canplaythrough",
+                "progress",
             ];
 
-            events.forEach(eventName => {
+            events.forEach((eventName) => {
                 video.addEventListener(eventName, logEvent);
             });
 
             const timeoutId = setTimeout(() => {
                 cleanup();
-                console.error('Video validation timeout. Final state:', {
+                console.error("Video validation timeout. Final state:", {
                     readyState: video.readyState,
                     networkState: video.networkState,
                     error: video.error,
                     duration: video.duration,
                     videoWidth: video.videoWidth,
-                    videoHeight: video.videoHeight
+                    videoHeight: video.videoHeight,
                 });
                 reject(new Error("Video URL validation timeout"));
             }, 10000);
 
             const cleanup = () => {
-                events.forEach(eventName => {
+                events.forEach((eventName) => {
                     video.removeEventListener(eventName, logEvent);
                 });
                 video.removeEventListener("loadedmetadata", handleLoad);
@@ -599,12 +604,12 @@ export class FileService {
             };
 
             const handleLoad = () => {
-                console.log('Video metadata loaded successfully:', {
+                console.log("Video metadata loaded successfully:", {
                     duration: video.duration,
                     videoWidth: video.videoWidth,
                     videoHeight: video.videoHeight,
                     readyState: video.readyState,
-                    networkState: video.networkState
+                    networkState: video.networkState,
                 });
                 cleanup();
                 resolve();
@@ -612,11 +617,11 @@ export class FileService {
 
             const handleError = () => {
                 cleanup();
-                console.error('Video loading error:', {
+                console.error("Video loading error:", {
                     errorCode: video.error?.code,
                     errorMessage: video.error?.message,
                     networkState: video.networkState,
-                    readyState: video.readyState
+                    readyState: video.readyState,
                 });
                 reject(new Error("Failed to validate video URL"));
             };
@@ -624,11 +629,11 @@ export class FileService {
             video.addEventListener("loadedmetadata", handleLoad);
             video.addEventListener("error", handleError);
 
-            video.preload = 'metadata';
+            video.preload = "metadata";
 
-            console.log('Attempting to validate video URL:', {
-                urlType: url.startsWith('blob:') ? 'blob' : 'other',
-                urlLength: url.length
+            console.log("Attempting to validate video URL:", {
+                urlType: url.startsWith("blob:") ? "blob" : "other",
+                urlLength: url.length,
             });
 
             video.src = url;
