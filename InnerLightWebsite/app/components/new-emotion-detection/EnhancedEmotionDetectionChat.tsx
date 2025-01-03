@@ -1,10 +1,12 @@
+"use client";
+
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as tf from "@tensorflow/tfjs";
 import {
     FaceLandmarker,
     FilesetResolver,
     DrawingUtils,
-  } from '@mediapipe/tasks-vision';
+} from "@mediapipe/tasks-vision";
 import {
     Camera,
     MessageSquare,
@@ -13,7 +15,6 @@ import {
     RefreshCw,
 } from "lucide-react";
 import { resolve } from "bun";
-
 
 // Types
 interface Message {
@@ -73,7 +74,9 @@ export default function EnhancedEmotionDetectionChat() {
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const modelRef = useRef<tf.LayersModel | null>(null);
 
-    const [emotionModel, setEmotionModel] = useState<tf.LayersModel | null>(null);
+    const [emotionModel, setEmotionModel] = useState<tf.LayersModel | null>(
+        null,
+    );
     const [detectorState, setDetectorState] = useState<EmotionDetectorState>({
         isInitialized: false,
         isLoading: false,
@@ -85,7 +88,6 @@ export default function EnhancedEmotionDetectionChat() {
     const [isSending, setIsSending] = useState<boolean>(false);
 
     const EMOTION_BUFFER_SIZE = 5;
-
 
     // Utility Functions
     const getMostFrequentEmotion = useCallback((emotions: string[]): string => {
@@ -118,108 +120,135 @@ export default function EnhancedEmotionDetectionChat() {
     // Initialize FaceLandmarker
     const initializeFaceLandmarker = async () => {
         try {
-
             const filesetResolver = await FilesetResolver.forVisionTasks(
-                'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm'
+                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm",
             );
 
-            faceLandmarkerRef.current = await FaceLandmarker.createFromOptions(filesetResolver, {
-                baseOptions: {
-                    modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-                    delegate: 'GPU'
+            faceLandmarkerRef.current = await FaceLandmarker.createFromOptions(
+                filesetResolver,
+                {
+                    baseOptions: {
+                        modelAssetPath:
+                            "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+                        delegate: "GPU",
+                    },
+                    outputFaceBlendshapes: true,
+                    runningMode: "VIDEO",
+                    numFaces: 1,
                 },
-                outputFaceBlendshapes: true,
-                runningMode: 'VIDEO',
-                numFaces: 1
-            });
+            );
 
             if (canvasRef.current) {
-                const ctx = canvasRef.current.getContext('2d');
+                const ctx = canvasRef.current.getContext("2d");
                 drawingUtilsRef.current = new DrawingUtils(ctx!);
             }
 
             return true;
         } catch (error) {
-            setDetectorState(prev => ({
+            setDetectorState((prev) => ({
                 ...prev,
-                error: 'Failed to initialize face detection'
+                error: "Failed to initialize face detection",
             }));
             return false;
         }
     };
 
     // Emotion Detection
-    const detectEmotion = async (faceImage: HTMLCanvasElement): Promise<string | null> => {
+    const detectEmotion = async (
+        faceImage: HTMLCanvasElement,
+    ): Promise<string | null> => {
         return new Promise(async (resolve, reject) => {
             const model = modelRef.current;
 
-            if (!model ) {
-                console.warn('Model not initialized yet.');
+            if (!model) {
+                console.warn("Model not initialized yet.");
                 resolve(null);
                 return;
             }
 
             try {
                 // Create tensor promise
-                const tensorPromise = new Promise<tf.Tensor>((resolveTensor) => {
-                    const tensor = tf.tidy(() => {
-                        const imageTensor = tf.browser.fromPixels(faceImage, 1)
-                            .resizeBilinear([48, 48])
-                            .mean(2)
-                            .expandDims(0)
-                            .expandDims(-1)
-                            .div(255);
-                        console.log('Created tensor with shape:', imageTensor.shape);
-                        return imageTensor;
-                    });
-                    resolveTensor(tensor);
-                });
+                const tensorPromise = new Promise<tf.Tensor>(
+                    (resolveTensor) => {
+                        const tensor = tf.tidy(() => {
+                            const imageTensor = tf.browser
+                                .fromPixels(faceImage, 1)
+                                .resizeBilinear([48, 48])
+                                .mean(2)
+                                .expandDims(0)
+                                .expandDims(-1)
+                                .div(255);
+                            console.log(
+                                "Created tensor with shape:",
+                                imageTensor.shape,
+                            );
+                            return imageTensor;
+                        });
+                        resolveTensor(tensor);
+                    },
+                );
 
                 const tensor = await tensorPromise;
 
                 //Make prediction
-                const predictionPromise = new Promise<number[]>(async (resolvePred) => {
-                    try {
-                        const preditions = model.predict(tensor) as tf.Tensor;
-                        const predictionArray = await preditions.data();
-                        preditions.dispose();
-                        resolvePred(Array.from(predictionArray));
-                    } catch (predError) {
-                        console.error('Prediction error:', predError);
-                        reject(predError);
-                    }
-                });
+                const predictionPromise = new Promise<number[]>(
+                    async (resolvePred) => {
+                        try {
+                            const preditions = model.predict(
+                                tensor,
+                            ) as tf.Tensor;
+                            const predictionArray = await preditions.data();
+                            preditions.dispose();
+                            resolvePred(Array.from(predictionArray));
+                        } catch (predError) {
+                            console.error("Prediction error:", predError);
+                            reject(predError);
+                        }
+                    },
+                );
 
                 const predictionArray = await predictionPromise;
-                console.log('Raw predictions:', predictionArray);
+                console.log("Raw predictions:", predictionArray);
 
-                const maxIndex = predictionArray.indexOf(Math.max(...predictionArray));
+                const maxIndex = predictionArray.indexOf(
+                    Math.max(...predictionArray),
+                );
                 const predictedEmotion = EMOTIONS[maxIndex];
 
-                console.log('Predicted emotion:', predictedEmotion, 'with confidence: ', predictionArray[maxIndex]);
+                console.log(
+                    "Predicted emotion:",
+                    predictedEmotion,
+                    "with confidence: ",
+                    predictionArray[maxIndex],
+                );
 
                 tensor.dispose();
                 resolve(predictedEmotion);
-
             } catch (error) {
-                console.error('Error in detectEmotion:', error);
+                console.error("Error in detectEmotion:", error);
                 reject(error);
             }
-        })
+        });
     };
 
     const runDetection = async () => {
-        if (!videoRef.current || !faceLandmarkerRef.current || !canvasRef.current) {
-            console.warn('Video, faceLandmarker, or canvas not initialized yet.');
+        if (
+            !videoRef.current ||
+            !faceLandmarkerRef.current ||
+            !canvasRef.current
+        ) {
+            console.warn(
+                "Video, faceLandmarker, or canvas not initialized yet.",
+            );
             return;
         }
 
         const video = videoRef.current;
         const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext("2d");
 
         if (!ctx) {
-            console.error('Failed to get canvas context');
+            console.error("Failed to get canvas context");
             return;
         }
 
@@ -228,16 +257,19 @@ export default function EnhancedEmotionDetectionChat() {
                 lastVideoTimeRef.current = video.currentTime;
 
                 const detectionPromise = new Promise((resolve) => {
-                    const results = faceLandmarkerRef.current.detectForVideo(video, performance.now());
+                    const results = faceLandmarkerRef.current.detectForVideo(
+                        video,
+                        performance.now(),
+                    );
                     resolve(results);
-                })
+                });
 
                 const results = await detectionPromise;
-    
+
                 ctx.save();
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
+
                 // @ts-ignore
                 if (results.faceLandmarks?.length) {
                     // @ts-ignore
@@ -245,28 +277,33 @@ export default function EnhancedEmotionDetectionChat() {
                     drawingUtilsRef.current.drawConnectors(
                         landmarks,
                         FaceLandmarker.FACE_LANDMARKS_TESSELATION,
-                        { color: '#C0C0C070', lineWidth: 1 }
+                        { color: "#C0C0C070", lineWidth: 1 },
                     );
-    
+
                     const boundingBox = getBoundingBox(landmarks, canvas);
 
-                    const faceImagePromise = new Promise<HTMLCanvasElement>((resolve) => {
-                        const faceImage = extractFaceRegion(video, boundingBox);
-                        resolve(faceImage);
-                    })
+                    const faceImagePromise = new Promise<HTMLCanvasElement>(
+                        (resolve) => {
+                            const faceImage = extractFaceRegion(
+                                video,
+                                boundingBox,
+                            );
+                            resolve(faceImage);
+                        },
+                    );
 
                     const faceImage = await faceImagePromise;
-                    
+
                     // Log face extraction
-                    console.log('Face extraction complete, dimensions:', {
+                    console.log("Face extraction complete, dimensions:", {
                         width: faceImage.width,
                         height: faceImage.height,
-                        bbox: boundingBox
+                        bbox: boundingBox,
                     });
-    
+
                     const emotion = await detectEmotion(faceImage);
-                    console.log('Detected emotion:', emotion);
-    
+                    console.log("Detected emotion:", emotion);
+
                     if (emotion) {
                         updateEmotionState(emotion);
                         drawEmotionLabel(ctx, boundingBox, emotion);
@@ -275,26 +312,31 @@ export default function EnhancedEmotionDetectionChat() {
                 ctx.restore();
             }
         } catch (error) {
-            console.error('Error in runDetection:', error);
+            console.error("Error in runDetection:", error);
         }
 
         requestAnimationFrame(runDetection);
     };
 
     // Chat Functions
-    const generateResponse = async (userMessage: string, emotion: string): Promise<ChatResponse> => {
-        const response = await fetch('/api/newAI', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+    const generateResponse = async (
+        userMessage: string,
+        emotion: string,
+    ): Promise<ChatResponse> => {
+        const response = await fetch("/api/newAI", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                messages: [{ role: 'user', content: userMessage }],
+                messages: [{ role: "user", content: userMessage }],
                 emotion,
-                emotionalContext: EMOTIONAL_CONTEXTS[emotion as Emotion] || EMOTIONAL_CONTEXTS.neutral
-            })
+                emotionalContext:
+                    EMOTIONAL_CONTEXTS[emotion as Emotion] ||
+                    EMOTIONAL_CONTEXTS.neutral,
+            }),
         });
 
         if (!response.ok) {
-            throw new Error('Failed to generate response');
+            throw new Error("Failed to generate response");
         }
 
         return response.json();
@@ -305,32 +347,38 @@ export default function EnhancedEmotionDetectionChat() {
         if (!inputMessage.trim() || isSending) return;
 
         const messageId = Date.now().toString();
-        const emotion = detectorState.currentEmotion || 'neutral';
+        const emotion = detectorState.currentEmotion || "neutral";
 
         try {
             setIsSending(true);
-            setMessages(prev => [...prev, {
-                id: messageId,
-                text: inputMessage,
-                sender: 'user',
-                emotion,
-                timestamp: Date.now()
-            }]);
-            setInputMessage('');
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: messageId,
+                    text: inputMessage,
+                    sender: "user",
+                    emotion,
+                    timestamp: Date.now(),
+                },
+            ]);
+            setInputMessage("");
 
             const response = await generateResponse(inputMessage, emotion);
 
-            setMessages(prev => [...prev, {
-                id: `${messageId}-response`,
-                text: response.response,
-                sender: 'bot',
-                emotion: response.emotion,
-                timestamp: Date.now()
-            }]);
-        } catch (error) {
-            setDetectorState(prev => ({
+            setMessages((prev) => [
                 ...prev,
-                error: 'Failed to generate response'
+                {
+                    id: `${messageId}-response`,
+                    text: response.response,
+                    sender: "bot",
+                    emotion: response.emotion,
+                    timestamp: Date.now(),
+                },
+            ]);
+        } catch (error) {
+            setDetectorState((prev) => ({
+                ...prev,
+                error: "Failed to generate response",
             }));
         } finally {
             setIsSending(false);
@@ -340,9 +388,11 @@ export default function EnhancedEmotionDetectionChat() {
     const initializeModel = async (): Promise<tf.LayersModel> => {
         return new Promise(async (resolve, reject) => {
             try {
-                console.log('Starting model initialization...');
-                const model = await tf.loadLayersModel('/emotion_model_js/model.json');
-                console.log('Model loaded successfully.');
+                console.log("Starting model initialization...");
+                const model = await tf.loadLayersModel(
+                    "/emotion_model_js/model.json",
+                );
+                console.log("Model loaded successfully.");
 
                 // Warmup run to ensure model is ready
                 const dummTensor = tf.zeros([1, 48, 48, 1]);
@@ -350,30 +400,31 @@ export default function EnhancedEmotionDetectionChat() {
                 (warmResult as tf.Tensor).dispose();
                 resolve(model);
             } catch (error) {
-                console.error('Error initializing model:', error);
+                console.error("Error initializing model:", error);
                 reject(error);
             }
-        })
-    }
+        });
+    };
 
     // Lifecycle
     useEffect(() => {
         const initialize = async () => {
-            setDetectorState(prev => ({ ...prev, isLoading: true }));
+            setDetectorState((prev) => ({ ...prev, isLoading: true }));
             try {
                 const model = await initializeModel();
-                console.log('Assigned model:', model);
+                console.log("Assigned model:", model);
 
                 modelRef.current = model;
-                setEmotionModel(prev => model);
-                
-                const faceLandmarkerInitialized = await initializeFaceLandmarker();
+                setEmotionModel((prev) => model);
+
+                const faceLandmarkerInitialized =
+                    await initializeFaceLandmarker();
                 if (!faceLandmarkerInitialized) return;
 
                 // Start video after initialization
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { width: VIDEO_WIDTH, height: VIDEO_HEIGHT },
-                    audio: false
+                    audio: false,
                 });
 
                 if (videoRef.current) {
@@ -384,16 +435,16 @@ export default function EnhancedEmotionDetectionChat() {
                     };
                 }
 
-                setDetectorState(prev => ({
+                setDetectorState((prev) => ({
                     ...prev,
                     isInitialized: true,
-                    isLoading: false
+                    isLoading: false,
                 }));
             } catch (error) {
-                setDetectorState(prev => ({
+                setDetectorState((prev) => ({
                     ...prev,
                     isLoading: false,
-                    error: 'Failed to initialize'
+                    error: "Failed to initialize",
                 }));
             }
         };
@@ -403,14 +454,15 @@ export default function EnhancedEmotionDetectionChat() {
         return () => {
             if (videoRef.current?.srcObject) {
                 const stream = videoRef.current.srcObject as MediaStream;
-                stream.getTracks().forEach(track => track.stop());
+                stream.getTracks().forEach((track) => track.stop());
             }
         };
     }, []);
 
     useEffect(() => {
         if (chatContainerRef.current) {
-            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+            chatContainerRef.current.scrollTop =
+                chatContainerRef.current.scrollHeight;
         }
     }, [messages]);
 
@@ -442,7 +494,9 @@ export default function EnhancedEmotionDetectionChat() {
                             className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400 transition-colors"
                         >
                             <RefreshCw className="w-4 h-4" />
-                            {detectorState.isLoading ? 'Initializing...' : 'Reset'}
+                            {detectorState.isLoading
+                                ? "Initializing..."
+                                : "Reset"}
                         </button>
                         {detectorState.currentEmotion && (
                             <span className="text-sm text-gray-600">
@@ -470,19 +524,24 @@ export default function EnhancedEmotionDetectionChat() {
                             {messages.map((message) => (
                                 <div
                                     key={message.id}
-                                    className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                                    className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
                                 >
                                     <div
                                         className={`max-w-[80%] p-3 rounded-lg ${
-                                            message.sender === 'user'
-                                                ? 'bg-blue-500 text-white'
-                                                : 'bg-gray-100 text-gray-800'
+                                            message.sender === "user"
+                                                ? "bg-blue-500 text-white"
+                                                : "bg-gray-100 text-gray-800"
                                         }`}
                                     >
-                                        <p className="break-words">{message.text}</p>
+                                        <p className="break-words">
+                                            {message.text}
+                                        </p>
                                         {message.emotion && (
                                             <p className="text-xs mt-1 opacity-75">
-                                                {message.sender === 'user' ? 'Detected' : 'Response'} emotion: {message.emotion}
+                                                {message.sender === "user"
+                                                    ? "Detected"
+                                                    : "Response"}{" "}
+                                                emotion: {message.emotion}
                                             </p>
                                         )}
                                     </div>
@@ -494,15 +553,21 @@ export default function EnhancedEmotionDetectionChat() {
                             <input
                                 type="text"
                                 value={inputMessage}
-                                onChange={(e) => setInputMessage(e.target.value)}
+                                onChange={(e) =>
+                                    setInputMessage(e.target.value)
+                                }
                                 placeholder="Type your message..."
-                                disabled={isSending || !detectorState.isInitialized}
+                                disabled={
+                                    isSending || !detectorState.isInitialized
+                                }
                                 className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                                 aria-label="Chat message input"
                             />
                             <button
                                 type="submit"
-                                disabled={isSending || !detectorState.isInitialized}
+                                disabled={
+                                    isSending || !detectorState.isInitialized
+                                }
                                 className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                                 aria-label="Send message"
                             >

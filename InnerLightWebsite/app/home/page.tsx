@@ -12,9 +12,12 @@ import { Post } from "../components/PostList";
 import "react-toastify/dist/ReactToastify.css";
 import dynamic from "next/dynamic";
 
-const NewButtonAi = dynamic(
-    () => import("../components/new-emotion-detection/NewButtonAi"),
-    { ssr: false },
+const FloatingEmotionDetection = dynamic(
+    () =>
+        import("../components/new-emotion-detection/FloatingEmotionDetection"),
+    {
+        ssr: false,
+    },
 );
 
 const Home: React.FC = async () => {
@@ -135,7 +138,7 @@ const Home: React.FC = async () => {
                     showAddPost
                 />
             </div>
-            <NewButtonAi />
+            <FloatingEmotionDetection />
         </div>
     );
 };

@@ -3,7 +3,10 @@ import dynamic from "next/dynamic";
 import "react-toastify/dist/ReactToastify.css";
 
 const EnhancedEmotionDetectionChat = dynamic(
-    () => import("../components/new-emotion-detection/EnhancedEmotionDetectionChat"),
+    () =>
+        import(
+            "../components/new-emotion-detection/EnhancedEmotionDetectionChat"
+        ),
     { ssr: false },
 );
 
