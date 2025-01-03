@@ -1,13 +1,20 @@
 "use client";
 
-import React, { FormEvent, useEffect, useRef, useState } from "react";
+import React, {
+    FormEvent,
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+} from "react";
 import * as tf from "@tensorflow/tfjs";
-import * as facemesh from "@mediapipe/face_mesh";
-import * as camera_utils from "@mediapipe/camera_utils";
-import * as drawing_utils from "@mediapipe/drawing_utils";
+import {
+    FaceLandmarker,
+    FilesetResolver,
+    DrawingUtils,
+} from "@mediapipe/tasks-vision";
 import { Camera, MessageSquare, Loader2 } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
-
 interface Message {
     text: string;
     sender: string;
@@ -22,16 +29,21 @@ interface ChatResponse {
 export default function NewEmotionDetectionChat() {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
-    const cameraRef = useRef<camera_utils.Camera | null>(null);
+    const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
+    const drawingUtilsRef = useRef<DrawingUtils | null>(null);
+
+    const lastEmotionUpdate = useRef<number>(0);
+    const emotionBuffer = useRef<string[]>([]);
+    const EMOTION_UPDATE_INTERVAL = 500;
+    const EMOTION_BUFFER_SIZE = 5;
 
     const [emotionModel, setEmotionModel] = useState<tf.LayersModel | null>(
         null,
     );
-    const [faceMeshModel, setFaceMeshModel] =
-        useState<facemesh.FaceMesh | null>(null);
     const [isInitialized, setIsInitialized] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isSending, setIsSending] = useState(false);
+    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputMessage, setInputMessage] = useState("");
@@ -48,7 +60,34 @@ export default function NewEmotionDetectionChat() {
         "neutral",
     ];
 
-    // Emotional context prompts to guide the AI responses
+    const getMostFrequentEmotion = (emotionArr: string[]) => {
+        const counts = emotionArr.reduce(
+            (acc: Record<string, number>, emotion) => {
+                acc[emotion] = (acc[emotion] || 0) + 1;
+                return acc;
+            },
+            {},
+        );
+        return Object.entries(counts).reduce((a, b) =>
+            a[1] > b[1] ? a : b,
+        )[0];
+    };
+
+    const updateEmotion = useCallback((emotion: string) => {
+        const now = Date.now();
+        emotionBuffer.current.push(emotion);
+        if (emotionBuffer.current.length > EMOTION_BUFFER_SIZE) {
+            emotionBuffer.current.shift();
+        }
+
+        if (now - lastEmotionUpdate.current >= EMOTION_UPDATE_INTERVAL) {
+            const stableEmotion = getMostFrequentEmotion(emotionBuffer.current);
+            setCurrentEmotion(stableEmotion);
+            lastEmotionUpdate.current = now;
+        }
+    }, []);
+
+    // Emotional context prompts remain the same
     const emotionalContexts = {
         angry: "The user seems angry or frustrated. Respond with empathy and help de-escalate the situation. Acknowledge their feelings and offer constructive support.",
         happy: "The user appears happy and positive. Match their upbeat energy while maintaining a natural conversation flow. Feel free to share in their joy.",
@@ -94,6 +133,192 @@ export default function NewEmotionDetectionChat() {
         }
     };
 
+    const initializeFaceLandmarker = async () => {
+        const filesetResolver = await FilesetResolver.forVisionTasks(
+            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm",
+        );
+
+        faceLandmarkerRef.current = await FaceLandmarker.createFromOptions(
+            filesetResolver,
+            {
+                baseOptions: {
+                    modelAssetPath:
+                        "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+                    delegate: "GPU",
+                },
+                outputFaceBlendshapes: true,
+                runningMode: "VIDEO",
+                numFaces: 1,
+            },
+        );
+
+        if (canvasRef.current) {
+            drawingUtilsRef.current = new DrawingUtils(canvasRef.current.getContext("2d")!);
+        }
+    };
+
+    const startVideo = async () => {
+        if (!videoRef.current) return;
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 640, height: 480, facingMode: "user" },
+                audio: false,
+            });
+            videoRef.current.srcObject = stream;
+
+            // Return a promise that resolves when the video is ready
+            await new Promise((resolve, reject) => {
+                if (!videoRef.current) return reject("Video element not found");
+
+                videoRef.current.onloadedmetadata = () => {
+                    videoRef.current
+                        ?.play()
+                        .then(() => {
+                            setIsVideoPlaying(true);
+                            requestAnimationFrame(predictWebcam);
+                            resolve(true);
+                        })
+                        .catch((error) => {
+                            toast.error(
+                                "Failed to play video: " + error.message,
+                            );
+                            reject(error);
+                        });
+                };
+
+                videoRef.current.onerror = (error) => {
+                    toast.error("Video error: " + error);
+                    reject(error);
+                };
+            });
+        } catch (error) {
+            console.error("Error accessing webcam:", error);
+        }
+    };
+
+    const loadModels = async () => {
+        setIsLoading(true);
+        try {
+            // Load emotion detection model
+            const model = await tf.loadLayersModel(
+                "/emotion_model_js/model.json",
+            );
+            setEmotionModel(model);
+
+            if (!faceLandmarkerRef.current) await initializeFaceLandmarker();
+
+            setIsInitialized(true);
+            await startVideo();
+        } catch (error) {
+            console.error("Error loading models:", error);
+            setIsInitialized(false);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    let lastVideoTime = -1;
+    const predictWebcam = async () => {
+        if (
+            !videoRef.current ||
+            !faceLandmarkerRef.current ||
+            !canvasRef.current ||
+            !isVideoPlaying
+        ) {
+            return;
+        }
+
+        const video = videoRef.current;
+        const nowInMs = Date.now();
+
+        if (video.currentTime !== lastVideoTime) {
+            lastVideoTime = video.currentTime;
+            const results = faceLandmarkerRef.current.detectForVideo(
+                video,
+                nowInMs,
+            );
+
+            const canvas = canvasRef.current;
+            const ctx = canvas.getContext("2d");
+
+            if (!ctx) return;
+
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            if (results.faceLandmarks) {
+                for (const landmarks of results.faceLandmarks) {
+                    drawingUtilsRef.current?.drawConnectors(
+                        landmarks,
+                        FaceLandmarker.FACE_LANDMARKS_TESSELATION,
+                        { color: "#C0C0C070", lineWidth: 0.5 },
+                    );
+
+                    // Get bounding box and detect emotion
+                    const boundingBox = getBoundingBox(landmarks, canvas);
+                    const faceImage = extractFaceRegion(video, boundingBox);
+                    const emotion = await detectEmotion(faceImage);
+
+                    if (emotion) {
+                        updateEmotion(emotion);
+                        // Draw emotion label
+                        const label = currentEmotion || emotion;
+                        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+                        ctx.fillRect(
+                            boundingBox.x,
+                            boundingBox.y - 30,
+                            ctx.measureText(label).width + 10,
+                            24,
+                        );
+                        ctx.fillStyle = "#FFFFFF";
+                        ctx.font = "18px sans-serif";
+                        ctx.fillText(
+                            label,
+                            boundingBox.x + 5,
+                            boundingBox.y - 12,
+                        );
+                    }
+                }
+            }
+            ctx.restore();
+        }
+
+        requestAnimationFrame(predictWebcam);
+    };
+
+    // Rest of the utility functions (getBoundingBox, extractFaceRegion, detectEmotion) remain the same
+    const getBoundingBox = (
+        landmarks: { x: number; y: number; z: number }[],
+        canvas: HTMLCanvasElement,
+    ) => {
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+
+        landmarks.forEach((landmark) => {
+            minX = Math.min(minX, landmark.x);
+            minY = Math.min(minY, landmark.y);
+            maxX = Math.max(maxX, landmark.x);
+            maxY = Math.max(maxY, landmark.y);
+        });
+
+        const padding = 0.1;
+        const width = (maxX - minX) * (1 + padding);
+        const height = (maxY - minY) * (1 + padding);
+        const x = minX - width * padding * 0.5;
+        const y = minY - height * padding * 0.5;
+
+        return {
+            x: x * canvas.width,
+            y: y * canvas.height,
+            width: width * canvas.width,
+            height: height * canvas.height,
+        };
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!inputMessage.trim() || isSending) return;
@@ -132,172 +357,35 @@ export default function NewEmotionDetectionChat() {
         }
     };
 
-    const loadModels = async () => {
-        setIsLoading(true);
-        try {
-            // Load your emotion detection model
-            const model = await tf.loadLayersModel(
-                "/emotion_model_js/model.json",
+    const extractFaceRegion = (
+        image: HTMLVideoElement | HTMLCanvasElement,
+        box: any,
+    ) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 48;
+        canvas.height = 48;
+        const ctx = canvas.getContext("2d");
+
+        if (ctx) {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = "high";
+            ctx.drawImage(
+                image,
+                box.x,
+                box.y,
+                box.width,
+                box.height,
+                0,
+                0,
+                canvas.width,
+                canvas.height,
             );
-            setEmotionModel(model);
-            console.log("Model loaded.", model);
-
-            // Initialize FaceMesh
-            const faceMesh = new facemesh.FaceMesh({
-                locateFile: (file) => {
-                    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-                },
-            });
-
-            faceMesh.setOptions({
-                maxNumFaces: 1,
-                refineLandmarks: true,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5,
-            });
-
-            faceMesh.onResults(onResults);
-            setFaceMeshModel(faceMesh);
-            console.log("FaceMesh model loaded.", faceMesh);
-            setIsInitialized(true);
-        } catch (error) {
-            console.error("Error loading models.", error);
-            setIsInitialized(false);
-        } finally {
-            setIsLoading(false);
         }
+
+        return canvas;
     };
 
-    const resetAll = async () => {
-        // Stop camera if running
-        if (cameraRef.current) {
-            cameraRef.current.stop();
-            cameraRef.current = null;
-        }
-
-        // Reset states
-        setIsInitialized(false);
-        setEmotionModel(null);
-        setFaceMeshModel(null);
-
-        // Reload models and restart camera
-        await loadModels();
-    };
-
-    useEffect(() => {
-        loadModels();
-
-        return () => {
-            if (cameraRef.current) {
-                cameraRef.current.stop();
-                cameraRef.current = null;
-            }
-            setIsInitialized(false);
-        };
-    }, []);
-
-    useEffect(() => {
-        if (!isInitialized || !faceMeshModel || !videoRef.current) {
-            console.log("Camera prerequisites not met:", {
-                isInitialized,
-                hasFaceMesh: !!faceMeshModel,
-                hasVideo: !!videoRef.current,
-            });
-            return;
-        }
-
-        const setupCamera = async () => {
-            try {
-                if (!cameraRef.current) {
-                    console.log("Initializing camera...");
-                    cameraRef.current = new camera_utils.Camera(
-                        videoRef.current!,
-                        {
-                            onFrame: async () => {
-                                if (
-                                    videoRef.current &&
-                                    faceMeshModel &&
-                                    emotionModel
-                                ) {
-                                    try {
-                                        await faceMeshModel.send({
-                                            image: videoRef.current,
-                                        });
-                                    } catch (error) {
-                                        console.error(
-                                            "Error processing frame:",
-                                            error,
-                                        );
-                                    }
-                                }
-                            },
-                            width: 640,
-                            height: 480,
-                        },
-                    );
-                    console.log("Starting camera...");
-                    await cameraRef.current.start();
-                    console.log("Camera started succe");
-                }
-            } catch (error) {
-                console.error("Error setting up camera:", error);
-            }
-        };
-
-        setupCamera();
-    }, [faceMeshModel, isInitialized, emotionModel]);
-
-    const onResults = async (results: any) => {
-        const canvas = canvasRef.current;
-        const ctx = canvas?.getContext("2d");
-        if (!ctx || !canvas) return;
-
-        try {
-            ctx.save();
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw the webcam frame
-            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-
-            if (results.multiFaceLandmarks && emotionModel) {
-                for (const landmarks of results.multiFaceLandmarks) {
-                    drawing_utils.drawConnectors(
-                        ctx,
-                        landmarks,
-                        facemesh.FACEMESH_TESSELATION,
-                        { color: "#C0C0C070", lineWidth: 1 },
-                    );
-
-                    // Get bounding box of face
-                    const boundingBox = getBoundingBox(landmarks);
-                    const faceImage = extractFaceRegion(
-                        results.image,
-                        boundingBox,
-                    );
-                    const emotion = await detectEmotion(faceImage);
-
-                    if (emotion) {
-                        setCurrentEmotion(emotion);
-                        // Draw emotion label
-                        ctx.fillStyle = "#FF0000";
-                        ctx.font = "24px sans-serif";
-                        ctx.fillText(
-                            emotion,
-                            boundingBox.x,
-                            boundingBox.y - 10,
-                        );
-                    }
-                }
-            }
-        } catch (error) {
-            console.error("Error in onResults:", error);
-        } finally {
-            ctx.restore();
-        }
-    };
-
-    // Detect emotion from face image
-    const detectEmotion = async (faceImage: any) => {
+    const detectEmotion = async (faceImage: HTMLCanvasElement) => {
         try {
             const tensor = tf.tidy(() => {
                 return tf.browser
@@ -318,48 +406,37 @@ export default function NewEmotionDetectionChat() {
         }
     };
 
-    const getBoundingBox = (landmarks: any) => {
-        let minX = Infinity;
-        let minY = Infinity;
-        let maxX = -Infinity;
-        let maxY = -Infinity;
+    const resetAll = async () => {
+        // Stop video stream if running
+        if (videoRef.current?.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach((track) => track.stop());
+            videoRef.current.srcObject = null;
+        }
 
-        landmarks.forEach((landmark: any) => {
-            minX = Math.min(minX, landmark.x);
-            minY = Math.min(minY, landmark.y);
-            maxX = Math.max(maxX, landmark.x);
-            maxY = Math.max(maxY, landmark.y);
-        });
+        setIsVideoPlaying(false);
+        setIsInitialized(false);
+        setEmotionModel(null);
+        faceLandmarkerRef.current = null;
 
-        return {
-            x: minX * canvasRef.current!.width,
-            y: minY * canvasRef.current!.height,
-            width: (maxX - minX) * canvasRef.current!.width,
-            height: (maxY - minY) * canvasRef.current!.height,
+        // Reload models and restart camera
+        await loadModels();
+    };
+
+    useEffect(() => {
+        loadModels();
+
+        return () => {
+            if (videoRef.current?.srcObject) {
+                const stream = videoRef.current.srcObject as MediaStream;
+                stream.getTracks().forEach((track) => track.stop());
+            }
+            setIsInitialized(false);
+            setIsVideoPlaying(false);
         };
-    };
+    }, []);
 
-    const extractFaceRegion = (image: any, box: any) => {
-        const canvas = document.createElement("canvas");
-        canvas.width = 48;
-        canvas.height = 48;
-        const ctx = canvas.getContext("2d");
-
-        ctx?.drawImage(
-            image,
-            box.x,
-            box.y,
-            box.width,
-            box.height,
-            0,
-            0,
-            canvas.width,
-            canvas.height,
-        );
-
-        return canvas;
-    };
-
+    // JSX remains largely the same
     return (
         <div className="w-full max-w-6xl mx-auto p-4 flex flex-col md:flex-row gap-4">
             {/* Video Feed */}
@@ -368,10 +445,11 @@ export default function NewEmotionDetectionChat() {
                     <div className="p-4">
                         <video
                             ref={videoRef}
-                            className="hidden"
+                            className="absolute opacity-0 pointer-events-none"
                             width="640"
                             height="480"
                             playsInline
+                            muted
                         />
                         <canvas
                             ref={canvasRef}
@@ -381,7 +459,7 @@ export default function NewEmotionDetectionChat() {
                         />
                         <div className="mt-4 flex justify-center">
                             <button
-                                onClick={() => resetAll()}
+                                onClick={resetAll}
                                 disabled={isLoading}
                                 className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
                             >
@@ -453,6 +531,7 @@ export default function NewEmotionDetectionChat() {
                     </div>
                 </div>
             </div>
+            <ToastContainer />
         </div>
     );
 }

@@ -10,6 +10,15 @@ import ButtonAiChat from "../components/ButtonAiChat";
 import { toast, ToastContainer } from "react-toastify";
 import { Post } from "../components/PostList";
 import "react-toastify/dist/ReactToastify.css";
+import dynamic from "next/dynamic";
+
+const FloatingEmotionDetection = dynamic(
+    () =>
+        import("../components/new-emotion-detection/FloatingEmotionDetection"),
+    {
+        ssr: false,
+    },
+);
 
 const Home: React.FC = async () => {
     const supabase = createClient();
@@ -129,7 +138,7 @@ const Home: React.FC = async () => {
                     showAddPost
                 />
             </div>
-            <ButtonAiChat />
+            <FloatingEmotionDetection />
         </div>
     );
 };
