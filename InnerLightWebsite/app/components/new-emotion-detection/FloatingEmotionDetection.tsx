@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Camera, X, Minimize2, Maximize2 } from "lucide-react";
 import * as tf from "@tensorflow/tfjs";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
+import { createClient } from '../../utils/supabase/client';
+import { useRouter } from "next/router";
+import { v4 as uuidv4 } from "uuid";
 
 const EMOTIONS = [
     "angry",
@@ -23,6 +26,14 @@ type Landmark = {
     y: number;
     z: number;
 };
+
+interface EmotionLog {
+    user_id: string;
+    emotion: Emotion;
+    confidence: number;
+    timestamp: string;
+    session_id: string;
+}
 
 // Define face mesh connections
 const FACE_MESH_CONNECTIONS = [
@@ -172,6 +183,56 @@ const EmotionDetector = () => {
     const animationFrameRef = useRef<number | null>(null);
     const lastProcessTimeRef = useRef<number>(0);
 
+    const [sessionId, setSessionId] = useState<string>(uuidv4());
+    const lastLogTimeRef = useRef<number>(0);
+    const supabase = useMemo(() => createClient(), []);
+
+    const logEmotion = async (emotion: Emotion, confidence: number) => {
+        try {
+            const now = Date.now();
+            if (now - lastLogTimeRef.current < 1000) return;
+            lastLogTimeRef.current = now;
+
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+            if (userError) {
+                console.error("Error getting user:", userError);
+                return;
+            }
+
+            if (!user) {
+                console.error("User not logged in");
+                return;
+            };
+
+            const emotionLog: EmotionLog = {
+                user_id: user?.id!,
+                emotion,
+                confidence,
+                timestamp: new Date().toISOString(),
+                session_id: sessionId,
+            };
+
+            console.log('Attepting to log: ',emotionLog);
+
+            const { error: logError } = await supabase
+                .from("emotion_logs")
+                .insert([emotionLog]);
+
+
+
+            if (logError) {
+                console.error("Error logging emotion:", logError);
+                if (logError.code === '42501') {
+                    console.error("User not logged in");
+                }
+                return
+            }
+        } catch (error) {
+            console.error("Error logging emotion:", error);
+        }
+    };
+
     useEffect(() => {
         const initializeModels = async () => {
             try {
@@ -252,6 +313,9 @@ const EmotionDetector = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+            let detectedEmotion: Emotion | null = null;
+            let detectedConfidence = 0;
+
             if (results.faceLandmarks?.length) {
                 const landmarks = results.faceLandmarks[0];
 
@@ -319,6 +383,10 @@ const EmotionDetector = () => {
                             0,
                         ) / emotionBufferRef.current.length;
 
+
+                    detectedEmotion = dominantEmotion;
+                    detectedConfidence = avgConfidence;
+
                     setCurrentEmotion(dominantEmotion);
                     setConfidence(avgConfidence);
 
@@ -330,9 +398,13 @@ const EmotionDetector = () => {
                         10,
                         30,
                     );
+
+                    if (detectedConfidence && detectedConfidence > 0) {
+                        console.log('Attempting to log emotion:', { detectedEmotion, detectedConfidence });
+                        await logEmotion(detectedEmotion, detectedConfidence);
+                    }
                 }
             }
-
             animationFrameRef.current = requestAnimationFrame(processVideo);
         } catch (err) {
             console.error("Processing error:", err);
@@ -473,3 +545,4 @@ const EmotionDetector = () => {
 };
 
 export default EmotionDetector;
+
