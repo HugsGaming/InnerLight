@@ -1,6 +1,13 @@
 // components/PostList.tsx
 "use client";
-import React, { useEffect, useState, useMemo, useCallback, memo } from "react";
+import React, {
+    useEffect,
+    useState,
+    useMemo,
+    useCallback,
+    memo,
+    useRef,
+} from "react";
 import PostItem from "./PostItem";
 import PostComponent from "./Post";
 import { createClient } from "../utils/supabase/client";
@@ -8,7 +15,6 @@ import { getFileExtension } from "../utils/files";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "react-toastify";
 import { Tables } from "../../database.types";
-import { debounce } from "../utils/debounce";
 
 export interface Post extends Tables<"posts"> {
     comments?: Comment[] | null;
@@ -42,6 +48,8 @@ export interface Comment extends Tables<"comments"> {
     upVotes_count?: { count: number }[];
 }
 
+const POST_PER_PAGE = 10;
+
 // Optimized PostList component
 const PostList: React.FC<{
     user: Tables<"profiles">;
@@ -49,14 +57,67 @@ const PostList: React.FC<{
     showAddPost?: boolean;
 }> = ({ user, initialPosts, showAddPost }) => {
     const [posts, setPosts] = useState<(Post | null)[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+    const [page, setPage] = useState(0);
+    const loadingRef = useRef<HTMLDivElement>(null);
     const supabase = useMemo(() => createClient(), []);
 
     useEffect(() => {
         if (initialPosts) {
             setPosts(initialPosts.filter((post) => post !== null));
-            console.log("Initial posts set:", initialPosts);
+            setPage(1);
         }
     }, [initialPosts]);
+
+    const fetchMorePosts = useCallback(async () => {
+        if (isLoading || !hasMore) return;
+
+        setIsLoading(true);
+        try {
+            const from = page * POST_PER_PAGE;
+            const to = from + POST_PER_PAGE - 1;
+
+            const { data: newPosts, error } = await supabase
+                .from("posts")
+                .select(
+                    "*, comments(*, user:profiles(*), upVotes:commentUpVotes(*), upVotes_count:commentUpVotes(count), downVotes:commentDownVotes(*), downVotes_count:commentDownVotes(count)), downVotes:postDownVotes(*), downVotes_count:postDownVotes(count), upVotes:postUpVotes(*), upVotes_count:postUpVotes(count), user:profiles(*)",
+                )
+                .order("created_at", { ascending: false })
+                .range(from, to);
+
+            if (error) throw error;
+
+            if (newPosts.length < POST_PER_PAGE) {
+                setHasMore(false);
+            }
+
+            setPosts((prevPosts) => [...prevPosts, ...(newPosts as Post[])]);
+            setPage((prevPage) => prevPage + 1);
+        } catch (error) {
+            console.error("Error fetching more posts:", error);
+            toast.error("Error fetching more posts.");
+        } finally {
+            setIsLoading(false);
+        }
+    }, [supabase, isLoading, hasMore, page]);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isLoading) {
+                    fetchMorePosts();
+                }
+            },
+            { threshold: 0.5 },
+        );
+
+        if (loadingRef.current) {
+            observer.observe(loadingRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [fetchMorePosts, hasMore, isLoading]);
 
     const handleVote = useCallback(
         async (postId: string, voteType: "up" | "down") => {
@@ -246,6 +307,19 @@ const PostList: React.FC<{
                     onVote={handleVote}
                 />
             ))}
+            <div
+                ref={loadingRef}
+                className="w-full h-16 flex items-center justify-center"
+            >
+                {isLoading && (
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white" />
+                )}
+                {!hasMore && posts.length > 0 && (
+                    <p className="text-gray-500 dark:text-white">
+                        No more posts to load
+                    </p>
+                )}
+            </div>
         </div>
     );
 };

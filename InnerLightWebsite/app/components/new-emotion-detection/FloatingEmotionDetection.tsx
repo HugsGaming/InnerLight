@@ -1,10 +1,16 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, {
+    useState,
+    useRef,
+    useEffect,
+    useCallback,
+    useMemo,
+} from "react";
 import { Camera, X, Minimize2, Maximize2 } from "lucide-react";
 import * as tf from "@tensorflow/tfjs";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
-import { createClient } from '../../utils/supabase/client';
+import { createClient } from "../../utils/supabase/client";
 import { useRouter } from "next/router";
 import { v4 as uuidv4 } from "uuid";
 
@@ -193,7 +199,10 @@ const EmotionDetector = () => {
             if (now - lastLogTimeRef.current < 1000) return;
             lastLogTimeRef.current = now;
 
-            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            const {
+                data: { user },
+                error: userError,
+            } = await supabase.auth.getUser();
 
             if (userError) {
                 console.error("Error getting user:", userError);
@@ -203,7 +212,7 @@ const EmotionDetector = () => {
             if (!user) {
                 console.error("User not logged in");
                 return;
-            };
+            }
 
             const emotionLog: EmotionLog = {
                 user_id: user?.id!,
@@ -213,20 +222,18 @@ const EmotionDetector = () => {
                 session_id: sessionId,
             };
 
-            console.log('Attepting to log: ',emotionLog);
+            console.log("Attepting to log: ", emotionLog);
 
             const { error: logError } = await supabase
                 .from("emotion_logs")
                 .insert([emotionLog]);
 
-
-
             if (logError) {
                 console.error("Error logging emotion:", logError);
-                if (logError.code === '42501') {
+                if (logError.code === "42501") {
                     console.error("User not logged in");
                 }
-                return
+                return;
             }
         } catch (error) {
             console.error("Error logging emotion:", error);
@@ -383,7 +390,6 @@ const EmotionDetector = () => {
                             0,
                         ) / emotionBufferRef.current.length;
 
-
                     detectedEmotion = dominantEmotion;
                     detectedConfidence = avgConfidence;
 
@@ -400,7 +406,10 @@ const EmotionDetector = () => {
                     );
 
                     if (detectedConfidence && detectedConfidence > 0) {
-                        console.log('Attempting to log emotion:', { detectedEmotion, detectedConfidence });
+                        console.log("Attempting to log emotion:", {
+                            detectedEmotion,
+                            detectedConfidence,
+                        });
                         await logEmotion(detectedEmotion, detectedConfidence);
                     }
                 }
@@ -545,4 +554,3 @@ const EmotionDetector = () => {
 };
 
 export default EmotionDetector;
-
