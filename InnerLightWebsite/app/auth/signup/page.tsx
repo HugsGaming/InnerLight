@@ -3,8 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { FaMoon, FaSun } from "react-icons/fa";
 import "react-toastify/dist/ReactToastify.css";
-import SignUpForm from "../../components/SignUpForm";
+
 import { ReCaptchaProvider } from "next-recaptcha-v3";
+import SignUpForm from "../../components/new-auth/SignUpForm";
 
 export default function SignUp() {
     const [isDark, setIsDark] = useState<boolean>(false);
@@ -34,7 +35,7 @@ export default function SignUp() {
     return (
         <ReCaptchaProvider reCaptchaKey="6LeW960qAAAAAHaNd2xqC4PGPWNSdD8KztfaAer8">
             <div
-                className="bg-cover bg-center transition-all duration-500"
+                className="min-h-screen bg-cover bg-center bg-no-repeat transition-all duration-500 flex flex-col"
                 style={{ backgroundImage }}
             >
                 <div className="flex items-center justify-between p-8 border-none">

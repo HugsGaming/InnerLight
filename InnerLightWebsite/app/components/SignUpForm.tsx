@@ -52,16 +52,19 @@ const SignUpForm: React.FC = () => {
             const recaptchaData = await recaptchaResponse.json();
 
             if (!recaptchaData.success) {
-                toast.error("reCAPTCHA verification failed. Please try again.", {
-                    position: "top-right",
-                    autoClose: 5000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                    progress: undefined,
-                    theme: "light",
-                });
+                toast.error(
+                    "reCAPTCHA verification failed. Please try again.",
+                    {
+                        position: "top-right",
+                        autoClose: 5000,
+                        hideProgressBar: false,
+                        closeOnClick: true,
+                        pauseOnHover: true,
+                        draggable: true,
+                        progress: undefined,
+                        theme: "light",
+                    },
+                );
                 console.error("reCAPTCHA verification failed.");
                 setIsDisabled(false);
                 return;
@@ -96,7 +99,7 @@ const SignUpForm: React.FC = () => {
                 router.push("/home");
             }
         } catch (error) {
-            toast.error('An error occurred. Please try again.', {
+            toast.error("An error occurred. Please try again.", {
                 position: "top-right",
                 autoClose: 5000,
                 hideProgressBar: false,
@@ -210,7 +213,7 @@ const SignUpForm: React.FC = () => {
                                 {...register("email", {
                                     required: true,
                                     pattern:
-                                        /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i||
+                                        /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i ||
                                         "Invalid email address",
                                     validate: {
                                         uniqueEmail: async (value) => {
