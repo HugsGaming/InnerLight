@@ -130,12 +130,6 @@ export default function LogInForm() {
                         }
                         onBlur={() => handleBlur("email")}
                     />
-                    <p
-                        id="email-description"
-                        className="mt-1 text-sm text-gray-500"
-                    >
-                        We'll never share your email with anyone else.
-                    </p>
                 </div>
 
                 <div className="relative">
