@@ -153,7 +153,9 @@ export default function NewEmotionDetectionChat() {
         );
 
         if (canvasRef.current) {
-            drawingUtilsRef.current = new DrawingUtils(canvasRef.current.getContext("2d")!);
+            drawingUtilsRef.current = new DrawingUtils(
+                canvasRef.current.getContext("2d")!,
+            );
         }
     };
 

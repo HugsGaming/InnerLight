@@ -28,7 +28,8 @@ const Home: React.FC = async () => {
         .select(
             "*, comments(*, user:profiles(*), upVotes:commentUpVotes(*), upVotes_count:commentUpVotes(count), downVotes:commentDownVotes(*), downVotes_count:commentDownVotes(count)), downVotes:postDownVotes(*), downVotes_count:postDownVotes(count), upVotes:postUpVotes(*), upVotes_count:postUpVotes(count), user:profiles(*)",
         )
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(0, 9);
 
     type PostWithCommentsAndVotes = QueryData<
         typeof postsWithCommentsAndVotesQuery
