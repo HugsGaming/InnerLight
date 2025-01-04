@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { FaMoon, FaSun } from "react-icons/fa";
 import "react-toastify/dist/ReactToastify.css";
 import LoginForm from "../../components/LoginForm";
+import LogInForm from "../../components/new-auth/LogInForm";
+import { ToastContainer } from "react-toastify";
 
 export default function LogIn() {
     const [isDark, setIsDark] = useState<boolean>(false);
@@ -32,7 +34,7 @@ export default function LogIn() {
         : "url('https://imgur.com/cTYX4Ri.png')";
     return (
         <div
-            className="bg-cover bg-center transition-all duration-500"
+            className="min-h-screen bg-cover bg-center bg-no-repeat transition-all duration-500 flex flex-col"
             style={{ backgroundImage }}
         >
             <div className="flex items-center justify-between p-8 border-none">
@@ -54,9 +56,10 @@ export default function LogIn() {
                     )}
                 </button>
             </div>
-            <div className="flex items-center justify-center h-full top-8">
-                <LoginForm />
+            <div className="flex-1 flex items-center justify-center h-full top-8">
+                <LogInForm />
             </div>
+            <ToastContainer />
         </div>
     );
 }

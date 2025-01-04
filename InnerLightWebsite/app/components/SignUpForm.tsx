@@ -28,27 +28,78 @@ const SignUpForm: React.FC = () => {
     } = useForm<IFormInput>();
     const router = useRouter();
     const supabase = createClient();
-    // const { executeRecaptcha } = useReCaptcha();
+    const { executeRecaptcha } = useReCaptcha();
 
     const password = watch("password");
     const confirmPassword = watch("confirmPassword");
     const [isDisabled, setIsDisabled] = React.useState(false);
 
     const onSubmit: SubmitHandler<IFormInput> = async (data) => {
-        setIsDisabled(true);
-        const { data: user, error } = await supabase.auth.signUp({
-            email: data.email,
-            password: data.password,
-            options: {
-                data: {
-                    first_name: data.firstName,
-                    last_name: data.lastName,
-                    username: data.username,
+        try {
+            setIsDisabled(true);
+
+            // Execute reCAPTCHA and get the token
+            const token = await executeRecaptcha("sign_up");
+
+            const recaptchaResponse = await fetch("/api/verify-recaptcha", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
                 },
-            },
-        });
-        if (error) {
-            toast.error(error.message, {
+                body: JSON.stringify({ token }),
+            });
+
+            const recaptchaData = await recaptchaResponse.json();
+
+            if (!recaptchaData.success) {
+                toast.error(
+                    "reCAPTCHA verification failed. Please try again.",
+                    {
+                        position: "top-right",
+                        autoClose: 5000,
+                        hideProgressBar: false,
+                        closeOnClick: true,
+                        pauseOnHover: true,
+                        draggable: true,
+                        progress: undefined,
+                        theme: "light",
+                    },
+                );
+                console.error("reCAPTCHA verification failed.");
+                setIsDisabled(false);
+                return;
+            }
+
+            // Proceed with sign up
+            const { data: user, error } = await supabase.auth.signUp({
+                email: data.email,
+                password: data.password,
+                options: {
+                    data: {
+                        first_name: data.firstName,
+                        last_name: data.lastName,
+                        username: data.username,
+                    },
+                },
+            });
+
+            if (error) {
+                toast.error(error.message, {
+                    position: "top-right",
+                    autoClose: 5000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    progress: undefined,
+                    theme: "light",
+                });
+                console.error(error.message);
+            } else {
+                router.push("/home");
+            }
+        } catch (error) {
+            toast.error("An error occurred. Please try again.", {
                 position: "top-right",
                 autoClose: 5000,
                 hideProgressBar: false,
@@ -58,8 +109,9 @@ const SignUpForm: React.FC = () => {
                 progress: undefined,
                 theme: "light",
             });
-        } else {
-            router.push("/home");
+            console.error(error);
+        } finally {
+            setIsDisabled(false);
         }
     };
 
