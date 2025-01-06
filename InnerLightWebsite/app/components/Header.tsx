@@ -45,7 +45,11 @@ const Header: React.FC = () => {
     };
 
     const signOut = async () => {
+        console.log("Signing out...");
         const { error } = await supabase.auth.signOut();
+        if (error) {
+            console.error("Error signing out:", error);
+        }
         router.replace("/auth/login");
     };
 
@@ -103,7 +107,7 @@ const Header: React.FC = () => {
                     </li>
                     <li>
                         <a
-                            className="flex items-center mr-4 hover:text-blue-100"
+                            className="flex items-center mr-4 hover:text-blue-100 cursor-pointer"
                             onClick={signOut}
                         >
                             <FaSignOutAlt className="w-4 h-4" />

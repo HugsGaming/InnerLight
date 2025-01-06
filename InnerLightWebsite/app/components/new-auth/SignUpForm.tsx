@@ -5,6 +5,7 @@ import { createClient } from "../../utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { useReCaptcha } from "next-recaptcha-v3";
 import { SlSocialFacebook, SlSocialGoogle } from "react-icons/sl";
+import { handleSocialLogin } from "../../utils/socialAuth";
 
 interface FormData {
     firstName: string;
@@ -477,6 +478,7 @@ export default function SignUpForm() {
                     <button
                         type="button"
                         disabled={isLoading}
+                        onClick={() => handleSocialLogin("google")}
                         className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600 
                         hover:bg-red-700 text-white rounded-lg transition-colors duration-300 
                         disabled:bg-red-400"
@@ -488,6 +490,7 @@ export default function SignUpForm() {
                     <button
                         type="button"
                         disabled={isLoading}
+                        onClick={() => handleSocialLogin("facebook")}
                         className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-800 
                         hover:bg-blue-900 text-white rounded-lg transition-colors duration-300
                         disabled:bg-blue-600"
