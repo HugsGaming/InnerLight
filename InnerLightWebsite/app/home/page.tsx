@@ -42,71 +42,31 @@ const Home: React.FC = async () => {
     if (!user || user == null) {
         redirect("/auth/login");
     } else {
-        let metadata = user.user_metadata;
-        console.log(metadata);
-        const first_name = metadata.first_name;
-        const last_name = metadata.last_name;
-        const username =
-            metadata.username ??
-            metadata.first_name + "_" + metadata.last_name + "@" + user.id;
-        await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .single()
-            .then(async ({ data }) => {
-                console.log("Profile Data: ", data);
-                if (!data || data === null) {
-                    try {
-                        console.log(first_name, last_name, username);
-                        const { data: profileData, error } = await supabase
-                            .from("profiles")
-                            .insert({
-                                first_name: first_name,
-                                last_name: last_name,
-                                username:
-                                    username ??
-                                    `${first_name}_${last_name}@${user.id}`,
-                                email: user.email!,
-                            });
-                        if (error) {
-                            console.log(error);
-                        } else {
-                            console.log("Profile created");
-                            const { data: logData, error } = await supabase
-                                .from("auditLogs")
-                                .insert({
-                                    user_id: user.id,
-                                    action_type: "Registration",
-                                    add_info: null,
-                                });
-                            if (error) {
-                                console.log(error);
-                            } else {
-                                console.log("Log created");
-                            }
-                        }
-                    } catch (error) {
-                        console.log(error);
-                    }
-                } else {
-                    await supabase.from("auditLogs").insert({
-                        user_id: user.id,
-                        action_type: "Login",
-                        add_info: null,
-                    });
-                    console.log("Log created");
-                }
-            });
-        const { data: profileData, error: profileError } = await supabase
+        const { data: existingProfile, error: profileError } = await supabase
             .from("profiles")
             .select("*")
             .eq("id", user.id)
             .single();
-        if (profileError || profileData === null) {
+
+        if (profileError && profileError.code === "PGRST116") {
+            console.error("Error Fetching Profile:", profileError.message);
             throw profileError;
+        }
+
+        if (!existingProfile) {
+            redirect("/auth/login");
         } else {
-            profile = profileData;
+            // Onl log successful log in if profile exists
+            await supabase.from("auditLogs").insert({
+                user_id: user.id,
+                action: "Login",
+                add_info: {
+                    provider: user.app_metadata?.provider
+                        ? user.app_metadata.provider
+                        : "Email Login",
+                },
+            });
+            profile = existingProfile;
         }
     }
 
@@ -134,7 +94,7 @@ const Home: React.FC = async () => {
             <ToastContainer />
             <div className="ml-14 mt-14 mb-10 md:ml-64">
                 <PostList
-                    user={profile!}
+                    user={profile}
                     initialPosts={posts as unknown as Post[]}
                     showAddPost
                 />
