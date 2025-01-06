@@ -3,6 +3,8 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { createClient } from "../../utils/supabase/client";
 import { useRouter } from "next/navigation";
+import { handleSocialLogin } from "../../utils/socialAuth";
+import { SlSocialFacebook, SlSocialGoogle } from "react-icons/sl";
 
 export default function LogInForm() {
     const [showPassword, setShowPassword] = useState(false);
@@ -189,6 +191,32 @@ export default function LogInForm() {
                         "Sign In"
                     )}
                 </button>
+                {/* Social Sign Up Buttons */}
+                <div className="space-y-3">
+                    <button
+                        type="button"
+                        disabled={isLoading}
+                        onClick={() => handleSocialLogin("google")}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600 
+                                        hover:bg-red-700 text-white rounded-lg transition-colors duration-300 
+                                        disabled:bg-red-400"
+                    >
+                        <SlSocialGoogle className="w-5 h-5" />
+                        Sign in with Google
+                    </button>
+
+                    <button
+                        type="button"
+                        disabled={isLoading}
+                        onClick={() => handleSocialLogin("facebook")}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-800 
+                                        hover:bg-blue-900 text-white rounded-lg transition-colors duration-300
+                                        disabled:bg-blue-600"
+                    >
+                        <SlSocialFacebook className="w-5 h-5" />
+                        Sign in with Facebook
+                    </button>
+                </div>
                 <div>
                     <button
                         className="mt-5 text-blue-500 dark:text-blue-400"

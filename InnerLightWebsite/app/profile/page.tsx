@@ -10,7 +10,7 @@ import Profile from "../components/Profile";
 import { QueryData } from "@supabase/supabase-js";
 import { Post } from "../components/PostList";
 
-const Draw: React.FC = async () => {
+const OwnProfile: React.FC = async () => {
     const isDark = false; // Define the isDark variable
     const supabase = createClient();
 
@@ -82,4 +82,4 @@ const Draw: React.FC = async () => {
     );
 };
 
-export default Draw;
+export default OwnProfile;
