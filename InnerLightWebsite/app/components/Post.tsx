@@ -34,7 +34,7 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
         imageFile: null as File | null,
         gif: null as string | null,
         gifFile: null as File | null,
-        isSubmitting: false
+        isSubmitting: false,
     });
 
     const imageInputRef = useRef<HTMLInputElement>(null);
@@ -42,34 +42,38 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
 
     const maxCharCount = 300;
 
-    const checkContentModeration = async (text: string): Promise<ModerationResponse> => {
+    const checkContentModeration = async (
+        text: string,
+    ): Promise<ModerationResponse> => {
         try {
-            const response = await fetch('/api/moderate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            const response = await fetch("/api/moderate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ text }),
             });
 
             if (!response.ok) {
-                throw new Error('Failed to check content moderation');
+                throw new Error("Failed to check content moderation");
             }
 
             return await response.json();
         } catch (error) {
-            console.error('Moderation Error:', error);
-            throw new Error('Content moderation check failed');
+            console.error("Moderation Error:", error);
+            throw new Error("Content moderation check failed");
         }
-    }
+    };
 
-    const handleModeratedContent = (moderationResult: ModerationResponse): string | null => {
+    const handleModeratedContent = (
+        moderationResult: ModerationResponse,
+    ): string | null => {
         if (!moderationResult.flagged) return null;
 
         const flaggedCategories = Object.entries(moderationResult.categories)
             .filter(([_, flagged]) => flagged)
-            .map(([category]) => category.replace('/', ' or '));
+            .map(([category]) => category.replace("/", " or "));
 
-        return `Content flagged for: ${flaggedCategories.join(', ')}. Please revise your post.`;
-    }
+        return `Content flagged for: ${flaggedCategories.join(", ")}. Please revise your post.`;
+    };
 
     const resetForm = useCallback(() => {
         setFormState({
@@ -80,7 +84,7 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
             imageFile: null,
             gif: null,
             gifFile: null,
-            isSubmitting: false
+            isSubmitting: false,
         });
 
         if (imageInputRef.current) imageInputRef.current.value = "";
@@ -188,7 +192,6 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
 
         setFormState((prevState) => ({ ...prevState, isSubmitting: true }));
 
-
         try {
             // Check both title and description
             const [titleModeration, descriptionModeration] = await Promise.all([
@@ -197,7 +200,9 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
             ]);
 
             const titleIssue = handleModeratedContent(titleModeration);
-            const descriptionIssue = handleModeratedContent(descriptionModeration);
+            const descriptionIssue = handleModeratedContent(
+                descriptionModeration,
+            );
 
             if (titleIssue || descriptionIssue) {
                 toast.error(titleIssue || descriptionIssue);
@@ -340,7 +345,9 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                     className="btn border border-indigo-500 p-1 px-4 font-semibold cursor-pointer text-gray-200 ml-2 bg-indigo-500 rounded hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handlePost}
                     disabled={
-                        !formState.title.trim() || !formState.description.trim() || formState.isSubmitting
+                        !formState.title.trim() ||
+                        !formState.description.trim() ||
+                        formState.isSubmitting
                     }
                 >
                     Post
