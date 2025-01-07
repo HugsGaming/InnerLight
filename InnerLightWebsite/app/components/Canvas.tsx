@@ -31,6 +31,7 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor }) => {
     const [isDrawing, setIsDrawing] = useState<boolean>(false);
     const [history, setHistory] = useState<Array<ImageData>>([]);
     const [historyIndex, setHistoryIndex] = useState<number>(-1);
+
     useEffect(() => {
         const canvas = canvasRef.current;
         if (canvas) {
@@ -172,16 +173,126 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor }) => {
             }
         };
 
+        const handleTouchStart = (e: TouchEvent) => {
+            if (tool === "fill-bucket") {
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                fillBucket(touch.clientX - rect.left, touch.clientY - rect.top);
+            } else {
+                setIsDrawing(true);
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                setPoints([
+                    [touch.clientX - rect.left, touch.clientY - rect.top],
+                ]);
+            }
+        };
+
+        const handleTouchMove = (e: TouchEvent) => {
+            if (!isDrawing) return;
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            setPoints((prev) => [
+                ...prev,
+                [touch.clientX - rect.left, touch.clientY - rect.top],
+            ]);
+        };
+
+        const handleTouchEnd = () => {
+            setIsDrawing(false);
+            if (ctx && points.length) {
+                if (tool === "brush" || tool === "rainbow") {
+                    const stroke = getStroke(points, {
+                        size: brushSize,
+                        thinning: 0.5,
+                        smoothing: 0.5,
+                        streamline: 0.5,
+                        easing: (t) => t,
+                        simulatePressure: true,
+                    });
+
+                    ctx.beginPath();
+                    stroke.forEach(([x, y], index) => {
+                        if (index === 0) {
+                            ctx.moveTo(x, y);
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    });
+
+                    if (tool === "rainbow") {
+                        const rainbowColors = [
+                            "red",
+                            "orange",
+                            "yellow",
+                            "green",
+                            "blue",
+                            "indigo",
+                            "violet",
+                        ];
+                        ctx.strokeStyle =
+                            rainbowColors[
+                                Math.floor(Math.random() * rainbowColors.length)
+                            ];
+                    } else {
+                        ctx.strokeStyle = currentColorState;
+                    }
+
+                    ctx.globalAlpha = brushOpacity;
+                    ctx.lineWidth = brushSize;
+                    ctx.stroke();
+                    ctx.closePath();
+                    saveCanvasState();
+                    setPoints([]);
+                } else if (tool === "eraser") {
+                    ctx.globalCompositeOperation = "destination-out";
+                    ctx.strokeStyle = "rgba(0,0,0,1)";
+                    ctx.lineWidth = brushSize;
+                    ctx.beginPath();
+                    ctx.moveTo(points[0][0], points[0][1]);
+                    points.forEach(([x, y]) => {
+                        ctx.lineTo(x, y);
+                    });
+                    ctx.stroke();
+                    ctx.closePath();
+                    ctx.globalCompositeOperation = "source-over";
+                    saveCanvasState();
+                    setPoints([]);
+                } else if (tool === "spray") {
+                    ctx.fillStyle = currentColorState;
+                    points.forEach(([x, y]) => {
+                        for (let i = 0; i < 20; i++) {
+                            const offsetX =
+                                Math.random() * brushSize - brushSize / 2;
+                            const offsetY =
+                                Math.random() * brushSize - brushSize / 2;
+                            ctx.fillRect(x + offsetX, y + offsetY, 1, 1);
+                        }
+                    });
+                    saveCanvasState();
+                    setPoints([]);
+                }
+            }
+        };
+
         canvas.addEventListener("mousedown", handleMouseDown);
         canvas.addEventListener("mousemove", handleMouseMove);
         canvas.addEventListener("mouseup", handleMouseUp);
         canvas.addEventListener("mouseleave", handleMouseUp);
+        canvas.addEventListener("touchstart", handleTouchStart);
+        canvas.addEventListener("touchmove", handleTouchMove);
+        canvas.addEventListener("touchend", handleTouchEnd);
+        canvas.addEventListener("touchcancel", handleTouchEnd);
 
         return () => {
             canvas.removeEventListener("mousedown", handleMouseDown);
             canvas.removeEventListener("mousemove", handleMouseMove);
             canvas.removeEventListener("mouseup", handleMouseUp);
             canvas.removeEventListener("mouseleave", handleMouseUp);
+            canvas.removeEventListener("touchstart", handleTouchStart);
+            canvas.removeEventListener("touchmove", handleTouchMove);
+            canvas.removeEventListener("touchend", handleTouchEnd);
+            canvas.removeEventListener("touchcancel", handleTouchEnd);
         };
     }, [isDrawing, points, brushSize, brushOpacity, currentColorState, tool]);
 
