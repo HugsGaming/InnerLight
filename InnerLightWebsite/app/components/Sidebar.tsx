@@ -1,9 +1,8 @@
 "use client";
 import React, { useState } from "react";
 import {
+    FaBars,
     FaHome,
-    FaBell,
-    FaBook,
     FaPen,
     FaPaintBrush,
     FaCommentDots,
@@ -16,158 +15,129 @@ const Sidebar: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <div className="fixed flex flex-col top-14 left-0 w-14 hover:w-64 md:w-64 bg-yellow-950 dark:bg-gray-900 h-full text-white transition-all duration-300 border-none z-10 sidebar">
-            <div className="overflow-y-auto overflow-x-hidden flex flex-col justify-between flex-grow">
-                <ul className="flex flex-col py-4 space-y-1">
-                    <li className="px-5 hidden md:block">
-                        <div className="flex flex-row items-center h-8">
-                            <div className="text-sm font-light tracking-wide text-gray-400 uppercase">
-                                Home
-                            </div>
-                        </div>
-                    </li>
-                    <li>
-                        <a
-                            href="/home"
-                            className="relative flex flex-row items-center h-11 focus:outline-none hover:bg-yellow-800 dark:hover:bg-gray-600 text-white-600 hover:text-white-800 border-l-4 border-transparent hover:border-yellow-500 dark:hover:border-gray-800 pr-6"
-                        >
-                            <span className="inline-flex justify-center items-center ml-4">
-                                <FaHome className="w-5 h-5" />
-                            </span>
-                            <span className="ml-2 text-sm tracking-wide truncate">
-                                Dashboard
-                            </span>
-                        </a>
-                    </li>
-                    <li>
-                        <a
-                            href="#"
-                            className="relative flex flex-row items-center h-11 focus:outline-none hover:bg-yellow-800 dark:hover:bg-gray-600 text-white-600 hover:text-white-800 border-l-4 border-transparent hover:border-yellow-500 dark:hover:border-gray-800 pr-6"
-                        >
-                            <span className="inline-flex justify-center items-center ml-4">
-                                <FaBell className="w-5 h-5" />
-                            </span>
-                            <span className="ml-2 text-sm tracking-wide truncate">
-                                Notification
-                            </span>
-                            <span className="hidden md:block px-2 py-0.5 ml-auto text-xs font-medium tracking-wide text-blue-500 bg-indigo-50 rounded-full">
-                                1.2k
-                            </span>
-                        </a>
-                    </li>
-                    <li>
-                        <a
-                            href="#"
-                            className="relative flex flex-row items-center h-11 focus:outline-none hover:bg-yellow-800 dark:hover:bg-gray-600 text-white-600 hover:text-white-800 border-l-4 border-transparent hover:border-yellow-500 dark:hover:border-gray-800 pr-6"
-                        >
-                            <span className="inline-flex justify-center items-center ml-4">
-                                <FaBook className="w-5 h-5" />
-                            </span>
-                            <span className="ml-2 text-sm tracking-wide truncate">
-                                Followers
-                            </span>
-                        </a>
-                    </li>
-                    <li>
-                        <a
-                            href="#"
-                            className="relative flex flex-row items-center h-11 focus:outline-none hover:bg-yellow-800 dark:hover:bg-gray-600 text-white-600 hover:text-white-800 border-l-4 border-transparent hover:border-yellow-500 dark:hover:border-gray-800 pr-6"
-                        >
-                            <span className="inline-flex justify-center items-center ml-4">
-                                <FaPen className="w-5 h-5" />
-                            </span>
-                            <span className="ml-2 text-sm tracking-wide truncate">
-                                Write
-                            </span>
-                        </a>
-                    </li>
-                    <li>
-                        <a
-                            href="/draw"
-                            className="relative flex flex-row items-center h-11 focus:outline-none hover:bg-yellow-800 dark:hover:bg-gray-600 text-white-600 hover:text-white-800 border-l-4 border-transparent hover:border-yellow-500 dark:hover:border-gray-800 pr-6"
-                        >
-                            <span className="inline-flex justify-center items-center ml-4">
-                                <FaPaintBrush className="w-5 h-5" />
-                            </span>
-                            <span className="ml-2 text-sm tracking-wide truncate">
-                                Draw
-                            </span>
-                        </a>
-                    </li>
-                    <li>
-                        <a
-                            href="/chat"
-                            className="relative flex flex-row items-center h-11 focus:outline-none hover:bg-yellow-800 dark:hover:bg-gray-600 text-white-600 hover:text-white-800 border-l-4 border-transparent hover:border-yellow-500 dark:hover:border-gray-800 pr-6"
-                        >
-                            <span className="inline-flex justify-center items-center ml-4">
-                                <FaCommentDots className="w-5 h-5" />
-                            </span>
-                            <span className="ml-2 text-sm tracking-wide truncate">
-                                Chats
-                            </span>
-                            <span className="hidden md:block px-2 py-0.5 ml-auto text-xs font-medium tracking-wide text-red-500 bg-red-50 rounded-full">
-                                2
-                            </span>
-                        </a>
-                    </li>
-                </ul>
-                {/* Bottom items */}
-                <div className="mt-auto">
+        <div>
+            {/* Toggle Button for Mobile/Tablet */}
+            <button
+                className="lg:hidden fixed top-4 left-4 z-99 bg-yellow-950 text-white p-2 rounded-full shadow-lg focus:outline-none"
+                onClick={() => setIsOpen(!isOpen)}
+                aria-label="Toggle Sidebar"
+            >
+                <FaBars />
+            </button>
+
+            {/* Sidebar */}
+            <div
+                className={`fixed flex flex-col top-0 left-0 bg-yellow-950 dark:bg-gray-900 h-full text-white transition-all duration-300 z-99 ${
+                    isOpen ? "w-64" : "w-14 lg:w-64"
+                }`}
+            >
+                <div className="flex flex-col justify-between flex-grow mt-14">
                     <ul className="flex flex-col py-4 space-y-1">
-                        <li className="px-5 hidden md:block">
-                            <div className="flex flex-row items-center mt-5 h-8">
+                        {/* Sidebar Items */}
+                        <li className="px-5 hidden lg:block">
+                            <div className="flex flex-row items-center h-8">
                                 <div className="text-sm font-light tracking-wide text-gray-400 uppercase">
-                                    Settings
+                                    Home
                                 </div>
                             </div>
                         </li>
-                        <li>
-                            <a
-                                href="#"
-                                className="relative flex flex-row items-center h-11 focus:outline-none hover:bg-yellow-800 dark:hover:bg-gray-600 text-white-600 hover:text-white-800 border-l-4 border-transparent hover:border-yellow-500 dark:hover:border-gray-800 pr-6"
-                            >
-                                <span className="inline-flex justify-center items-center ml-4">
-                                    <FaInfoCircle className="w-5 h-5" />
-                                </span>
-                                <span className="ml-2 text-sm tracking-wide truncate">
-                                    About
-                                </span>
-                            </a>
-                        </li>
-                        <li>
-                            <a
-                                href="#"
-                                className="relative flex flex-row items-center h-11 focus:outline-none hover:bg-yellow-800 dark:hover:bg-gray-600 text-white-600 hover:text-white-800 border-l-4 border-transparent hover:border-yellow-500 dark:hover:border-gray-800 pr-6"
-                            >
-                                <span className="inline-flex justify-center items-center ml-4">
-                                    <FaQuestionCircle className="w-5 h-5" />
-                                </span>
-                                <span className="ml-2 text-sm tracking-wide truncate">
-                                    Help
-                                </span>
-                            </a>
-                        </li>
-                        <li>
-                            <a
-                                href="#"
-                                className="relative flex flex-row items-center h-11 focus:outline-none hover:bg-yellow-800 dark:hover:bg-gray-600 text-white-600 hover:text-white-800 border-l-4 border-transparent hover:border-yellow-500 dark:hover:border-gray-800 pr-6"
-                            >
-                                <span className="inline-flex justify-center items-center ml-4">
-                                    <FaCog className="w-5 h-5" />
-                                </span>
-                                <span className="ml-2 text-sm tracking-wide truncate">
-                                    Settings
-                                </span>
-                            </a>
-                        </li>
+                        <SidebarItem
+                            href="/home"
+                            icon={<FaHome />}
+                            label="Dashboard"
+                        />
+                        <SidebarItem
+                            href="/chatbot"
+                            icon={<FaPen />}
+                            label="Chatbot"
+                        />
+                        <SidebarItem
+                            href="/draw"
+                            icon={<FaPaintBrush />}
+                            label="Draw"
+                        />
+                        <SidebarItem
+                            href="/chat"
+                            icon={<FaCommentDots />}
+                            label="Chats"
+                            badge="2"
+                        />
                     </ul>
-                    <p className="mb-14 px-5 py-3 hidden md:block text-center text-xs">
-                        Copyright Innerlight @ 2024
-                    </p>
+
+                    {/* Bottom Section */}
+                    <div className="mt-auto">
+                        <ul className="flex flex-col py-4 space-y-1">
+                            <li className="px-5 hidden lg:block">
+                                <div className="flex flex-row items-center mt-5 h-8">
+                                    <div className="text-sm font-light tracking-wide text-gray-400 uppercase">
+                                        Settings
+                                    </div>
+                                </div>
+                            </li>
+                            <SidebarItem
+                                href="#"
+                                icon={<FaInfoCircle />}
+                                label="About"
+                            />
+                            <SidebarItem
+                                href="#"
+                                icon={<FaQuestionCircle />}
+                                label="Help"
+                            />
+                            <SidebarItem
+                                href="#"
+                                icon={<FaCog />}
+                                label="Settings"
+                            />
+                        </ul>
+                        <p className="mb-4 px-5 py-3 hidden lg:block text-center text-xs">
+                            Copyright Innerlight © 2024
+                        </p>
+                    </div>
                 </div>
             </div>
+
+            {/* Overlay for Mobile */}
+            {isOpen && (
+                <div
+                    className="fixed inset-0 bg-black opacity-50 z-99 md:hidden"
+                    onClick={() => setIsOpen(false)}
+                    aria-hidden="true"
+                ></div>
+            )}
         </div>
     );
 };
+
+interface SidebarItemProps {
+    href: string;
+    icon: React.ReactNode;
+    label: string;
+    badge?: string;
+}
+
+const SidebarItem: React.FC<SidebarItemProps> = ({
+    href,
+    icon,
+    label,
+    badge,
+}) => (
+    <li>
+        <a
+            href={href}
+            className="relative flex flex-row items-center h-11 focus:outline-none hover:bg-yellow-800 dark:hover:bg-gray-600 text-white-600 hover:text-white-800 border-l-4 border-transparent hover:border-yellow-500 dark:hover:border-gray-800 pr-6"
+        >
+            <span className="inline-flex justify-center items-center ml-4">
+                {icon}
+            </span>
+            <span className="ml-2 text-sm tracking-wide truncate">{label}</span>
+            {badge && (
+                <span className="hidden lg:block px-2 py-0.5 ml-auto text-xs font-medium tracking-wide text-red-500 bg-red-50 rounded-full">
+                    {badge}
+                </span>
+            )}
+        </a>
+    </li>
+);
 
 export default Sidebar;

@@ -9,7 +9,7 @@ import React, {
     useState,
 } from "react";
 import { createClient } from "../utils/supabase/client";
-import { FiSmile, FiSend } from "react-icons/fi";
+import { FiSmile, FiSend, FiMenu } from "react-icons/fi";
 import { toast } from "react-toastify";
 import { EncryptionManager } from "../utils/encryption/client";
 import { Json } from "../../database.types";
@@ -110,7 +110,7 @@ const ChatSidebar = memo(
         const renderChats = useCallback(
             (chatList: MessageChannel[], title: string) => (
                 <>
-                    <h2 className="text-lg font-semibold mb-4 mt-8 text-gray-900 dark:text-gray-100">
+                    <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
                         {title}
                     </h2>
                     <CreateChannelDialog
@@ -140,7 +140,7 @@ const ChatSidebar = memo(
             [onSelectChat, unreadMessages],
         );
         return (
-            <div className="bg-white dark:bg-gray-900 w-1/4 border-r dark:border-gray-700 p-4 m-1 rounded-lg">
+            <div className="bg-white dark:bg-gray-900 w-full border-r dark:border-gray-700 p-4 m-1 rounded-lg h-full">
                 {renderChats(chats, "Chats")}
             </div>
         );
@@ -537,7 +537,7 @@ const ChatWindow = memo(
         );
 
         return (
-            <div className="flex-1 p-4 flex flex-col justify-between bg-white dark:bg-gray-900 m-1 rounded-lg">
+            <div className="h-full p-4 flex flex-col justify-between bg-white dark:bg-gray-900 m-1 rounded-lg">
                 <div>
                     <div className="flex items-center justify-between border-b dark:border-gray-700 pb-2 mb-4">
                         <div>
@@ -1296,23 +1296,27 @@ export default function ChatApplication({
     }
 
     return (
-        <div className="flex flex-1 ml-14 mt-14 mb-10 md:ml-64 h-full">
-            <ChatSidebar
-                chats={state.channels}
-                onSelectChat={selectChannel}
-                unreadMessages={state.unreadMessages}
-                onChannelCreated={handleChannelCreated}
-                currentUser={state.currentUser!}
-            />
-            <ChatWindow
-                chatName={getChannelName(state.selectedChannel)!}
-                messages={state.messages}
-                onSendMessage={sendMessage}
-                onSendFile={handleFileSend}
-                state={state}
-                loadMoreMessages={fetchMoreMessages}
-                fileService={fileService}
-            />
+        <div className="flex flex-col lg:flex-row flex-1 ml-14 mt-14 mb-10 lg:ml-64">
+            <div className="w-full lg:w-1/4">
+                <ChatSidebar
+                    chats={state.channels}
+                    onSelectChat={selectChannel}
+                    unreadMessages={state.unreadMessages}
+                    onChannelCreated={handleChannelCreated}
+                    currentUser={state.currentUser!}
+                />
+            </div>
+            <div className="w-full lg:flex-1">
+                <ChatWindow
+                    chatName={getChannelName(state.selectedChannel)!}
+                    messages={state.messages}
+                    onSendMessage={sendMessage}
+                    onSendFile={handleFileSend}
+                    state={state}
+                    loadMoreMessages={fetchMoreMessages}
+                    fileService={fileService}
+                />
+            </div>
         </div>
     );
 }
