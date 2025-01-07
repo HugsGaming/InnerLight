@@ -193,34 +193,40 @@ const CommentForm = memo(
         const [commentText, setCommentText] = useState("");
         const [isSubmitting, setIsSubmitting] = useState(false);
 
-        const checkContentModeration = async (text: string): Promise<ModerationResponse> => {
+        const checkContentModeration = async (
+            text: string,
+        ): Promise<ModerationResponse> => {
             try {
-                const response = await fetch('/api/moderate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                const response = await fetch("/api/moderate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ text }),
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to check content moderation');
+                    throw new Error("Failed to check content moderation");
                 }
 
                 return response.json();
             } catch (error) {
-                console.error('Moderation Error:', error);
-                throw new Error('Content moderation check failed');
+                console.error("Moderation Error:", error);
+                throw new Error("Content moderation check failed");
             }
-        }
+        };
 
-        const handleModerationContent = (moderationResult: ModerationResponse): string | null => {
+        const handleModerationContent = (
+            moderationResult: ModerationResponse,
+        ): string | null => {
             if (!moderationResult.flagged) return null;
 
-            const flaggedCategories = Object.entries(moderationResult.categories)
+            const flaggedCategories = Object.entries(
+                moderationResult.categories,
+            )
                 .filter(([_, flagged]) => flagged)
-                .map(([category]) => category.replace('/', ' or '));
+                .map(([category]) => category.replace("/", " or "));
 
-            return `Content flagged for: ${flaggedCategories.join(', ')}. Please revise your comment.`;
-        }
+            return `Content flagged for: ${flaggedCategories.join(", ")}. Please revise your comment.`;
+        };
 
         const handleSubmit = async (e: FormEvent) => {
             e.preventDefault();
@@ -230,8 +236,10 @@ const CommentForm = memo(
 
             try {
                 // Check comment content with OpenAI moderation
-                const moderationResult = await checkContentModeration(commentText);
-                const moderationIssue = handleModerationContent(moderationResult);
+                const moderationResult =
+                    await checkContentModeration(commentText);
+                const moderationIssue =
+                    handleModerationContent(moderationResult);
 
                 if (moderationIssue) {
                     toast.error(moderationIssue);
@@ -244,8 +252,11 @@ const CommentForm = memo(
                     toast.success("Comment added successfully!");
                 }
             } catch (error) {
-                toast.error(error instanceof Error ? error.message : "Failed to add comment.");
-
+                toast.error(
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to add comment.",
+                );
             } finally {
                 setIsSubmitting(false);
             }

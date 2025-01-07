@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import PostList, { Post } from "../components/PostList";
 import { createClient } from "../utils/supabase/client";
 import { User } from "@supabase/supabase-js";
+import ProfilePostList from "./profile/ProfilePostList";
 
 interface ProfileProps {
     user: Tables<"profiles">;
@@ -195,56 +196,62 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
     }
 
     return (
-        <div className="bg-white shadow-lg rounded-lg border border-gray-300">
-            <div className="h-48 bg-yellow-600 rounded-t-lg flex items-center px-6 space-x-4 relative">
+        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-300 dark:border-gray-700">
+            <div className="h-48 bg-yellow-600 dark:bg-yellow-700 rounded-t-lg flex items-center px-6 space-x-4 relative">
                 <img
                     src={previewAvatar || avatarUrl || avatar}
                     alt={`${user.username}'s avatar`}
-                    className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
+                    className="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-lg"
                 />
-                {currentUser?.id === user.id &&
-                    (isEditingAvatar ? (
-                        <div className="absolute top-4 right-4 flex space-x-2">
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleAvatarChange}
-                                className="hidden"
-                                id="avatarUpload"
-                            />
-                            <label
-                                htmlFor="avatarUpload"
-                                className="px-3 py-1 bg-blue-500 text-white text-sm rounded cursor-pointer"
+                
+                {currentUser?.id === user.id && (
+                    <div className="absolute top-4 right-4 flex space-x-2">
+                        {isEditingAvatar ? (
+                            <>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleAvatarChange}
+                                    className="hidden"
+                                    id="avatarUpload"
+                                />
+                                <label
+                                    htmlFor="avatarUpload"
+                                    className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded cursor-pointer transition-colors"
+                                >
+                                    Choose File
+                                </label>
+                                {previewAvatar && (
+                                    <>
+                                        <button
+                                            onClick={handleAvatarSave}
+                                            className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-sm rounded transition-colors"
+                                            disabled={isSaving}
+                                        >
+                                            {isSaving ? "Saving..." : "Save"}
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setPreviewAvatar(null);
+                                                setIsEditingAvatar(false);
+                                            }}
+                                            className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </>
+                                )}
+                            </>
+                        ) : (
+                            <button
+                                onClick={() => setIsEditingAvatar(true)}
+                                className="px-3 py-1 bg-gray-700 hover:bg-gray-800 text-white text-sm rounded transition-colors"
                             >
-                                Choose File
-                            </label>
-                            {previewAvatar && (
-                                <>
-                                    <button
-                                        onClick={handleAvatarSave}
-                                        className="ml-2 px-3 py-1 bg-green-500 text-white text-sm rounded"
-                                        disabled={isSaving}
-                                    >
-                                        {isSaving ? "Saving..." : "Save"}
-                                    </button>
-                                    <button
-                                        onClick={cancelAvatarEdit}
-                                        className="ml-2 px-3 py-1 bg-red-500 text-white text-sm rounded"
-                                    >
-                                        Cancel
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    ) : (
-                        <button
-                            onClick={() => setIsEditingAvatar(true)}
-                            className="absolute top-4 right-4 px-3 py-1 bg-gray-700 text-white text-sm rounded"
-                        >
-                            Edit Avatar
-                        </button>
-                    ))}
-                {}
+                                Edit Avatar
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 <div>
                     <h1 className="text-3xl font-bold text-black">
@@ -256,26 +263,31 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
 
             {/* About Section */}
             <div className="mt-6 px-6">
-                <h2 className="text-xl font-semibold text-gray-900">About</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">About</h2>
                 {isEditingAbout ? (
                     <div className="flex flex-col mt-3">
                         <textarea
-                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-gray-900"
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700"
                             value={about}
                             onChange={(e) => setAbout(e.target.value)}
                         />
                         <button
                             onClick={handleAboutSave}
-                            className="mt-3 px-4 py-2 bg-green-500 text-white rounded"
+                            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded transition-colors"
                             disabled={isSaving}
                         >
                             {isSaving ? "Saving..." : "Save"}
                         </button>
+                        <button
+                            onClick={() => setIsEditingAbout(false)}
+                            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white">
+
+                        </button>
                     </div>
                 ) : (
                     <p
-                        className="text-gray-800 mt-3 cursor-pointer"
-                        onClick={() => setIsEditingAbout(true)}
+                        className="text-gray-800 dark:text-gray-200 mt-3 cursor-pointer"
+                        onClick={() => currentUser?.id === user.id && setIsEditingAbout(true)}
                     >
                         {about}
                     </p>
@@ -284,23 +296,29 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
 
             {/* Contact Section */}
             <div className="mt-6 px-6 mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Contact</h2>
-                <p className="text-gray-800 mt-3">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Contact</h2>
+                <p className="text-gray-800 dark:text-gray-200 mt-3">
                     {user.email || "No contact information available."}
                 </p>
             </div>
 
             {/* Tabs */}
-            <div className="mt-6 flex justify-center border-b border-gray-300">
+            <div className="mt-6 flex justify-center border-b border-gray-300 dark:border-gray-700">
                 <button
                     onClick={() => setActiveTab("posts")}
-                    className={`px-4 py-2 text-lg font-medium hover:text-gray-900 ${activeTab === "posts" ? "text-blue-600 border-b-2 border-blue-500" : "text-gray-700"}`}
+                    className={`px-4 py-2 text-lg font-medium transition-colors 
+                        ${activeTab === "posts" 
+                            ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-500" 
+                            : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"}`}
                 >
                     Posts
                 </button>
                 <button
                     onClick={() => setActiveTab("media")}
-                    className={`px-4 py-2 text-lg font-medium hover:text-gray-900 ${activeTab === "media" ? "text-blue-600 border-b-2 border-blue-500" : "text-gray-700"}`}
+                    className={`px-4 py-2 text-lg font-medium transition-colors 
+                        ${activeTab === "media" 
+                            ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-500" 
+                            : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"}`}
                 >
                     Media
                 </button>
@@ -310,11 +328,20 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
             <div className="p-6">
                 {activeTab === "posts" ? (
                     <div>
-                        <PostList user={user} initialPosts={posts} />
+                        <ProfilePostList
+                            user={user}
+                            posts={posts!}
+                            className="mt-4"
+                        />
                     </div>
                 ) : (
                     <div>
-                        <PostList user={user} initialPosts={mediaPosts} />
+                        <ProfilePostList
+                            user={user}
+                            posts={mediaPosts!}
+                            mediaOnly
+                            className="mt-4"
+                        />
                     </div>
                 )}
             </div>
