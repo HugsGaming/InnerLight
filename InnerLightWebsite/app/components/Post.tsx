@@ -12,6 +12,19 @@ interface PostProps {
     user: Tables<"profiles">;
 }
 
+interface ModerationResponse {
+    flagged: boolean;
+    categories: {
+        hate: boolean;
+        ["hate/threatening"]: boolean;
+        ["self-harm"]: boolean;
+        ["sexual"]: boolean;
+        ["sexual/minors"]: boolean;
+        violence: boolean;
+        ["violence/graphic"]: boolean;
+    };
+}
+
 const Post: React.FC<PostProps> = ({ addPost, user }) => {
     const [formState, setFormState] = useState({
         title: "",
@@ -21,12 +34,42 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
         imageFile: null as File | null,
         gif: null as string | null,
         gifFile: null as File | null,
+        isSubmitting: false
     });
 
     const imageInputRef = useRef<HTMLInputElement>(null);
     const gifInputRef = useRef<HTMLInputElement>(null);
 
     const maxCharCount = 300;
+
+    const checkContentModeration = async (text: string): Promise<ModerationResponse> => {
+        try {
+            const response = await fetch('/api/moderate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to check content moderation');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Moderation Error:', error);
+            throw new Error('Content moderation check failed');
+        }
+    }
+
+    const handleModeratedContent = (moderationResult: ModerationResponse): string | null => {
+        if (!moderationResult.flagged) return null;
+
+        const flaggedCategories = Object.entries(moderationResult.categories)
+            .filter(([_, flagged]) => flagged)
+            .map(([category]) => category.replace('/', ' or '));
+
+        return `Content flagged for: ${flaggedCategories.join(', ')}. Please revise your post.`;
+    }
 
     const resetForm = useCallback(() => {
         setFormState({
@@ -37,6 +80,7 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
             imageFile: null,
             gif: null,
             gifFile: null,
+            isSubmitting: false
         });
 
         if (imageInputRef.current) imageInputRef.current.value = "";
@@ -142,19 +186,42 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
             return;
         }
 
-        const newPost: NewPost = {
-            title: formState.title.trim(),
-            description: formState.description.trim(),
-            image: formState.imageFile,
-            gif: formState.gifFile,
-            user_id: user.id,
-        };
+        setFormState((prevState) => ({ ...prevState, isSubmitting: true }));
+
 
         try {
+            // Check both title and description
+            const [titleModeration, descriptionModeration] = await Promise.all([
+                checkContentModeration(formState.title),
+                checkContentModeration(formState.description),
+            ]);
+
+            const titleIssue = handleModeratedContent(titleModeration);
+            const descriptionIssue = handleModeratedContent(descriptionModeration);
+
+            if (titleIssue || descriptionIssue) {
+                toast.error(titleIssue || descriptionIssue);
+                return;
+            }
+
+            const newPost: NewPost = {
+                title: formState.title.trim(),
+                description: formState.description.trim(),
+                image: formState.imageFile,
+                gif: formState.gifFile,
+                user_id: user.id,
+            };
+
             await addPost(newPost);
             resetForm();
+            toast.success("Post created successfully");
         } catch (error) {
             toast.error("Failed to create post");
+        } finally {
+            setFormState((prevState) => ({
+                ...prevState,
+                isSubmitting: false,
+            }));
         }
     }, [formState, user.id, addPost, resetForm]);
 
@@ -265,6 +332,7 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                 <button
                     className="btn border border-gray-300 p-1 px-4 font-semibold cursor-pointer text-gray-500 ml-auto rounded hover:bg-gray-100 transition-colors"
                     onClick={resetForm}
+                    disabled={formState.isSubmitting}
                 >
                     Cancel
                 </button>
@@ -272,7 +340,7 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                     className="btn border border-indigo-500 p-1 px-4 font-semibold cursor-pointer text-gray-200 ml-2 bg-indigo-500 rounded hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handlePost}
                     disabled={
-                        !formState.title.trim() || !formState.description.trim()
+                        !formState.title.trim() || !formState.description.trim() || formState.isSubmitting
                     }
                 >
                     Post

@@ -34,6 +34,19 @@ interface PostItemProps {
     onVote: (postId: string, voteType: "up" | "down") => void;
 }
 
+interface ModerationResponse {
+    flagged: boolean;
+    categories: {
+        hate: boolean;
+        ["hate/threatening"]: boolean;
+        ["self-harm"]: boolean;
+        ["sexual"]: boolean;
+        ["sexual/minors"]: boolean;
+        violence: boolean;
+        ["violence/graphic"]: boolean;
+    };
+}
+
 // Seperate the logic for rendering the comments into a separate component
 const CommentItem = memo(
     ({
@@ -180,17 +193,62 @@ const CommentForm = memo(
         const [commentText, setCommentText] = useState("");
         const [isSubmitting, setIsSubmitting] = useState(false);
 
+        const checkContentModeration = async (text: string): Promise<ModerationResponse> => {
+            try {
+                const response = await fetch('/api/moderate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to check content moderation');
+                }
+
+                return response.json();
+            } catch (error) {
+                console.error('Moderation Error:', error);
+                throw new Error('Content moderation check failed');
+            }
+        }
+
+        const handleModerationContent = (moderationResult: ModerationResponse): string | null => {
+            if (!moderationResult.flagged) return null;
+
+            const flaggedCategories = Object.entries(moderationResult.categories)
+                .filter(([_, flagged]) => flagged)
+                .map(([category]) => category.replace('/', ' or '));
+
+            return `Content flagged for: ${flaggedCategories.join(', ')}. Please revise your comment.`;
+        }
+
         const handleSubmit = async (e: FormEvent) => {
             e.preventDefault();
             if (!commentText.trim() || isSubmitting) return;
 
             setIsSubmitting(true);
 
-            const success = await onSubmit(commentText);
-            if (success) {
-                setCommentText("");
+            try {
+                // Check comment content with OpenAI moderation
+                const moderationResult = await checkContentModeration(commentText);
+                const moderationIssue = handleModerationContent(moderationResult);
+
+                if (moderationIssue) {
+                    toast.error(moderationIssue);
+                    return;
+                }
+
+                const success = await onSubmit(commentText);
+                if (success) {
+                    setCommentText("");
+                    toast.success("Comment added successfully!");
+                }
+            } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Failed to add comment.");
+
+            } finally {
+                setIsSubmitting(false);
             }
-            setIsSubmitting(false);
         };
         return (
             <form
@@ -208,9 +266,9 @@ const CommentForm = memo(
                 <button
                     className="bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600 transition-colors duration-300"
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !commentText.trim()}
                 >
-                    Comment
+                    {isSubmitting ? "Submitting..." : "Submit"}
                 </button>
             </form>
         );
