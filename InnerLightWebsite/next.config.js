@@ -14,8 +14,7 @@ const nextConfig = {
     },
     images: {
         domains: ['dyotplmkyxrwdmxymdyp.supabase.co'],
-        unoptimized: true
     }
 };
 
-module.exports = nextConfig;
+export default nextConfig;
