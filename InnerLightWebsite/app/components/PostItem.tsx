@@ -291,10 +291,11 @@ CommentForm.displayName = "CommentForm";
 const PostImage = ({ post }: { post: Post }) => {
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [urlExpiryTime, setUrlExpiryTime] = useState<number | null>(null);
 
     const supabase = useMemo(() => createClient(), []);
 
-    const downloadImage = useCallback(async () => {
+    const getSignedUrl = useCallback(async () => {
         if (!post.post_image) {
             setIsLoading(false);
             return;
@@ -302,27 +303,40 @@ const PostImage = ({ post }: { post: Post }) => {
 
         try {
             const { data, error } = await supabase.storage
-                .from("post_images")
-                .download(post.post_image);
-            if (error) throw error;
-            const url = URL.createObjectURL(data);
-            setImageUrl(url);
+                .from('post_images')
+                .createSignedUrl(post.post_image, 3600);
+            
+            if(error) throw error;
+            setImageUrl(data.signedUrl)
+            setUrlExpiryTime(Date.now() + 3300000)
         } catch (error) {
-            console.error("Error downloading image:", error);
+            console.error('Error getting signed URL:', error);
         } finally {
             setIsLoading(false);
         }
     }, [supabase, post.post_image]);
 
     useEffect(() => {
-        downloadImage();
+        if (!urlExpiryTime) return;
 
-        return () => {
-            if (imageUrl) {
-                URL.revokeObjectURL(imageUrl);
-            }
-        };
-    }, [downloadImage]);
+        const timeUntilRefresh = urlExpiryTime - Date.now();
+
+        if (timeUntilRefresh <= 0) {
+            getSignedUrl();
+            return;
+        }
+
+        const refreshTimer = setTimeout(() => {
+            getSignedUrl();
+        }, timeUntilRefresh)
+
+        return () => clearTimeout(refreshTimer);
+    }, [getSignedUrl]);
+
+    useEffect(() => {
+        getSignedUrl();
+    }, []);
+
     if (isLoading) {
         return (
             <div className="mt-4 relative w-full max-w-xl h-96 rounded-md bg-gray-100 animate-pulse" />
