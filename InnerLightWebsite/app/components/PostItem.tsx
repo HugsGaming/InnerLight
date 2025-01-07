@@ -291,24 +291,21 @@ CommentForm.displayName = "CommentForm";
 const PostImage = ({ post }: { post: Post }) => {
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [urlExpiryTime, setUrlExpiryTime] = useState<number | null>(null);
 
     const supabase = useMemo(() => createClient(), []);
 
-    const getSignedUrl = useCallback(async () => {
+    const getImageUrl = useCallback(async () => {
         if (!post.post_image) {
             setIsLoading(false);
             return;
         }
 
         try {
-            const { data, error } = await supabase.storage
+            const { data: { publicUrl },  } = await supabase.storage
                 .from('post_images')
-                .createSignedUrl(post.post_image, 3600);
-            
-            if(error) throw error;
-            setImageUrl(data.signedUrl)
-            setUrlExpiryTime(Date.now() + 3300000)
+                .getPublicUrl(post.post_image)
+
+            setImageUrl(publicUrl);
         } catch (error) {
             console.error('Error getting signed URL:', error);
         } finally {
@@ -316,25 +313,10 @@ const PostImage = ({ post }: { post: Post }) => {
         }
     }, [supabase, post.post_image]);
 
-    useEffect(() => {
-        if (!urlExpiryTime) return;
-
-        const timeUntilRefresh = urlExpiryTime - Date.now();
-
-        if (timeUntilRefresh <= 0) {
-            getSignedUrl();
-            return;
-        }
-
-        const refreshTimer = setTimeout(() => {
-            getSignedUrl();
-        }, timeUntilRefresh)
-
-        return () => clearTimeout(refreshTimer);
-    }, [getSignedUrl]);
+    
 
     useEffect(() => {
-        getSignedUrl();
+        getImageUrl();
     }, []);
 
     if (isLoading) {
