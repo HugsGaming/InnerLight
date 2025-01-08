@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
     const supabase = createClient();
     try {
-        const { path } = await request.json();
+        const { path, bucket } = await request.json();
 
         if (!path) {
             return NextResponse.json(
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
         }
 
         const { data, error } = await supabase.storage
-            .from("post_images")
+            .from(bucket)
             .createSignedUrl(path, 3600);
 
         if (error) throw error;

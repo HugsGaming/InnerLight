@@ -9,19 +9,15 @@ import React, {
     useState,
 } from "react";
 import { createClient } from "../utils/supabase/client";
-import { FiSmile, FiSend, FiMenu } from "react-icons/fi";
 import { toast } from "react-toastify";
 import { EncryptionManager } from "../utils/encryption/client";
 import { Json } from "../../database.types";
-import { FileMetadata, FileService } from "../utils/encryption/fileservice";
-import { Play, FileText, Download } from "lucide-react";
-import { formatFileSize } from "../utils/files";
-import ChatFileUploadPreview from "./ChatFileUploadPreview";
-import { v4 as uuidv4 } from "uuid";
-import EnhancedVideoPlayer from "./EnhancedVideoPlayer";
 import CreateChannelDialog from "./chat/CreateChannelDialog";
-import { UserPlus } from "lucide-react";
-import ManageChannelMember from "./chat/ManageChannelMember";
+import NewChatWindow from "./chat/NewChatWindow";
+import {
+    SecureFileMetadata,
+    SecureFileService,
+} from "../utils/encryption/secureFileService";
 
 //Yes
 
@@ -67,7 +63,7 @@ export interface Message {
     type?: "text" | "image" | "video" | "file";
     title?: string | null;
     data?: Json | null;
-    file_metadata?: FileMetadata;
+    file_metadata?: SecureFileMetadata;
     encrypted_content: {
         iv: string;
         content: string;
@@ -151,479 +147,6 @@ const ChatSidebar = memo(
 
 ChatSidebar.displayName = "ChatSidebar";
 
-// Memoized Chat Window Component
-const ChatWindow = memo(
-    ({
-        chatName,
-        messages,
-        state,
-        onSendMessage,
-        onSendFile,
-        loadMoreMessages,
-        fileService,
-    }: {
-        chatName: string;
-        messages: Message[];
-        state: ChatState;
-        onSendMessage: (text: string) => void;
-        onSendFile: (file: File) => Promise<void>;
-        loadMoreMessages: () => void;
-        fileService: FileService;
-    }) => {
-        const [newMessage, setNewMessage] = useState("");
-        const [isUploadingFile, setIsUploadingFile] = useState(false);
-        const [decryptedFiles, setDecryptedFiles] = useState<{
-            [key: string]: string;
-        }>({});
-        const [isDecrypting, setIsDecrypting] = useState<{
-            [key: string]: boolean;
-        }>({});
-        const messagesEndRef = useRef<HTMLDivElement>(null);
-        const messagesContainerRef = useRef<HTMLDivElement>(null);
-        const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
-        const [isManagingMembers, setIsManagingMembers] = useState(false);
-        const prevMessagesLengthRef = useRef(messages.length);
-        const isInitialLoadRef = useRef(true);
-        const loadingRef = useRef(false);
-
-        const supabase = useMemo(() => {
-            return createClient();
-        }, []);
-
-        type FileType = "image" | "video" | "file";
-
-        const isValidFileType = (type: string): type is FileType => {
-            return ["image", "video", "file"].includes(type);
-        };
-
-        const handleFileView = useCallback(
-            async (msg: Message) => {
-                // Validate file type
-                if (msg.type && !isValidFileType(msg.type)) {
-                    console.error(`Invalid file type: ${msg.type}`);
-                    toast.error(`Invalid file type: ${msg.type}`);
-                    return;
-                }
-
-                if (!msg.file_metadata?.encyptedUrl) return;
-
-                try {
-                    // Check if we already have decrypted this file
-                    if (decryptedFiles[msg.id]) {
-                        if (msg.type === "image") {
-                            window.open(decryptedFiles[msg.id], "_blank");
-                        }
-                        return;
-                    }
-
-                    setIsDecrypting((prev) => ({
-                        ...prev,
-                        [msg.id]: true,
-                    }));
-
-                    const { data: encryptedData, error: downloadError } =
-                        await supabase.storage
-                            .from("chat-files")
-                            .download(msg.file_metadata.encyptedUrl);
-
-                    if (downloadError) throw downloadError;
-
-                    const encryptedBlob = new Blob([encryptedData], {
-                        type:
-                            msg.type === "video"
-                                ? "video/encrypted"
-                                : "application/encrypted",
-                    });
-
-                    if (!msg.file_metadata) {
-                        throw new Error("File metadata not found");
-                    }
-
-                    try {
-                        // Choose appropriate preview method based on file type
-                        const previewURL =
-                            msg.type === "video"
-                                ? await fileService.createVideoPreviewUrl(
-                                      encryptedBlob,
-                                      msg.file_metadata,
-                                  )
-                                : await fileService.createPreviewUrl(
-                                      encryptedBlob,
-                                      msg.file_metadata.fileType || "",
-                                      msg.file_metadata,
-                                  );
-
-                        setDecryptedFiles((prev) => ({
-                            ...prev,
-                            [msg.id]: previewURL,
-                        }));
-                    } catch (error) {
-                        console.error("Decryption error:", error);
-                        throw new Error("Failed to decrypt file");
-                    }
-                } catch (error) {
-                    console.error(error);
-                    toast.error("Failed to decrypt file!");
-                } finally {
-                    setIsDecrypting((prev) => ({
-                        ...prev,
-                        [msg.id]: false,
-                    }));
-                }
-            },
-            [fileService, supabase, decryptedFiles],
-        );
-
-        const scollToBottom = useCallback(() => {
-            if (messagesContainerRef.current) {
-                messagesContainerRef.current.scrollTop =
-                    messagesContainerRef.current.scrollHeight;
-            }
-        }, []);
-
-        //Initial load scoll effect
-        useEffect(() => {
-            if (isInitialLoadRef.current && messages.length > 0) {
-                scollToBottom();
-                isInitialLoadRef.current = false;
-            }
-        }, [messages]);
-
-        //Reset initial load flag when channel changes
-        useEffect(() => {
-            isInitialLoadRef.current = true;
-            if (messages.length > 0) {
-                scollToBottom();
-            }
-        }, [chatName]);
-
-        //Handle auto scroll
-        useEffect(() => {
-            const currentLenth = messages.length;
-            const prevLength = prevMessagesLengthRef.current;
-
-            //If new messages were added (not loaded from history)
-            if (currentLenth > prevLength && shouldScrollToBottom) {
-                scollToBottom();
-            }
-
-            prevMessagesLengthRef.current = currentLenth;
-        }, [messages]);
-
-        const handleScroll = useCallback(() => {
-            const container = messagesContainerRef.current;
-            if (!container) return;
-
-            //Calculate if we're near the bottom
-            const isNearBottom =
-                container.scrollHeight -
-                    container.scrollTop -
-                    container.clientHeight <
-                100;
-            setShouldScrollToBottom(isNearBottom);
-
-            // Check if scrolled to top
-            if (
-                container.scrollTop <= 50 &&
-                state.hasMore &&
-                !state.isLoading &&
-                !loadingRef.current
-            ) {
-                //Set loading flag
-                loadingRef.current = true;
-
-                // Save current scoll height
-                const scrollHeightBefore = container.scrollHeight;
-
-                loadMoreMessages();
-
-                // After loading more messages, restore scroll position
-                requestAnimationFrame(() => {
-                    if (container) {
-                        const newScollHeight = container.scrollHeight;
-                        const scrollDiff = newScollHeight - scrollHeightBefore;
-                        container.scrollTop = scrollDiff;
-
-                        //Reset loading flag
-                        setTimeout(() => {
-                            loadingRef.current = false;
-                        }, 1000); // Add a delay
-                    }
-                });
-            }
-        }, [loadMoreMessages, state.hasMore, state.isLoading]);
-
-        //Group messages by date
-        const groupedMessages = useMemo(() => {
-            const groups: { [key: string]: Message[] } = {};
-
-            messages.forEach((msg) => {
-                const date = new Date(msg.created_at).toLocaleDateString();
-                if (!groups[date]) {
-                    groups[date] = [];
-                }
-                groups[date].push(msg);
-            });
-
-            return groups;
-        }, [messages]);
-
-        const handleSendMessage = useCallback(
-            (e: React.FormEvent<HTMLFormElement>) => {
-                e.preventDefault();
-                if (newMessage.trim() === "") return;
-                setShouldScrollToBottom(true);
-                onSendMessage(newMessage);
-                setNewMessage("");
-            },
-            [newMessage, onSendMessage],
-        );
-
-        const handleFileUpload = useCallback(
-            async (file: File) => {
-                try {
-                    setIsUploadingFile(true);
-                    await onSendFile(file);
-                } finally {
-                    setIsUploadingFile(false);
-                }
-            },
-            [onSendFile],
-        );
-
-        const renderMessageContent = useCallback(
-            (msg: Message) => {
-                const isDecryptingFile = isDecrypting[msg.id];
-                const decryptedUrl = decryptedFiles[msg.id];
-
-                switch (msg.type) {
-                    case "image":
-                        return (
-                            <div className="relative">
-                                {isDecryptingFile ? (
-                                    <div className="flex items-center justify-center p-4">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-                                    </div>
-                                ) : (
-                                    <>
-                                        <img
-                                            src={
-                                                msg.file_metadata?.thumbnailUrl
-                                            }
-                                            alt={msg.file_metadata?.fileName}
-                                            className="rounded-lg max-w-full cursor-pointer"
-                                        />
-                                        <div className="text-xs mt-1">
-                                            {msg.file_metadata?.fileName}
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        );
-                    case "video":
-                        return (
-                            <div className="relative w-full max-w-xl">
-                                {decryptedUrl ? (
-                                    <EnhancedVideoPlayer
-                                        url={decryptedUrl}
-                                        fileMetadata={msg.file_metadata!}
-                                        isDecrypting={isDecryptingFile}
-                                        onError={(error) => {
-                                            console.error(
-                                                "Video Playback Error:",
-                                                error,
-                                            );
-                                            setDecryptedFiles((prevFiles) => {
-                                                const newFiles = {
-                                                    ...prevFiles,
-                                                };
-                                                delete newFiles[msg.id];
-                                                return newFiles;
-                                            });
-                                        }}
-                                    />
-                                ) : (
-                                    <button
-                                        onClick={() => handleFileView(msg)}
-                                        className="flex items-center space-x-2 p-2 bg-gray-100 dark:bg-gray-800 rounded"
-                                    >
-                                        <Play className="w-6 h-6" />
-                                        <span>Click to load video</span>
-                                    </button>
-                                )}
-                            </div>
-                        );
-                    case "file":
-                        return (
-                            <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-700 p-2 rounded">
-                                <FileText className="w-6 h-6" />
-                                <div>
-                                    <div className="text-sm font-medium">
-                                        {msg.file_metadata?.fileName}
-                                    </div>
-                                    <div className="text-xs">
-                                        {formatFileSize(
-                                            msg.file_metadata?.fileSize || 0,
-                                        )}
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => handleFileView(msg)}
-                                    disabled={isDecryptingFile}
-                                    className="ml-auto text-blue-500 hover:text-blue-600 disabled:opacity-50"
-                                >
-                                    {isDecryptingFile ? (
-                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" />
-                                    ) : (
-                                        <Download className="w-5 h-5" />
-                                    )}
-                                </button>
-                            </div>
-                        );
-                    default:
-                        return (
-                            <p className="whitespace-pre-wrap">
-                                {msg.text_message}
-                            </p>
-                        );
-                }
-            },
-            [handleFileView, isDecrypting, decryptedFiles, formatFileSize],
-        );
-
-        const renderMessage = useCallback(
-            (msg: Message) => {
-                const isOwnMessage = msg.user_id === state.currentUser?.id;
-                return (
-                    <div
-                        key={msg.id}
-                        className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} mb-4`}
-                    >
-                        {!isOwnMessage && (
-                            <div className="flex flex-col items-start mr-2">
-                                <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-                                    {msg.user?.username
-                                        .charAt(0)
-                                        .toUpperCase() || "?"}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="max-w-[60%]">
-                            {!isOwnMessage && (
-                                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1 ml-1">
-                                    {msg.user?.username || "Unknown User"}
-                                </div>
-                            )}
-
-                            <div
-                                className={`rounded-lg px-4 py-2 break-words ${
-                                    isOwnMessage
-                                        ? "bg-blue-500 text-white"
-                                        : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                                }`}
-                            >
-                                {renderMessageContent(msg)}
-
-                                <p className="text-xs text-right mt-2 opacity-75">
-                                    {new Date(
-                                        msg.created_at,
-                                    ).toLocaleTimeString()}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                );
-            },
-            [state.currentUser, renderMessageContent],
-        );
-
-        return (
-            <div className="h-full p-4 flex flex-col justify-between bg-white dark:bg-gray-900 m-1 rounded-lg">
-                <div>
-                    <div className="flex items-center justify-between border-b dark:border-gray-700 pb-2 mb-4">
-                        <div>
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                {chatName || "Chat"}
-                            </h2>
-                            {/* <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Online - Last seen, 2:02pm
-                            </p> */}
-                        </div>
-                        <button
-                            onClick={() => setIsManagingMembers(true)}
-                            className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-                        >
-                            <UserPlus className="w-5 h-5" />
-                        </button>
-
-                        {/* <div className="flex space-x-3 text-gray-900 dark:text-gray-100">
-                            <FiPhone />
-                            <FiVideo />
-                            <FiMoreHorizontal />
-                        </div> */}
-                    </div>
-                    <div
-                        ref={messagesContainerRef}
-                        onScroll={handleScroll}
-                        className="flex-1 overflow-y-auto scrollbar h-[600px]"
-                    >
-                        {state.hasMore && state.isLoading && (
-                            <div className="text-center text-gray-500 my-2">
-                                Loading previous messages...
-                            </div>
-                        )}
-                        {Object.entries(groupedMessages).map(
-                            ([date, dateMessages]) => (
-                                <div key={date}>
-                                    <div className="text-center my-4 text-gray-500">
-                                        <span className="px-4 py-1 bg-gray-100 dark:bg-gray-800 rounded-full">
-                                            {date}
-                                        </span>
-                                    </div>
-                                    {dateMessages.map(renderMessage)}
-                                </div>
-                            ),
-                        )}
-                        <div ref={messagesEndRef} />
-                    </div>
-                </div>
-                <form
-                    onSubmit={handleSendMessage}
-                    className="flex items-center p-4 bg-gray-100 dark:bg-gray-800 rounded-full"
-                >
-                    <div className="relative">
-                        <ChatFileUploadPreview
-                            onSend={handleFileUpload}
-                            onCancel={() => {}}
-                            isUploading={isUploadingFile}
-                        />
-                    </div>
-                    <input
-                        type="text"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type your message here..."
-                        className="flex-1 p-1 bg-transparent outline-none text-gray-900 dark:text-gray-100"
-                    />
-                    <FiSmile className="mr-3 text-gray-900 dark:text-gray-100" />
-                    <button type="submit">
-                        <FiSend className="text-gray-900 dark:text-gray-100" />
-                    </button>
-                </form>
-                <ManageChannelMember
-                    channelId={state.selectedChannel}
-                    isOpen={isManagingMembers}
-                    onClose={() => setIsManagingMembers(false)}
-                    currentUser={state.currentUser!}
-                />
-            </div>
-        );
-    },
-);
-
-ChatWindow.displayName = "ChatWindow";
-
 export default function ChatApplication({
     initialData,
 }: {
@@ -642,10 +165,10 @@ export default function ChatApplication({
 
     const supabase = useMemo(() => createClient(), []);
     const encryptionManagerRef = useRef<EncryptionManager | null>(null);
-    const fileService = useMemo(
+    const secureFileService = useMemo(
         () =>
             encryptionManagerRef.current
-                ? new FileService(encryptionManagerRef.current)
+                ? new SecureFileService(encryptionManagerRef.current)
                 : null,
         [encryptionManagerRef.current],
     );
@@ -1179,105 +702,62 @@ export default function ChatApplication({
 
     const handleFileSend = useCallback(
         async (file: File) => {
-            if (!state.currentUser || !state.selectedChannel || !fileService)
+            if (
+                !state.currentUser ||
+                !state.selectedChannel ||
+                !secureFileService
+            )
                 return;
 
             try {
-                // Generate encryption parameters
-                const iv = crypto.getRandomValues(new Uint8Array(12));
-                const ivBase64 = Buffer.from(iv).toString("base64");
+                // Process file with secure service
+                const { processedFile, metadata } =
+                    await secureFileService.processFile(file);
 
-                if (file.type.startsWith("video/")) {
-                    const { encryptedBlob, metadata } =
-                        await fileService.encryptVideo(file, {
-                            iv: ivBase64,
-                        });
+                // Generate thumbnail for images
+                if (file.type.startsWith("image/")) {
+                    const thumbnail =
+                        await secureFileService.generateThumbnail(file);
+                    if (thumbnail) metadata.thumbnailUrl = thumbnail;
+                }
 
-                    // Upload encrypted file
-                    const fileName = `${uuidv4()}-${metadata.fileName}`;
-                    const filePath = `${state.selectedChannel}/${fileName}`;
+                const filePath = `${state.selectedChannel}/${processedFile.name}`;
+                const { data: uploadData, error: uploadError } =
+                    await supabase.storage
+                        .from("chat-files")
+                        .upload(filePath, processedFile);
 
-                    const { data: uploadData, error: uploadError } =
-                        await supabase.storage
-                            .from("chat-files")
-                            .upload(filePath, encryptedBlob, {
-                                contentType: "video/encrypted",
-                            });
+                if (uploadError) {
+                    console.error(uploadError);
+                    toast.error("Failed to upload file. Please try again.");
+                    return;
+                }
 
-                    if (uploadError) {
-                        console.error(uploadError);
-                        toast.error("Failed to upload file. Please try again.");
-                        return;
-                    }
+                metadata.storageUrl = uploadData.path;
 
-                    // Create message entry
-                    const { error: messageError } = await supabase
-                        .from("messages")
-                        .insert({
-                            user_id: state.currentUser.id,
-                            channel_id: state.selectedChannel,
-                            type: "video",
-                            file_metadata: {
-                                ...metadata,
-                                encyptedUrl: uploadData?.path,
-                            },
-                        });
+                const { error: messageError } = await supabase
+                    .from("messages")
+                    .insert({
+                        user_id: state.currentUser.id,
+                        channel_id: state.selectedChannel,
+                        type: file.type.startsWith("image/")
+                            ? "image"
+                            : file.type.startsWith("video/")
+                              ? "video"
+                              : "file",
+                        file_metadata: JSON.stringify(metadata),
+                    });
 
-                    if (messageError) {
-                        console.error(messageError);
-                        toast.error("Failed to upload file. Please try again.");
-                    }
-                } else {
-                    // Encrypt the file
-                    const { encryptedBlob, metadata } =
-                        await fileService.encryptFile(file, {
-                            iv: ivBase64,
-                        });
-
-                    // Upload encrypted file
-                    const fileName = `${uuidv4()}-${metadata.fileName}`;
-                    const filePath = `${state.selectedChannel}/${fileName}`;
-
-                    const { data: uploadData, error: uploadError } =
-                        await supabase.storage
-                            .from("chat-files")
-                            .upload(filePath, encryptedBlob);
-
-                    if (uploadError) {
-                        console.error(uploadError);
-                        toast.error("Failed to upload file. Please try again.");
-                        return;
-                    }
-
-                    // Create message entry
-                    const { error: messageError } = await supabase
-                        .from("messages")
-                        .insert({
-                            user_id: state.currentUser.id,
-                            channel_id: state.selectedChannel,
-                            type: metadata.fileType.startsWith("image/")
-                                ? "image"
-                                : metadata.fileType.startsWith("video/")
-                                  ? "video"
-                                  : "file",
-                            file_metadata: {
-                                ...metadata,
-                                encyptedUrl: uploadData?.path,
-                                iv: ivBase64,
-                            },
-                        });
-
-                    if (messageError) {
-                        console.error("Error creating message:", messageError);
-                        toast.error("Failed to send file. Please try again.");
-                    }
+                if (messageError) {
+                    console.error(messageError);
+                    toast.error("Failed to send file. Please try again.");
                 }
             } catch (error) {
                 console.error("Error sending file:", error);
                 toast.error("Failed to send file. Please try again.");
             }
         },
-        [state.currentUser, state.selectedChannel, fileService, supabase],
+        [state.currentUser, state.selectedChannel, secureFileService, supabase],
     );
 
     const handleChannelCreated = useCallback((newChannel: MessageChannel) => {
@@ -1293,7 +773,7 @@ export default function ChatApplication({
         }));
     }, []);
 
-    if (!fileService) {
+    if (!secureFileService) {
         return <div>Loading...</div>;
     }
 
@@ -1309,14 +789,14 @@ export default function ChatApplication({
                 />
             </div>
             <div className="w-full lg:flex-1">
-                <ChatWindow
+                <NewChatWindow
                     chatName={getChannelName(state.selectedChannel)!}
                     messages={state.messages}
                     onSendMessage={sendMessage}
                     onSendFile={handleFileSend}
                     state={state}
                     loadMoreMessages={fetchMoreMessages}
-                    fileService={fileService}
+                    fileService={secureFileService}
                 />
             </div>
         </div>
