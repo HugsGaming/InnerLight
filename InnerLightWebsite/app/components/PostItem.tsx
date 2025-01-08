@@ -291,38 +291,50 @@ CommentForm.displayName = "CommentForm";
 const PostImage = ({ post }: { post: Post }) => {
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-
-    const supabase = useMemo(() => createClient(), []);
-
-    const getImageUrl = useCallback(async () => {
-        if (!post.post_image) {
-            setIsLoading(false);
-            return;
-        }
-
-        try {
-            const { data: { publicUrl },  } = await supabase.storage
-                .from('post_images')
-                .getPublicUrl(post.post_image)
-
-            setImageUrl(publicUrl);
-        } catch (error) {
-            console.error('Error getting signed URL:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [supabase, post.post_image]);
-
-    
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        getImageUrl();
-    }, []);
+        const getSignedUrl = async () => {
+            if (!post.post_image) {
+                setIsLoading(false);
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/getSignedUrl", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ path: post.post_image }),
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to get signed URL");
+                }
+
+                const { signedUrl } = await response.json();
+                setImageUrl(signedUrl);
+                setError(null);
+            } catch (error) {
+                console.error("Error getting signed URL:", error);
+                setError("Failed to get signed URL");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        getSignedUrl();
+    }, [post.post_image]);
 
     if (isLoading) {
         return (
             <div className="mt-4 relative w-full max-w-xl h-96 rounded-md bg-gray-100 animate-pulse" />
         );
+    }
+
+    if (error) {
+        return <div className="mt-4 text-red-500 text-sm">{error}</div>;
     }
 
     if (!imageUrl) {

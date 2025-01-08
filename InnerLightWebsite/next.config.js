@@ -13,8 +13,8 @@ const nextConfig = {
         return config; // Don't forget to return the modified config!
     },
     images: {
-        domains: ['dyotplmkyxrwdmxymdyp.supabase.co'],
-    }
+        domains: ["dyotplmkyxrwdmxymdyp.supabase.co"],
+    },
 };
 
 export default nextConfig;

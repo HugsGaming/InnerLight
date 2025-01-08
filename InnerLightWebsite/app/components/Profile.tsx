@@ -203,7 +203,7 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
                     alt={`${user.username}'s avatar`}
                     className="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-lg"
                 />
-                
+
                 {currentUser?.id === user.id && (
                     <div className="absolute top-4 right-4 flex space-x-2">
                         {isEditingAvatar ? (
@@ -263,7 +263,9 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
 
             {/* About Section */}
             <div className="mt-6 px-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">About</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    About
+                </h2>
                 {isEditingAbout ? (
                     <div className="flex flex-col mt-3">
                         <textarea
@@ -280,14 +282,16 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
                         </button>
                         <button
                             onClick={() => setIsEditingAbout(false)}
-                            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white">
-
-                        </button>
+                            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white"
+                        ></button>
                     </div>
                 ) : (
                     <p
                         className="text-gray-800 dark:text-gray-200 mt-3 cursor-pointer"
-                        onClick={() => currentUser?.id === user.id && setIsEditingAbout(true)}
+                        onClick={() =>
+                            currentUser?.id === user.id &&
+                            setIsEditingAbout(true)
+                        }
                     >
                         {about}
                     </p>
@@ -296,7 +300,9 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
 
             {/* Contact Section */}
             <div className="mt-6 px-6 mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Contact</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Contact
+                </h2>
                 <p className="text-gray-800 dark:text-gray-200 mt-3">
                     {user.email || "No contact information available."}
                 </p>
@@ -307,18 +313,22 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
                 <button
                     onClick={() => setActiveTab("posts")}
                     className={`px-4 py-2 text-lg font-medium transition-colors 
-                        ${activeTab === "posts" 
-                            ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-500" 
-                            : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"}`}
+                        ${
+                            activeTab === "posts"
+                                ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-500"
+                                : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                        }`}
                 >
                     Posts
                 </button>
                 <button
                     onClick={() => setActiveTab("media")}
                     className={`px-4 py-2 text-lg font-medium transition-colors 
-                        ${activeTab === "media" 
-                            ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-500" 
-                            : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"}`}
+                        ${
+                            activeTab === "media"
+                                ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-500"
+                                : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                        }`}
                 >
                     Media
                 </button>
