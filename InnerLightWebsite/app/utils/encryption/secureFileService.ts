@@ -83,8 +83,19 @@ export class SecureFileService {
 
     async validateAccess(metadata: SecureFileMetadata): Promise<string> {
         try {
+            console.log("Validating access:", metadata);
+
+            const finalMetadata: SecureFileMetadata = JSON.parse(metadata as unknown as string);
+
+            console.log("Decrypted metadata:", finalMetadata);
+
             // Verify file metadata
-            if (!metadata.fileName || !metadata.originalName) {
+            if (!finalMetadata.fileName || !finalMetadata.originalName || !finalMetadata.storageUrl) {
+                console.error("Missing Required Metadata", {
+                    hasFileName: Boolean(metadata.fileName),
+                    hasOriginalName: Boolean(metadata.originalName),
+                    hasStorageUrl: Boolean(metadata.storageUrl),
+                });
                 throw new Error("Invalid file metadata");
             }
 
@@ -93,7 +104,7 @@ export class SecureFileService {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    path: metadata.storageUrl,
+                    path: finalMetadata.storageUrl,
                     bucket: "chat-files",
                 }),
             });

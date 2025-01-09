@@ -160,13 +160,26 @@ function NewChatWindow({
     const handleFileDownload = useCallback(
         async (fileMetadata: SecureFileMetadata) => {
             try {
+                // Ensure we have a proper metadata object
+                const metadata: SecureFileMetadata = JSON.parse(fileMetadata as unknown as string);
+
+                if (!metadata.storageUrl) {
+                    throw new Error("File storage URL is missing.");
+                }
+
+
                 const signedUrl =
                     await fileService.validateAccess(fileMetadata);
                 const response = await fetch(signedUrl);
+
+                if (!response.ok) {
+                    throw new Error("Failed to download file: " + response.statusText);
+                }
+
                 const blob = await response.blob();
 
                 // Decrypt the original file name
-                const encryptedName = JSON.parse(fileMetadata.originalName);
+                const encryptedName = JSON.parse(metadata.originalName);
                 const fileName =
                     await fileService.encryptionManager.decrypt(encryptedName);
 
@@ -176,7 +189,7 @@ function NewChatWindow({
                 a.href = url;
                 a.download = fileName;
                 document.body.appendChild(a);
-                a.click;
+                a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
             } catch (error) {
