@@ -85,12 +85,18 @@ export class SecureFileService {
         try {
             console.log("Validating access:", metadata);
 
-            const finalMetadata: SecureFileMetadata = JSON.parse(metadata as unknown as string);
+            const finalMetadata: SecureFileMetadata = JSON.parse(
+                metadata as unknown as string,
+            );
 
             console.log("Decrypted metadata:", finalMetadata);
 
             // Verify file metadata
-            if (!finalMetadata.fileName || !finalMetadata.originalName || !finalMetadata.storageUrl) {
+            if (
+                !finalMetadata.fileName ||
+                !finalMetadata.originalName ||
+                !finalMetadata.storageUrl
+            ) {
                 console.error("Missing Required Metadata", {
                     hasFileName: Boolean(metadata.fileName),
                     hasOriginalName: Boolean(metadata.originalName),
