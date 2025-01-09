@@ -6,6 +6,7 @@ import PostList, { Post } from "../components/PostList";
 import { createClient } from "../utils/supabase/client";
 import { User } from "@supabase/supabase-js";
 import ProfilePostList from "./profile/ProfilePostList";
+import EmotionAnalytics from "./emotion-tracking/EmotionAnalytics";
 
 interface ProfileProps {
     user: Tables<"profiles">;
@@ -25,7 +26,7 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoadingAvatar, setIsLoadingAvatar] = useState(true);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [activeTab, setActiveTab] = useState<"posts" | "media">("posts");
+    const [activeTab, setActiveTab] = useState<"posts" | "media" | "emotions">("posts");
 
     const supabase = createClient();
 
@@ -332,6 +333,18 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
                 >
                     Media
                 </button>
+                {currentUser?.id === user.id && (
+                    <button
+                        onClick={() => setActiveTab("emotions")}
+                        className={`px-4 py-2 text-lg font-medium transition-colors border-b-2 ${
+                            activeTab === "emotions"
+                                ? "text-blue-600 dark:text-blue-400 border-blue-500"
+                                : "text-gray-700 dark:text-gray-300 border-transparent hover:text-gray-900 dark:hover:text-white"
+                        }`}
+                    >
+                        Emotions
+                    </button>
+                )}
             </div>
 
             {/* Tab Content */}
@@ -344,7 +357,7 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
                             className="mt-4"
                         />
                     </div>
-                ) : (
+                ) : activeTab === "media" ? (
                     <div>
                         <ProfilePostList
                             user={user}
@@ -352,6 +365,10 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
                             mediaOnly
                             className="mt-4"
                         />
+                    </div>
+                ) : (
+                    <div>
+                        <EmotionAnalytics userId={user.id} currentUserId={currentUser?.id!} />
                     </div>
                 )}
             </div>

@@ -154,6 +154,44 @@ export type Database = {
                     },
                 ];
             };
+            data_access_logs: {
+                Row: {
+                    action: string | null;
+                    data_type: string | null;
+                    id: string;
+                    ip_address: string | null;
+                    timestamp: string | null;
+                    user_agent: string | null;
+                    user_id: string | null;
+                };
+                Insert: {
+                    action?: string | null;
+                    data_type?: string | null;
+                    id?: string;
+                    ip_address?: string | null;
+                    timestamp?: string | null;
+                    user_agent?: string | null;
+                    user_id?: string | null;
+                };
+                Update: {
+                    action?: string | null;
+                    data_type?: string | null;
+                    id?: string;
+                    ip_address?: string | null;
+                    timestamp?: string | null;
+                    user_agent?: string | null;
+                    user_id?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: "data_access_logs_user_id_fkey";
+                        columns: ["user_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
+                        referencedColumns: ["id"];
+                    },
+                ];
+            };
             emotion_logs: {
                 Row: {
                     confidence: number;
@@ -182,7 +220,15 @@ export type Database = {
                     timestamp?: string;
                     user_id?: string;
                 };
-                Relationships: [];
+                Relationships: [
+                    {
+                        foreignKeyName: "emotion_logs_user_id_fkey1";
+                        columns: ["user_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
+                        referencedColumns: ["id"];
+                    },
+                ];
             };
             followers: {
                 Row: {
