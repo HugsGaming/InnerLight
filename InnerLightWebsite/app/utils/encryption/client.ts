@@ -132,9 +132,7 @@ export class EncryptionManager {
 
             console.log("Decrypted content size:", decryptedContent.byteLength);
 
-            const result = Buffer.from(decryptedContent).toString();
-
-            return result;
+            return new TextDecoder().decode(decryptedContent);
         } catch (error) {
             console.error("Decryption error:", error);
             throw new Error("Failed to decrypt message");

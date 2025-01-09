@@ -306,7 +306,10 @@ const PostImage = ({ post }: { post: Post }) => {
                     headers: {
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({ path: post.post_image }),
+                    body: JSON.stringify({
+                        path: post.post_image,
+                        bucket: "post_images",
+                    }),
                 });
 
                 if (!response.ok) {
