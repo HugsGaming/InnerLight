@@ -141,6 +141,9 @@ function OptimizedVideoPlayer({
                     playsInline
                     preload="metadata"
                     onLoadedMetadata={handleLoadedMetadata}
+                    disablePictureInPicture
+                    onLoadStart={() => setIsLoading(true)}
+                    onCanPlay={() => setIsLoading(false)}
                 >
                     Your browser doesn&apos;t support video playback.
                 </video>
