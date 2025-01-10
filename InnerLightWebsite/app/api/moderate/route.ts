@@ -14,17 +14,20 @@ export async function POST(request: Request) {
         if (!text) {
             return NextResponse.json(
                 { error: "No text provided" },
-                { status: 400 }
+                { status: 400 },
             );
         }
 
         const moderation = await openai.moderations.create({
             input: text,
         });
-        
+
         return NextResponse.json(moderation.results[0]);
     } catch (error) {
-        console.error('Moderation Error:', error);
-        return NextResponse.json({ error: 'Failed to check content' }, { status: 500 });
+        console.error("Moderation Error:", error);
+        return NextResponse.json(
+            { error: "Failed to check content" },
+            { status: 500 },
+        );
     }
 }

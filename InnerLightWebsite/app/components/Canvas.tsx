@@ -10,18 +10,24 @@ import {
     FaRedo,
     FaSprayCan,
     FaUndo,
+    FaShareSquare,
 } from "react-icons/fa";
 import BrushSize from "./BrushSize";
 import BrushOpacity from "./BrushOpacity";
 import { LuPaintBucket } from "react-icons/lu";
 import { MdOutlineClear } from "react-icons/md";
+import CanvasPostModal from "./draw/CanvasPostModal";
+import { Tables } from "../../database.types";
+import { NewPost } from "./post/post.types";
+import { toast } from "react-toastify";
 
 interface CanvasProps {
     canvasRef: React.RefObject<HTMLCanvasElement>;
     currentColor: string;
+    user: Tables<"profiles">;
 }
 
-const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor }) => {
+const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor, user }) => {
     const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
     const [tool, setTool] = useState<string>("brush");
     const [currentColorState, setCurrentColor] = useState<string>(currentColor);
@@ -31,6 +37,43 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor }) => {
     const [isDrawing, setIsDrawing] = useState<boolean>(false);
     const [history, setHistory] = useState<Array<ImageData>>([]);
     const [historyIndex, setHistoryIndex] = useState<number>(-1);
+    const [isPostModalOpen, setIsPostModalOpen] = useState<boolean>(false);
+
+    const handleCreatePost = async (post: NewPost) => {
+        console.log("Handle Create Post called with post:", post);
+        try {
+            // Create FormData object
+            const formData = new FormData();
+            formData.append("title", post.title);
+            formData.append("description", post.description);
+
+            if (post.image) {
+                formData.append("image", post.image);
+            }
+
+            // Log the complete FormData for debugging
+            for (let pair of formData.entries()) {
+                console.log(pair[0], pair[1]);
+            }
+
+            const response = await fetch("/api/posts", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Failed to create post");
+            }
+
+            const result = await response.json();
+            toast.success("Post created successfully!");
+            return result;
+        } catch (error) {
+            console.error("Error creating post:", error);
+            throw error;
+        }
+    };
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -578,7 +621,23 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor }) => {
                 >
                     <FaDownload className="mb-1" />
                 </div>
+                <div
+                    className="tool share cursor-pointer flex items-center justify-center p-4 rounded w-10 h-10 md:w-14 md:h-14 bg-blue-500 text-white hover:bg-blue-600"
+                    onClick={() => {
+                        console.log("Share button clicked");
+                        setIsPostModalOpen(true);
+                    }}
+                >
+                    <FaShareSquare className="mb-1" />
+                </div>
             </div>
+            <CanvasPostModal
+                isOpen={isPostModalOpen}
+                onClose={() => setIsPostModalOpen(false)}
+                canvasRef={canvasRef}
+                onSubmit={handleCreatePost}
+                user={user}
+            />
         </div>
     );
 };
