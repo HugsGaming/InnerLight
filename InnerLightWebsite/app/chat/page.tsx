@@ -13,6 +13,9 @@ import {
 } from "../components/ChatApplication";
 import "react-toastify/dist/ReactToastify.css";
 import { EncryptionManager } from "../utils/encryption/client";
+import { current } from "immer";
+import { SecureFileMetadata } from "../utils/encryption/secureFileService";
+import { Profile } from "../components/chat/chat.types";
 
 async function getInitialData() {
     const supabase = createClient();
@@ -24,7 +27,9 @@ async function getInitialData() {
         data: { user },
         error: authError,
     } = await supabase.auth.getUser();
+    
     if (authError || !user) {
+        console.error("Error fetching user:", authError);
         redirect("/auth/login");
     }
 
@@ -53,7 +58,7 @@ async function getInitialData() {
         channelsData.map((channel) => channel.messageChannels) ?? [];
 
     // Get initial messages for first channel if exists
-    let initialMessages = [];
+    let initialMessages : Message[] = [];
     let unreadCounts = {};
 
     if (channels.length > 0) {
@@ -66,7 +71,13 @@ async function getInitialData() {
             .order("created_at", { ascending: false })
             .limit(20);
 
-        initialMessages = (encryptedMessages ?? []).reverse();
+        initialMessages = (encryptedMessages ?? []).map((message) => ({
+            ...message,
+            type: message.type as "text" | "image" | "video" | "file",
+            file_metadata: message.file_metadata as unknown as SecureFileMetadata | undefined,
+            encrypted_content: JSON.parse(message.encrypted_content as string),
+            user: message.user as unknown as Profile | null,
+        }));
 
         //Fetch lastReadMessages
         const { data: lastReadMessages } = await supabase
@@ -103,7 +114,7 @@ async function getInitialData() {
                 return acc;
             },
             {} as { [channelId: string]: number },
-        );
+        ) as { [channelId: string]: number } || {};
 
         return {
             currentUser: {
@@ -115,6 +126,17 @@ async function getInitialData() {
             initialChannel: channels[0]?.id || "",
             unreadCounts,
         };
+    }
+
+    return {
+        currentUser: {
+            id: profile.id,
+            username: profile.username,
+        },
+        channels,
+        initialMessages: initialMessages as EncryptedMessage[] | [],
+        initialChannel: "",
+        unreadCounts,
     }
 }
 
