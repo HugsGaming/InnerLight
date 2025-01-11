@@ -520,7 +520,11 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor, user }) => {
                 <canvas
                     ref={canvasRef}
                     className="block mx-auto max-w-full h-auto"
-                    style={{ maxWidth: "100%", height: "auto" }}
+                    style={{ 
+                        maxWidth: "100%", 
+                        height: "auto",
+                        touchAction: "none"
+                    }}
                     width={1000}
                     height={800}
                 />
