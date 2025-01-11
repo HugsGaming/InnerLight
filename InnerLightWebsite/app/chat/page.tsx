@@ -27,7 +27,7 @@ async function getInitialData() {
         data: { user },
         error: authError,
     } = await supabase.auth.getUser();
-    
+
     if (authError || !user) {
         console.error("Error fetching user:", authError);
         redirect("/auth/login");
@@ -58,7 +58,7 @@ async function getInitialData() {
         channelsData.map((channel) => channel.messageChannels) ?? [];
 
     // Get initial messages for first channel if exists
-    let initialMessages : Message[] = [];
+    let initialMessages: Message[] = [];
     let unreadCounts = {};
 
     if (channels.length > 0) {
@@ -74,8 +74,12 @@ async function getInitialData() {
         initialMessages = (encryptedMessages ?? []).map((message) => ({
             ...message,
             type: message.type as "text" | "image" | "video" | "file",
-            file_metadata: message.file_metadata as unknown as SecureFileMetadata | undefined,
-            encrypted_content: JSON.parse(message.encrypted_content as string),
+            file_metadata: message.file_metadata as unknown as
+                | SecureFileMetadata
+                | undefined,
+            encrypted_content: JSON.parse(
+                message.encrypted_content as string,
+            ) as { iv: string; content: string },
             user: message.user as unknown as Profile | null,
         }));
 
@@ -108,13 +112,14 @@ async function getInitialData() {
         });
 
         const unreadCountsResults = await Promise.all(unreadCountsPromises);
-        unreadCounts = unreadCountsResults.reduce(
-            (acc, result) => {
-                acc[result.channelId] = result.count;
-                return acc;
-            },
-            {} as { [channelId: string]: number },
-        ) as { [channelId: string]: number } || {};
+        unreadCounts =
+            (unreadCountsResults.reduce(
+                (acc, result) => {
+                    acc[result.channelId] = result.count;
+                    return acc;
+                },
+                {} as { [channelId: string]: number },
+            ) as { [channelId: string]: number }) || {};
 
         return {
             currentUser: {
@@ -137,7 +142,7 @@ async function getInitialData() {
         initialMessages: initialMessages as EncryptedMessage[] | [],
         initialChannel: "",
         unreadCounts,
-    }
+    };
 }
 
 export default async function ChatPage() {

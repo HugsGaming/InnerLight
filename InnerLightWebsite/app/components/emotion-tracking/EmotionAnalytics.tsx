@@ -52,7 +52,7 @@ export default function EmotionAnalytics({
 }: EmotionAnalyticsProps) {
     const [emotionData, setEmotionData] = useState<EmotionData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [error, setError] = useState("");
     const [isAuthorized, setIsAuthorized] = useState(false);
     const supabase = createClient();
 
@@ -84,7 +84,7 @@ export default function EmotionAnalytics({
 
                 setEmotionData(processedData);
             } catch (err) {
-                setError('Unable to process the emotion data');
+                setError("Unable to process the emotion data");
             } finally {
                 setIsLoading(false);
             }
@@ -196,14 +196,19 @@ export default function EmotionAnalytics({
                 <div className="flex items-center">
                     <Lock className="h-4 w-4 text-blue-400 mr-2" />
                     <p className="text-sm text-blue-700">
-                        This emotional health data is protected by HIPAA privacy rules. Do not share or display this information to others.
+                        This emotional health data is protected by HIPAA privacy
+                        rules. Do not share or display this information to
+                        others.
                     </p>
                 </div>
             </div>
 
             <div className="flex justify-between items-center">
                 <div className="text-sm text-gray-500">
-                    Last updated: {new Date(emotionData[emotionData.length - 1].timestamp).toLocaleString()}
+                    Last updated:{" "}
+                    {new Date(
+                        emotionData[emotionData.length - 1].timestamp,
+                    ).toLocaleString()}
                 </div>
                 <div className="flex space-x-2 print:hidden">
                     <button
@@ -225,27 +230,40 @@ export default function EmotionAnalytics({
 
             <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
                 <div className="p-4 border-b border-gray-200">
-                    <h2 className="text-xl font-semibold text-gray-800">Emotion Timeline</h2>
+                    <h2 className="text-xl font-semibold text-gray-800">
+                        Emotion Timeline
+                    </h2>
                 </div>
                 <div className="p-4">
                     <div className="h-64 w-full">
                         <ResponsiveContainer>
                             <LineChart data={emotionData}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis 
-                                    dataKey="timestamp" 
+                                <XAxis
+                                    dataKey="timestamp"
                                     angle={-45}
                                     textAnchor="end"
                                     height={80}
-                                    tickFormatter={(value) => new Date(value).toLocaleString()}
+                                    tickFormatter={(value) =>
+                                        new Date(value).toLocaleString()
+                                    }
                                 />
-                                <YAxis label={{ value: 'Confidence (%)', angle: -90, position: 'insideLeft'}} />
+                                <YAxis
+                                    label={{
+                                        value: "Confidence (%)",
+                                        angle: -90,
+                                        position: "insideLeft",
+                                    }}
+                                />
                                 <Tooltip
-                                    contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)' }}
-                                    labelStyle={{ fontWeight: 'bold' }}
+                                    contentStyle={{
+                                        backgroundColor:
+                                            "rgba(255, 255, 255, 0.95)",
+                                    }}
+                                    labelStyle={{ fontWeight: "bold" }}
                                 />
                                 <Legend />
-                                <Line 
+                                <Line
                                     type="monotone"
                                     dataKey="confidence"
                                     stroke="#3b82f6"
@@ -259,7 +277,9 @@ export default function EmotionAnalytics({
 
             <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
                 <div className="p-4 border-b border-gray-200">
-                    <h2 className="text-xl font-semibold text-gray-800">Emotion Distribution</h2>
+                    <h2 className="text-xl font-semibold text-gray-800">
+                        Emotion Distribution
+                    </h2>
                 </div>
                 <div className="p-4">
                     <div className="h-64 w-full">
@@ -272,11 +292,16 @@ export default function EmotionAnalytics({
                                     cx="50%"
                                     cy="50%"
                                     outerRadius={80}
-                                    label={(entry) => `${entry.name} (${entry.value})`}
-                                    >
-                                        {emotionDistribution.map((entry, index) => (
-                                            <Cell key={entry.name} fill={COLORS[index]} />
-                                        ))}
+                                    label={(entry) =>
+                                        `${entry.name} (${entry.value})`
+                                    }
+                                >
+                                    {emotionDistribution.map((entry, index) => (
+                                        <Cell
+                                            key={entry.name}
+                                            fill={COLORS[index]}
+                                        />
+                                    ))}
                                 </Pie>
                                 <Tooltip />
                                 <Legend />
@@ -289,15 +314,21 @@ export default function EmotionAnalytics({
             <div className="print:block hidden">
                 <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
                     <div className="p-4 border-b border-gray-200">
-                        <h2 className="text-xl font-semibold text-gray-800">Protected Health Information Notice</h2>
+                        <h2 className="text-xl font-semibold text-gray-800">
+                            Protected Health Information Notice
+                        </h2>
                     </div>
                     <div className="p-4">
                         <p className="text-sm text-gray-500 mb-4">
-                            This document contains protected health information (PHI). This information is covered under HIPAA privacy rules
-                            and should be handled with appropriate care and confidentiality.
+                            This document contains protected health information
+                            (PHI). This information is covered under HIPAA
+                            privacy rules and should be handled with appropriate
+                            care and confidentiality.
                         </p>
                         <div className="border-t pt-4">
-                            <p className="text-sm">Report generated: {new Date().toLocaleString()}</p>
+                            <p className="text-sm">
+                                Report generated: {new Date().toLocaleString()}
+                            </p>
                             <p className="text-sm">User ID: {userId}</p>
                         </div>
                     </div>
@@ -305,7 +336,9 @@ export default function EmotionAnalytics({
 
                 <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden mt-4">
                     <div className="p-4 border-b border-gray-200">
-                        <h2 className="text-xl font-semibold text-gray-800">Detailed Emotion Log</h2>
+                        <h2 className="text-xl font-semibold text-gray-800">
+                            Detailed Emotion Log
+                        </h2>
                     </div>
                     <div className="p-4">
                         <table className="w-full">
@@ -313,17 +346,27 @@ export default function EmotionAnalytics({
                                 <tr>
                                     <th className="text-left p-2">Timestamp</th>
                                     <th className="text-left p-2">Emotion</th>
-                                    <th className="text-left p-2">Confidence</th>
-                                    <th className="text-left p-2">Session ID</th>
+                                    <th className="text-left p-2">
+                                        Confidence
+                                    </th>
+                                    <th className="text-left p-2">
+                                        Session ID
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {emotionData.map((log, index) => (
                                     <tr key={index} className="border-t">
                                         <td className="p-2">{log.timestamp}</td>
-                                        <td className="p-2 capitalize">{log.emotion}</td>
-                                        <td className="p-2">{log.confidence}%</td>
-                                        <td className="p-2">{log.session_id}</td>
+                                        <td className="p-2 capitalize">
+                                            {log.emotion}
+                                        </td>
+                                        <td className="p-2">
+                                            {log.confidence}%
+                                        </td>
+                                        <td className="p-2">
+                                            {log.session_id}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
