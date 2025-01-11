@@ -788,17 +788,25 @@ export default function ChatApplication({
                     currentUser={state.currentUser!}
                 />
             </div>
-            <div className="w-full lg:flex-1">
-                <NewChatWindow
-                    chatName={getChannelName(state.selectedChannel)!}
-                    messages={state.messages}
-                    onSendMessage={sendMessage}
-                    onSendFile={handleFileSend}
-                    state={state}
-                    loadMoreMessages={fetchMoreMessages}
-                    fileService={secureFileService}
-                />
-            </div>
+            {state.channels.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="text-2xl font-bold text-gray-500">
+                        No Chats Available
+                    </div>
+                </div>
+            ) : (
+                <div className="w-full lg:flex-1">
+                    <NewChatWindow
+                        chatName={getChannelName(state.selectedChannel)!}
+                        messages={state.messages}
+                        onSendMessage={sendMessage}
+                        onSendFile={handleFileSend}
+                        state={state}
+                        loadMoreMessages={fetchMoreMessages}
+                        fileService={secureFileService}
+                    />
+                </div>
+            )}
         </div>
     );
 }

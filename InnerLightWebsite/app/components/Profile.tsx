@@ -26,7 +26,9 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoadingAvatar, setIsLoadingAvatar] = useState(true);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [activeTab, setActiveTab] = useState<"posts" | "media" | "emotions">("posts");
+    const [activeTab, setActiveTab] = useState<"posts" | "media" | "emotions">(
+        "posts",
+    );
 
     const supabase = createClient();
 
@@ -368,7 +370,10 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
                     </div>
                 ) : (
                     <div>
-                        <EmotionAnalytics userId={user.id} currentUserId={currentUser?.id!} />
+                        <EmotionAnalytics
+                            userId={user.id}
+                            currentUserId={currentUser?.id!}
+                        />
                     </div>
                 )}
             </div>
