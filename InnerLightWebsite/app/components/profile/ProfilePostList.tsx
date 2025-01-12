@@ -139,7 +139,7 @@ function ProfilePostList({
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting && hasMore && !isLoading) {
-                    if (mediaOnly) {
+                    if (mediaOnly === true) {
                         loadMoreMediaPosts();
                     } else {
                         loadMorePosts();

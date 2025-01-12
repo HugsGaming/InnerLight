@@ -198,6 +198,7 @@ export type Database = {
                     created_at: string | null;
                     emotion: string;
                     id: string;
+                    page_path: string | null;
                     session_id: string;
                     timestamp: string;
                     user_id: string;
@@ -207,6 +208,7 @@ export type Database = {
                     created_at?: string | null;
                     emotion: string;
                     id?: string;
+                    page_path?: string | null;
                     session_id: string;
                     timestamp: string;
                     user_id: string;
@@ -216,6 +218,7 @@ export type Database = {
                     created_at?: string | null;
                     emotion?: string;
                     id?: string;
+                    page_path?: string | null;
                     session_id?: string;
                     timestamp?: string;
                     user_id?: string;

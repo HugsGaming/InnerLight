@@ -15,7 +15,7 @@ const Sidebar: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <div>
+        <div className="print:hidden">
             {/* Toggle Button for Mobile/Tablet */}
             <button
                 className="lg:hidden fixed top-4 left-4 z-99 bg-yellow-950 text-white p-2 rounded-full shadow-lg focus:outline-none"

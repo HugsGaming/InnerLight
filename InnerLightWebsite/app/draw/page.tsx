@@ -9,6 +9,7 @@ import { Tables } from "../../database.types";
 import { createClient } from "../utils/supabase/client";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import FloatingEmotionDetection from "../components/new-emotion-detection/FloatingEmotionDetection";
 
 const Draw: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -99,6 +100,7 @@ const Draw: React.FC = () => {
             <div className="ml-14 mt-14 mb-10 md:ml-64">
                 <Canvas canvasRef={canvasRef} currentColor={""} user={user!} />
             </div>
+            <FloatingEmotionDetection />
             <ToastContainer />
         </div>
     );
