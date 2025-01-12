@@ -33,7 +33,7 @@ const OwnProfile: React.FC = async () => {
         profile = profileData;
     }
 
-    const postsWithCommentsAndVotesQuery = supabase
+    const { data: postsData, error: postsError } = await supabase
         .from("posts")
         .select(
             "*, comments(*, user:profiles(*), upVotes:commentUpVotes(*), upVotes_count:commentUpVotes(count), downVotes:commentDownVotes(*), downVotes_count:commentDownVotes(count)), downVotes:postDownVotes(*), downVotes_count:postDownVotes(count), upVotes:postUpVotes(*), upVotes_count:postUpVotes(count), user:profiles(*)",
@@ -41,20 +41,20 @@ const OwnProfile: React.FC = async () => {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-    type PostWithCommentsAndVotes = QueryData<
-        typeof postsWithCommentsAndVotesQuery
-    >;
-
-    const { data: postsData, error: postsError } =
-        await postsWithCommentsAndVotesQuery;
-    const posts = postsData as PostWithCommentsAndVotes;
-
     if (postsError) throw postsError;
 
-    const { data: mediaPostsData, error: mediaPostsError } =
-        await postsWithCommentsAndVotesQuery.filter("post_image", "neq", null);
+    const { data: mediaPostsData, error: mediaPostsError } = await supabase
+        .from("posts")
+        .select(
+            "*, comments(*, user:profiles(*), upVotes:commentUpVotes(*), upVotes_count:commentUpVotes(count), downVotes:commentDownVotes(*), downVotes_count:commentDownVotes(count)), downVotes:postDownVotes(*), downVotes_count:postDownVotes(count), upVotes:postUpVotes(*), upVotes_count:postUpVotes(count), user:profiles(*)",
+        )
+        .eq("user_id", user.id)
+        .neq("post_image", null)
+        .order("created_at", { ascending: false });
 
-    const mediaPosts = mediaPostsData as PostWithCommentsAndVotes;
+    console.log(mediaPostsData);
+
+    console.log(mediaPostsData === postsData);
 
     if (mediaPostsError) throw mediaPostsError;
 
@@ -74,8 +74,8 @@ const OwnProfile: React.FC = async () => {
             <div className="ml-14 mt-14 mb-10 md:ml-64">
                 <Profile
                     user={profile!}
-                    posts={posts as unknown as Post[]}
-                    mediaPosts={mediaPosts as unknown as Post[]}
+                    posts={postsData as Post[]}
+                    mediaPosts={mediaPostsData as Post[]}
                 />
             </div>
         </div>

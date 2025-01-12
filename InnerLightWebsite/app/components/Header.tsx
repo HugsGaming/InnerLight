@@ -58,7 +58,7 @@ const Header: React.FC = () => {
     };
 
     return (
-        <header className="fixed w-full flex items-center justify-between h-14 text-white z-10">
+        <header className="fixed w-full flex items-center justify-between h-14 text-white z-10 print:hidden">
             <div className="flex items-center justify-start md:justify-center pl-3 w-14 md:w-64 h-14 bg-yellow-950 dark:bg-gray-800 border-none">
                 <span className="hidden md:block w-full">
                     <img

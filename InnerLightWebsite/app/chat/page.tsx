@@ -16,6 +16,7 @@ import { EncryptionManager } from "../utils/encryption/client";
 import { current } from "immer";
 import { SecureFileMetadata } from "../utils/encryption/secureFileService";
 import { Profile } from "../components/chat/chat.types";
+import FloatingEmotionDetection from "../components/new-emotion-detection/FloatingEmotionDetection";
 
 async function getInitialData() {
     const supabase = createClient();
@@ -163,6 +164,7 @@ export default async function ChatPage() {
             <Header />
             <Sidebar />
             <ChatApplication initialData={data as InitialData} />
+            <FloatingEmotionDetection />
             <ToastContainer />
         </div>
     );

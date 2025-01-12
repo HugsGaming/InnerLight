@@ -11,7 +11,7 @@ import { Camera, X, Minimize2, Maximize2 } from "lucide-react";
 import * as tf from "@tensorflow/tfjs";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import { createClient } from "../../utils/supabase/client";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
 const EMOTIONS = [
@@ -39,6 +39,7 @@ interface EmotionLog {
     confidence: number;
     timestamp: string;
     session_id: string;
+    page_path: string;
 }
 
 // Define face mesh connections
@@ -193,6 +194,8 @@ const EmotionDetector = () => {
     const lastLogTimeRef = useRef<number>(0);
     const supabase = useMemo(() => createClient(), []);
 
+    const router = useRouter();
+
     const logEmotion = async (emotion: Emotion, confidence: number) => {
         try {
             const now = Date.now();
@@ -214,12 +217,15 @@ const EmotionDetector = () => {
                 return;
             }
 
+            const currentPath = window.location.pathname;
+
             const emotionLog: EmotionLog = {
                 user_id: user?.id!,
                 emotion,
                 confidence,
                 timestamp: new Date().toISOString(),
                 session_id: sessionId,
+                page_path: currentPath,
             };
 
             console.log("Attepting to log: ", emotionLog);

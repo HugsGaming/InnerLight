@@ -68,6 +68,7 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
         } else {
             setIsLoadingAvatar(false);
         }
+        console.log(mediaPosts);
     }, [user.avatar_url, downloadImage]);
 
     const handleAvatarChange = async (
@@ -364,7 +365,7 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
                         <ProfilePostList
                             user={user}
                             posts={mediaPosts!}
-                            mediaOnly
+                            mediaOnly={true}
                             className="mt-4"
                         />
                     </div>

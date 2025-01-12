@@ -9,6 +9,7 @@ import "react-toastify/dist/ReactToastify.css";
 import Profile from "../../components/Profile";
 import { QueryData } from "@supabase/supabase-js";
 import { Post } from "../../components/PostList";
+import FloatingEmotionDetection from "../../components/new-emotion-detection/FloatingEmotionDetection";
 
 interface Props {
     params: {
@@ -88,6 +89,7 @@ export default async function ProfilePage({ params: { id } }: Props) {
                     mediaPosts={mediaPosts as unknown as Post[]}
                 />
             </div>
+            <FloatingEmotionDetection />
         </div>
     );
 }
