@@ -15,6 +15,11 @@ import {
     RefreshCw,
 } from "lucide-react";
 import { resolve } from "bun";
+import { createClient } from "../../utils/supabase/client";
+import { v4 as uuidv4 } from "uuid";
+import { toast } from "react-toastify";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "../../../database.types";
 
 // Types
 interface Message {
@@ -35,6 +40,20 @@ interface EmotionDetectorState {
     isLoading: boolean;
     error: string | null;
     currentEmotion: string | null;
+    confidence: number;
+}
+
+interface EmotionLog {
+    user_id: string;
+    emotion: Emotion;
+    confidence: number;
+    timestamp: string;
+    session_id: string;
+    page_path: string;
+}
+
+interface EmotionLogger {
+    logEmotion: (emotionLog: EmotionLog) => Promise<void>;
 }
 
 const EMOTIONS = [
@@ -64,6 +83,66 @@ const EMOTIONAL_CONTEXTS: Record<Emotion, string> = {
 const VIDEO_WIDTH = 640;
 const VIDEO_HEIGHT = 480;
 
+const createEmotionLogger = (
+    supabase: SupabaseClient<Database>,
+): EmotionLogger => {
+    const queue: EmotionLog[] = [];
+    let isProcesing = false;
+
+    const processFinalBatch = async () => {
+        if (queue.length === 0) return;
+
+        try {
+            const { error } = await supabase.from("emotion_logs").insert(queue);
+
+            if (error) {
+                console.error("Error in final emotion log batch:", error);
+            }
+        } catch (error) {
+            console.error("Error in final emotion logging:", error);
+        }
+    };
+
+    window.addEventListener("beforeunload", (event) => {
+        if (queue.length > 0) {
+            processFinalBatch();
+        }
+    });
+
+    const processQueue = async () => {
+        if (isProcesing || queue.length === 0) return;
+
+        isProcesing = true;
+        const batch = queue.splice(0, 10);
+
+        try {
+            const { error } = await supabase.from("emotion_logs").insert(batch);
+
+            if (error) {
+                console.error("Error batch logging emotions:", error);
+                queue.unshift(...batch);
+            }
+        } catch (error) {
+            console.error("Error in emotion logging:", error);
+            queue.unshift(...batch);
+        } finally {
+            isProcesing = false;
+            if (queue.length > 0) {
+                setTimeout(processQueue, 100);
+            }
+        }
+    };
+
+    return {
+        logEmotion: async (emotionLog: EmotionLog) => {
+            queue.push(emotionLog);
+            if (queue.length === 1) {
+                setTimeout(processQueue, 100);
+            }
+        },
+    };
+};
+
 export default function EnhancedEmotionDetectionChat() {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -73,21 +152,56 @@ export default function EnhancedEmotionDetectionChat() {
     const lastVideoTimeRef = useRef<number>(-1);
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const modelRef = useRef<tf.LayersModel | null>(null);
+    const lastLogTimeRef = useRef<number>(0);
+    const sessionId = useRef<string>(uuidv4());
 
-    const [emotionModel, setEmotionModel] = useState<tf.LayersModel | null>(
-        null,
-    );
     const [detectorState, setDetectorState] = useState<EmotionDetectorState>({
         isInitialized: false,
         isLoading: false,
         error: null,
         currentEmotion: null,
+        confidence: 0,
     });
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputMessage, setInputMessage] = useState<string>("");
     const [isSending, setIsSending] = useState<boolean>(false);
 
+    const supabase = createClient();
+
     const EMOTION_BUFFER_SIZE = 5;
+
+    const emotionLogger = createEmotionLogger(supabase);
+
+    const logEmotion = async (emotion: Emotion, confidence: number) => {
+        try {
+            const now = Date.now();
+            if (now - lastLogTimeRef.current < 1000) return;
+            lastLogTimeRef.current = now;
+
+            const {
+                data: { user },
+                error: userError,
+            } = await supabase.auth.getUser();
+
+            if (userError || !user) {
+                toast.error("Error Getting user: " + userError?.message);
+                return;
+            }
+
+            const emotionLog: EmotionLog = {
+                user_id: user.id,
+                emotion,
+                confidence,
+                timestamp: new Date().toISOString(),
+                session_id: sessionId.current,
+                page_path: window.location.pathname,
+            };
+
+            await emotionLogger.logEmotion(emotionLog);
+        } catch (error) {
+            console.error("Error in logEmotion", error);
+        }
+    };
 
     // Utility Functions
     const getMostFrequentEmotion = useCallback((emotions: string[]): string => {
@@ -100,7 +214,7 @@ export default function EnhancedEmotionDetectionChat() {
     }, []);
 
     const updateEmotionState = useCallback(
-        (emotion: string) => {
+        async (emotion: string, confidence: number) => {
             emotionBufferRef.current.push(emotion);
             if (emotionBufferRef.current.length > EMOTION_BUFFER_SIZE) {
                 emotionBufferRef.current.shift();
@@ -112,7 +226,12 @@ export default function EnhancedEmotionDetectionChat() {
             setDetectorState((prev) => ({
                 ...prev,
                 currentEmotion: stableEmotion,
+                confidence,
             }));
+
+            if (EMOTIONS.includes(emotion as Emotion)) {
+                await logEmotion(emotion as Emotion, confidence);
+            }
         },
         [getMostFrequentEmotion],
     );
@@ -156,7 +275,7 @@ export default function EnhancedEmotionDetectionChat() {
     // Emotion Detection
     const detectEmotion = async (
         faceImage: HTMLCanvasElement,
-    ): Promise<string | null> => {
+    ): Promise<{ emotion: string; confidence: number } | null> => {
         return new Promise(async (resolve, reject) => {
             const model = modelRef.current;
 
@@ -208,22 +327,23 @@ export default function EnhancedEmotionDetectionChat() {
                 );
 
                 const predictionArray = await predictionPromise;
-                console.log("Raw predictions:", predictionArray);
 
                 const maxIndex = predictionArray.indexOf(
                     Math.max(...predictionArray),
                 );
-                const predictedEmotion = EMOTIONS[maxIndex];
 
                 console.log(
                     "Predicted emotion:",
-                    predictedEmotion,
+                    EMOTIONS[maxIndex],
                     "with confidence: ",
                     predictionArray[maxIndex],
                 );
 
                 tensor.dispose();
-                resolve(predictedEmotion);
+                resolve({
+                    emotion: EMOTIONS[maxIndex],
+                    confidence: predictionArray[maxIndex],
+                });
             } catch (error) {
                 console.error("Error in detectEmotion:", error);
                 reject(error);
@@ -301,12 +421,17 @@ export default function EnhancedEmotionDetectionChat() {
                         bbox: boundingBox,
                     });
 
-                    const emotion = await detectEmotion(faceImage);
-                    console.log("Detected emotion:", emotion);
-
-                    if (emotion) {
-                        updateEmotionState(emotion);
-                        drawEmotionLabel(ctx, boundingBox, emotion);
+                    if (faceImage) {
+                        const result = await detectEmotion(faceImage);
+                        if (result) {
+                            const { emotion, confidence } = result;
+                            await updateEmotionState(emotion, confidence);
+                            drawEmotionLabel(
+                                ctx,
+                                boundingBox,
+                                `${emotion} (${(confidence * 100).toFixed(1)}%)`,
+                            );
+                        }
                     }
                 }
                 ctx.restore();
@@ -415,7 +540,6 @@ export default function EnhancedEmotionDetectionChat() {
                 console.log("Assigned model:", model);
 
                 modelRef.current = model;
-                setEmotionModel((prev) => model);
 
                 const faceLandmarkerInitialized =
                     await initializeFaceLandmarker();
@@ -500,7 +624,8 @@ export default function EnhancedEmotionDetectionChat() {
                         </button>
                         {detectorState.currentEmotion && (
                             <span className="text-sm text-gray-600">
-                                Current emotion: {detectorState.currentEmotion}
+                                Current emotion: {detectorState.currentEmotion}(
+                                {(detectorState.confidence * 100).toFixed(1)}%)
                             </span>
                         )}
                     </div>
