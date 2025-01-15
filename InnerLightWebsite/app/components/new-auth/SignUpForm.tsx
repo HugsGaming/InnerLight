@@ -26,7 +26,7 @@ export default function SignUpForm() {
         username: "",
         email: "",
         password: "",
-        confirmPassword: ""
+        confirmPassword: "",
     });
 
     const [touchedFields, setTouchedFields] = useState({

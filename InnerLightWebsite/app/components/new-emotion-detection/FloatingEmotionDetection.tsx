@@ -13,6 +13,8 @@ import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import { createClient } from "../../utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "../../../database.types";
 
 const EMOTIONS = [
     "angry",
@@ -40,6 +42,10 @@ interface EmotionLog {
     timestamp: string;
     session_id: string;
     page_path: string;
+}
+
+interface EmotionLogger {
+    logEmotion: (emotionLog: EmotionLog) => Promise<void>;
 }
 
 // Define face mesh connections
@@ -170,6 +176,67 @@ const drawLandmarks = (
     }
 };
 
+const createEmotionLogger = (
+    supabase: SupabaseClient<Database>,
+): EmotionLogger => {
+    const queue: EmotionLog[] = [];
+
+    let isProcesing = false;
+    const batch = queue.splice(0, 10);
+
+    const processFinalBatch = async () => {
+        if (queue.length === 0) return;
+
+        try {
+            const { error } = await supabase.from("emotion_logs").insert(queue);
+
+            if (error) {
+                console.error("Error in final emotion log batch:", error);
+            }
+        } catch (error) {
+            console.error("Error in final emotion logging:", error);
+        }
+    };
+
+    window.addEventListener("beforeunload", (event) => {
+        if (queue.length > 0) {
+            processFinalBatch();
+        }
+    });
+
+    const processQueue = async () => {
+        if (isProcesing || queue.length === 0) return;
+
+        try {
+            const { error } = await supabase.from("emotion_logs").insert(batch);
+
+            if (error) {
+                console.error("Error batch logging emotions:", error);
+                queue.unshift(...batch);
+            }
+
+            console.log("Batched Log: ", batch);
+        } catch (error) {
+            console.error("Error in emotion logging:", error);
+            queue.unshift(...batch);
+        } finally {
+            isProcesing = false;
+            if (queue.length > 0) {
+                setTimeout(processQueue, 100);
+            }
+        }
+    };
+
+    return {
+        logEmotion: async (emotionLog: EmotionLog) => {
+            queue.push(emotionLog);
+            if (queue.length === 1) {
+                setTimeout(processQueue, 100);
+            }
+        },
+    };
+};
+
 const EmotionDetector = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
@@ -194,7 +261,7 @@ const EmotionDetector = () => {
     const lastLogTimeRef = useRef<number>(0);
     const supabase = useMemo(() => createClient(), []);
 
-    const router = useRouter();
+    const emotionLogger = createEmotionLogger(supabase);
 
     const logEmotion = async (emotion: Emotion, confidence: number) => {
         try {
@@ -230,17 +297,7 @@ const EmotionDetector = () => {
 
             console.log("Attepting to log: ", emotionLog);
 
-            const { error: logError } = await supabase
-                .from("emotion_logs")
-                .insert([emotionLog]);
-
-            if (logError) {
-                console.error("Error logging emotion:", logError);
-                if (logError.code === "42501") {
-                    console.error("User not logged in");
-                }
-                return;
-            }
+            await emotionLogger.logEmotion(emotionLog);
         } catch (error) {
             console.error("Error logging emotion:", error);
         }
