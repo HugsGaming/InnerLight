@@ -14,7 +14,6 @@ interface FormData {
     email: string;
     password: string;
     confirmPassword: string;
-    termsAccepted: boolean;
 }
 
 export default function SignUpForm() {
@@ -27,8 +26,7 @@ export default function SignUpForm() {
         username: "",
         email: "",
         password: "",
-        confirmPassword: "",
-        termsAccepted: false,
+        confirmPassword: ""
     });
 
     const [touchedFields, setTouchedFields] = useState({
@@ -102,10 +100,6 @@ export default function SignUpForm() {
                   formData.confirmPassword,
               )
             : "",
-        termsAccepted:
-            touchedFields.termsAccepted && !formData.termsAccepted
-                ? "You must accept the terms and conditions"
-                : "",
     };
 
     const handleSubmit = async (e: FormEvent) => {
@@ -408,40 +402,6 @@ export default function SignUpForm() {
                         </p>
                     )}
                 </div>
-
-                {/* Terms and Conditions */}
-                <div className="flex items-center">
-                    <input
-                        id="termsAccepted"
-                        type="checkbox"
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        checked={formData.termsAccepted}
-                        onChange={(e) =>
-                            setFormData((prev) => ({
-                                ...prev,
-                                termsAccepted: e.target.checked,
-                            }))
-                        }
-                        onBlur={() => handleBlur("termsAccepted")}
-                    />
-                    <label
-                        htmlFor="termsAccepted"
-                        className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
-                    >
-                        I accept the{" "}
-                        <a
-                            href="#"
-                            className="text-blue-600 hover:text-blue-500"
-                        >
-                            terms and conditions
-                        </a>
-                    </label>
-                </div>
-                {errors.termsAccepted && (
-                    <p className="text-sm text-red-500">
-                        {errors.termsAccepted}
-                    </p>
-                )}
 
                 {/* Submit Button */}
                 <button
