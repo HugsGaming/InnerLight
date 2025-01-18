@@ -7,6 +7,7 @@ import { createClient } from "../utils/supabase/client";
 import { User } from "@supabase/supabase-js";
 import ProfilePostList from "./profile/ProfilePostList";
 import EmotionAnalytics from "./emotion-tracking/EmotionAnalytics";
+import ProfileEditPopup from "./profile/ProfileEditPopup";
 
 interface ProfileProps {
     user: Tables<"profiles">;
@@ -29,6 +30,7 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
     const [activeTab, setActiveTab] = useState<"posts" | "media" | "emotions">(
         "posts",
     );
+    const [isEditingProfileOpen, setIsEditingProfileOpen] = useState(false);
 
     const supabase = createClient();
 
@@ -247,15 +249,32 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
                                 )}
                             </>
                         ) : (
-                            <button
-                                onClick={() => setIsEditingAvatar(true)}
-                                className="px-3 py-1 bg-gray-700 hover:bg-gray-800 text-white text-sm rounded transition-colors"
-                            >
-                                Edit Avatar
-                            </button>
+                            <>
+                                <button
+                                    onClick={() =>
+                                        setIsEditingProfileOpen(true)
+                                    }
+                                    className="px-3 py-1 bg-gray-700 hover:bg-gray-800 text-white text-sm rounded transition-colors"
+                                >
+                                    Edit Profile
+                                </button>
+                                <button
+                                    onClick={() => setIsEditingAvatar(true)}
+                                    className="px-3 py-1 bg-gray-700 hover:bg-gray-800 text-white text-sm rounded transition-colors"
+                                >
+                                    Edit Avatar
+                                </button>
+                            </>
                         )}
                     </div>
                 )}
+
+                <ProfileEditPopup
+                    user={user}
+                    supabase={supabase}
+                    isOpen={isEditingProfileOpen}
+                    onClose={() => setIsEditingProfileOpen(false)}
+                />
 
                 <div>
                     <h1 className="text-3xl font-bold text-black">
