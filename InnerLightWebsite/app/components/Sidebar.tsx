@@ -75,19 +75,14 @@ const Sidebar: React.FC = () => {
                                 </div>
                             </li>
                             <SidebarItem
-                                href="#"
+                                href="/settings"
                                 icon={<FaInfoCircle />}
                                 label="About"
                             />
                             <SidebarItem
-                                href="#"
+                                href="/settings"
                                 icon={<FaQuestionCircle />}
                                 label="Help"
-                            />
-                            <SidebarItem
-                                href="#"
-                                icon={<FaCog />}
-                                label="Settings"
                             />
                         </ul>
                         <p className="mb-4 px-5 py-3 hidden lg:block text-center text-xs">
