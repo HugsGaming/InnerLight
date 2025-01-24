@@ -16,6 +16,16 @@ import { v4 as uuidv4 } from "uuid";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../../../database.types";
 
+class L2 {
+    static className = "L2";
+
+    constructor(config: any) {
+        return tf.regularizers.l2(config);
+    }
+}
+// @ts-ignore
+tf.serialization.registerClass(L2);
+
 const EMOTIONS = [
     "angry",
     "disgust",
