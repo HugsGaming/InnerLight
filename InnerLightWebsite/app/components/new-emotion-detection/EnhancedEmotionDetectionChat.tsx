@@ -21,6 +21,15 @@ import { toast } from "react-toastify";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../../../database.types";
 
+class L2 {
+    static className = "L2";
+
+    constructor(config: any) {
+        return tf.regularizers.l2(config);
+    }
+}
+// @ts-ignore
+tf.serialization.registerClass(L2);
 // Types
 interface Message {
     id: string;
@@ -514,10 +523,22 @@ export default function EnhancedEmotionDetectionChat() {
         return new Promise(async (resolve, reject) => {
             try {
                 console.log("Starting model initialization...");
+
+                const modelConfig = {
+                    strict: false,
+                };
+
                 const model = await tf.loadLayersModel(
                     "/emotion_model_js/model.json",
+                    modelConfig,
                 );
                 console.log("Model loaded successfully.");
+
+                model.compile({
+                    optimizer: tf.train.adam(),
+                    loss: "categoricalCrossentropy",
+                    metrics: ["accuracy"],
+                });
 
                 // Warmup run to ensure model is ready
                 const dummTensor = tf.zeros([1, 48, 48, 1]);
