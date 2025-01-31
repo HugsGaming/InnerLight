@@ -36,7 +36,6 @@ export default function SignUpForm() {
         email: false,
         password: false,
         confirmPassword: false,
-        termsAccepted: false,
     });
 
     const router = useRouter();
@@ -113,7 +112,6 @@ export default function SignUpForm() {
             email: true,
             password: true,
             confirmPassword: true,
-            termsAccepted: true,
         });
 
         // Check for any validation errors
@@ -151,6 +149,16 @@ export default function SignUpForm() {
                 return;
             }
 
+            const { data: existingEmail } = await supabase
+                .from("profiles")
+                .select("email")
+                .eq("email", formData.email);
+
+            if (existingEmail && existingEmail.length > 0) {
+                toast.error("Email is already taken");
+                return;
+            }
+
             // Proceed with sign up
             const { data: user, error } = await supabase.auth.signUp({
                 email: formData.email,
@@ -170,7 +178,7 @@ export default function SignUpForm() {
             }
 
             toast.success("Sign up successful!");
-            router.push("/home");
+            router.push("/auth/callback");
         } catch (error) {
             toast.error("An unexpected error occurred. Please try again.");
             console.error(error);
