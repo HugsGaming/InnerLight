@@ -125,18 +125,18 @@ export default function SignUpForm() {
 
         try {
             // Execute reCAPTCHA
-            const token = await executeRecaptcha("sign_up");
-            const recaptchaResponse = await fetch("/api/verify-recaptcha", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token }),
-            });
+            // const token = await executeRecaptcha("sign_up");
+            // const recaptchaResponse = await fetch("/api/verify-recaptcha", {
+            //     method: "POST",
+            //     headers: { "Content-Type": "application/json" },
+            //     body: JSON.stringify({ token }),
+            // });
 
-            const recaptchaData = await recaptchaResponse.json();
-            if (!recaptchaData.success) {
-                toast.error("reCAPTCHA verification failed. Please try again.");
-                return;
-            }
+            // const recaptchaData = await recaptchaResponse.json();
+            // if (!recaptchaData.success) {
+            //     toast.error("reCAPTCHA verification failed. Please try again.");
+            //     return;
+            // }
 
             // Check username uniqueness
             const { data: existingUsername } = await supabase
