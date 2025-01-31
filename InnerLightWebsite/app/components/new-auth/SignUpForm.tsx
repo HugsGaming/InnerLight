@@ -36,7 +36,6 @@ export default function SignUpForm() {
         email: false,
         password: false,
         confirmPassword: false,
-        termsAccepted: false,
     });
 
     const router = useRouter();
@@ -113,7 +112,6 @@ export default function SignUpForm() {
             email: true,
             password: true,
             confirmPassword: true,
-            termsAccepted: true,
         });
 
         // Check for any validation errors
@@ -127,18 +125,18 @@ export default function SignUpForm() {
 
         try {
             // Execute reCAPTCHA
-            const token = await executeRecaptcha("sign_up");
-            const recaptchaResponse = await fetch("/api/verify-recaptcha", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token }),
-            });
+            // const token = await executeRecaptcha("sign_up");
+            // const recaptchaResponse = await fetch("/api/verify-recaptcha", {
+            //     method: "POST",
+            //     headers: { "Content-Type": "application/json" },
+            //     body: JSON.stringify({ token }),
+            // });
 
-            const recaptchaData = await recaptchaResponse.json();
-            if (!recaptchaData.success) {
-                toast.error("reCAPTCHA verification failed. Please try again.");
-                return;
-            }
+            // const recaptchaData = await recaptchaResponse.json();
+            // if (!recaptchaData.success) {
+            //     toast.error("reCAPTCHA verification failed. Please try again.");
+            //     return;
+            // }
 
             // Check username uniqueness
             const { data: existingUsername } = await supabase
@@ -148,6 +146,16 @@ export default function SignUpForm() {
 
             if (existingUsername && existingUsername.length > 0) {
                 toast.error("Username is already taken");
+                return;
+            }
+
+            const { data: existingEmail } = await supabase
+                .from("profiles")
+                .select("email")
+                .eq("email", formData.email);
+
+            if (existingEmail && existingEmail.length > 0) {
+                toast.error("Email is already taken");
                 return;
             }
 
@@ -170,7 +178,7 @@ export default function SignUpForm() {
             }
 
             toast.success("Sign up successful!");
-            router.push("/home");
+            router.push("/auth/callback");
         } catch (error) {
             toast.error("An unexpected error occurred. Please try again.");
             console.error(error);

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { handleAuthCallback } from "../../utils/socialAuth";
 import { Loader2 } from "lucide-react";
+import React from "react";
 
 export default function AuthCallback() {
     const router = useRouter();
@@ -15,7 +16,7 @@ export default function AuthCallback() {
 
                 if (error) {
                     console.error("Error during social login:", error);
-                    // router.push("/auth/login");
+                    router.push("/auth/login");
                     return;
                 }
 
@@ -23,11 +24,11 @@ export default function AuthCallback() {
                     router.push("/home");
                 } else {
                     console.error("User not found.");
-                    // router.push("/auth/login");
+                    router.push("/auth/login");
                 }
             } catch (error) {
                 console.error("Error during social login:", error);
-                // router.push("/auth/login");
+                router.push("/auth/login");
             }
         };
 
