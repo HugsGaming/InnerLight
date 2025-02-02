@@ -21,6 +21,7 @@ import {
     Info,
     TrendingUp,
     Calendar,
+    Clock,
 } from "lucide-react";
 
 const EMOTIONS = [
@@ -79,6 +80,7 @@ export default function EmotionAnalytics({
     const [selectedDate, setSelectedDate] = useState<string>(
         new Date().toISOString().split("T")[0],
     );
+    const [selectedTime, setSelectedTime] = useState<string>("00:00");
     const [emotionMetrics, setEmotionMetrics] = useState<EmotionMetrics | null>(
         null,
     );
@@ -210,10 +212,16 @@ export default function EmotionAnalytics({
                 setIsLoading(true);
 
                 const startDate = new Date(selectedDate);
-                startDate.setHours(0, 0, 0, 0);
-
                 const endDate = new Date(selectedDate);
-                endDate.setHours(23, 59, 59, 999);
+
+                if(selectedTime) {
+                    const [hours, minutes] = selectedTime.split(':');
+                    startDate.setHours(Number(hours), Number(minutes), 0, 0);
+                    endDate.setHours(Number(hours), Number(minutes), 59, 999);
+                } else {
+                    startDate.setHours(0, 0, 0, 0);
+                    endDate.setHours(23, 59, 59, 999);
+                }
 
                 const { data, error } = await supabase
                     .from("emotion_logs")
@@ -244,24 +252,49 @@ export default function EmotionAnalytics({
         fetchEmotionData();
     }, [userId, currentUserId, selectedDate]);
 
-    const DatePicker = () => (
-        <div className="flex items-center gap-4 mb-4">
-            <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                <label
-                    htmlFor="date-select"
-                    className="text-sm text-gray-600 dark:text-gray-300"
-                >
-                    Select Date:
-                </label>
+    // DateTimePicker component
+    const DateTimePicker = () => (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                    <label htmlFor="date-select" className="text-sm text-gray-600 dark:text-gray-300">
+                        Select Date:
+                    </label>
+                </div>
+                <input
+                    type="date"
+                    id="date-select"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
             </div>
-            <input
-                type="date"
-                id="date-select"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                    <label htmlFor="time-select" className="text-sm text-gray-600 dark:text-gray-300">
+                        Select Time:
+                    </label>
+                </div>
+                <div className="flex items-center gap-2">
+                    <input
+                        type="time"
+                        id="time-select"
+                        value={selectedTime}
+                        onChange={(e) => setSelectedTime(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                    {selectedTime && (
+                        <button
+                            onClick={() => setSelectedTime('')}
+                            className="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                            Clear time
+                        </button>
+                    )}
+                </div>
+            </div>
         </div>
     );
 
@@ -435,14 +468,15 @@ export default function EmotionAnalytics({
     if (!emotionData.length) {
         return (
             <div className="space-y-4">
-                <DatePicker />
+                <DateTimePicker />
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
                     <div className="flex items-center">
                         <Info className="h-5 w-5 text-yellow-400 mr-2" />
                         <p className="text-sm text-yellow-700">
-                            No emotion detection data available for{" "}
-                            {selectedDate}. Please select a different date or
-                            ensure our emotion detection is enabled.
+                            {selectedTime 
+                                ? `No emotion detection data available for ${selectedDate} at ${selectedTime}. Try selecting a different time or viewing all logs for the day by clearing the time filter.`
+                                : `No emotion detection data available for ${selectedDate}. Please select a different date or ensure our emotion detection is enabled.`
+                            }
                         </p>
                     </div>
                 </div>
@@ -452,7 +486,7 @@ export default function EmotionAnalytics({
 
     return (
         <div className="space-y-6 print:space-y-4 print-container">
-            <DatePicker />
+            <DateTimePicker />
 
             <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4 no-print">
                 <div className="flex items-center">
