@@ -20,6 +20,7 @@ import {
     AlertTriangle,
     Info,
     TrendingUp,
+    Calendar
 } from "lucide-react";
 
 const EMOTIONS = [
@@ -75,6 +76,7 @@ export default function EmotionAnalytics({
     currentUserId,
 }: EmotionAnalyticsProps) {
     const [emotionData, setEmotionData] = useState<EmotionData[]>([]);
+    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split("T")[0]);
     const [emotionMetrics, setEmotionMetrics] = useState<EmotionMetrics | null>(
         null,
     );
@@ -155,7 +157,7 @@ export default function EmotionAnalytics({
                 }
             }
 
-            const emotionTransitions = [];
+            const emotionTransitions: EmotionTransition[] = [];
             for (const source of EMOTIONS) {
                 for (const target of EMOTIONS) {
                     if (transitions[source][target] > 0) {
@@ -203,10 +205,20 @@ export default function EmotionAnalytics({
 
         const fetchEmotionData = async () => {
             try {
+                setIsLoading(true);
+
+                const startDate = new Date(selectedDate);
+                startDate.setHours(0, 0, 0, 0);
+
+                const endDate = new Date(selectedDate);
+                endDate.setHours(23, 59, 59, 999);
+
                 const { data, error } = await supabase
                     .from("emotion_logs")
                     .select("*")
                     .eq("user_id", userId)
+                    .gte("timestamp", startDate.toISOString())
+                    .lte("timestamp", endDate.toISOString())
                     .order("timestamp", { ascending: true });
 
                 if (error) throw error;
@@ -228,7 +240,26 @@ export default function EmotionAnalytics({
         };
 
         fetchEmotionData();
-    }, [userId, currentUserId]);
+    }, [userId, currentUserId, selectedDate]);
+
+
+    const DatePicker = () => (
+        <div className="flex items-center gap-4 mb-4">
+            <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                <label htmlFor="date-select" className="text-sm text-gray-600 dark:text-gray-300">
+                    Select Date:
+                </label>
+            </div>
+            <input
+                type="date"
+                id="date-select"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+        </div>
+    )
 
     const getEmotionDescription = (emotion: string, percentage: number) => {
         if (percentage >= 50)
@@ -398,11 +429,26 @@ export default function EmotionAnalytics({
     }
 
     if (!emotionData.length) {
-        return <div className="p-4">No emotion data available.</div>;
+        return (
+            <div className="space-y-4">
+                <DatePicker />
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <div className="flex items-center">
+                        <Info className="h-5 w-5 text-yellow-400 mr-2" />
+                        <p className="text-sm text-yellow-700">
+                            No emotion detection data available for {selectedDate}. Please select a different date or ensure our emotion detection is enabled.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
         <div className="space-y-6 print:space-y-4 print-container">
+
+            <DatePicker />
+
             <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4 no-print">
                 <div className="flex items-center">
                     <Lock className="h-4 w-4 text-blue-400 mr-2" />
