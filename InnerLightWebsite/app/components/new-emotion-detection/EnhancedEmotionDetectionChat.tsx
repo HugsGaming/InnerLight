@@ -20,6 +20,7 @@ import { v4 as uuidv4 } from "uuid";
 import { toast } from "react-toastify";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../../../database.types";
+import { useRouter } from "next/navigation";
 
 class L2 {
     static className = "L2";
@@ -163,6 +164,9 @@ export default function EnhancedEmotionDetectionChat() {
     const modelRef = useRef<tf.LayersModel | null>(null);
     const lastLogTimeRef = useRef<number>(0);
     const sessionId = useRef<string>(uuidv4());
+    const userIdRef = useRef<string | null>(null);
+
+    const router = useRouter();
 
     const [detectorState, setDetectorState] = useState<EmotionDetectorState>({
         isInitialized: false,
@@ -187,18 +191,10 @@ export default function EnhancedEmotionDetectionChat() {
             if (now - lastLogTimeRef.current < 1000) return;
             lastLogTimeRef.current = now;
 
-            const {
-                data: { user },
-                error: userError,
-            } = await supabase.auth.getUser();
-
-            if (userError || !user) {
-                toast.error("Error Getting user: " + userError?.message);
-                return;
-            }
+            console.log("User Id", userIdRef.current);
 
             const emotionLog: EmotionLog = {
-                user_id: user.id,
+                user_id: userIdRef.current!,
                 emotion,
                 confidence,
                 timestamp: new Date().toISOString(),
@@ -557,6 +553,18 @@ export default function EnhancedEmotionDetectionChat() {
         const initialize = async () => {
             setDetectorState((prev) => ({ ...prev, isLoading: true }));
             try {
+                const {
+                    data: { user },
+                    error: userError,
+                } = await supabase.auth.getUser();
+                if (userError || !user) {
+                    toast.error("Error Getting user: " + userError?.message);
+                    router.replace("/auth/login");
+                    return;
+                }
+
+                userIdRef.current = user.id;
+
                 const model = await initializeModel();
                 console.log("Assigned model:", model);
 
