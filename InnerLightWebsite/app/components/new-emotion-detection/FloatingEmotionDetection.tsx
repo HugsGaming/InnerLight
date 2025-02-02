@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../../../database.types";
+import { toast } from "react-toastify";
 
 class L2 {
     static className = "L2";
@@ -256,6 +257,8 @@ const EmotionDetector = () => {
     const [error, setError] = useState("");
     const [isInitialized, setIsInitialized] = useState(false);
 
+    const router = useRouter();
+
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -266,6 +269,7 @@ const EmotionDetector = () => {
     >([]);
     const animationFrameRef = useRef<number | null>(null);
     const lastProcessTimeRef = useRef<number>(0);
+    const userIdRef = useRef<string | null>(null);
 
     const [sessionId, setSessionId] = useState<string>(uuidv4());
     const lastLogTimeRef = useRef<number>(0);
@@ -279,25 +283,10 @@ const EmotionDetector = () => {
             if (now - lastLogTimeRef.current < 1000) return;
             lastLogTimeRef.current = now;
 
-            const {
-                data: { user },
-                error: userError,
-            } = await supabase.auth.getUser();
-
-            if (userError) {
-                console.error("Error getting user:", userError);
-                return;
-            }
-
-            if (!user) {
-                console.error("User not logged in");
-                return;
-            }
-
             const currentPath = window.location.pathname;
 
             const emotionLog: EmotionLog = {
-                user_id: user?.id!,
+                user_id: userIdRef.current!,
                 emotion,
                 confidence,
                 timestamp: new Date().toISOString(),
@@ -316,6 +305,14 @@ const EmotionDetector = () => {
     useEffect(() => {
         const initializeModels = async () => {
             try {
+                const { data: { user }, error: userError } = await supabase.auth.getUser();
+                if(userError || !user) {
+                    toast.error("Error Getting user: " + userError?.message);
+                    router.replace("/auth/login");
+                    return;
+                }
+                userIdRef.current = user.id;
+
                 setStatus("Loading models...");
 
                 const model = await tf.loadLayersModel(
