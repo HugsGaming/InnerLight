@@ -553,9 +553,11 @@ export default function EnhancedEmotionDetectionChat() {
         const initialize = async () => {
             setDetectorState((prev) => ({ ...prev, isLoading: true }));
             try {
-
-                const { data: { user }, error: userError } = await supabase.auth.getUser();
-                if(userError || !user) {
+                const {
+                    data: { user },
+                    error: userError,
+                } = await supabase.auth.getUser();
+                if (userError || !user) {
                     toast.error("Error Getting user: " + userError?.message);
                     router.replace("/auth/login");
                     return;
