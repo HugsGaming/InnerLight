@@ -236,14 +236,14 @@ const PostList: React.FC<{
 
                 //Handle image upload if present
                 let postImage: string | null = null;
-                if (post.image) {
-                    const extension = getFileExtension(post.image.name);
+                if (post.image || post.gif) {
+                    const extension = getFileExtension(post.image?.name ?? post.gif?.name ?? "");
                     const imagePath = `post_images/${uuidv4()}.${extension}`;
 
                     const { data: imageData, error: imageError } =
                         await supabase.storage
                             .from("post_images")
-                            .upload(imagePath, post.image);
+                            .upload(imagePath, post.image || post.gif || "");
 
                     if (imageError) throw imageError;
                     postImage = imageData?.path;
