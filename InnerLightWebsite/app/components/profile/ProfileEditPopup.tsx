@@ -138,7 +138,7 @@ export default function ProfileEditPopup({
                             htmlFor="username"
                             className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
                         >
-                            Last Name
+                            Username
                         </label>
                         <input
                             id="username"
