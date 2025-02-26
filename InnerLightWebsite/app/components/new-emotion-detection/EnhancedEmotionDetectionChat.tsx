@@ -714,7 +714,7 @@ export default function EnhancedEmotionDetectionChat() {
                                 disabled={
                                     isSending || !detectorState.isInitialized
                                 }
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed dark:text-black"
                                 aria-label="Chat message input"
                             />
                             <button
