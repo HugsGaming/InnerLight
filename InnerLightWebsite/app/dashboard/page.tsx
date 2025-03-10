@@ -143,8 +143,8 @@ const Dashboard: React.FC = async () => {
                             What Our Users Say
                         </h2>
                         <p className="mt-4 italic text-gray-600 dark:text-gray-400">
-                            "Simple and accessible is nice because it's less
-                            overwhelming as a new app for someone to take in."
+                        &quot;Simple and accessible is nice because it&apos;s less
+                            overwhelming as a new app for someone to take in.&quot;
                         </p>
                         <p className="mt-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
                             - Anonymous User

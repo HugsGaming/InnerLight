@@ -253,7 +253,7 @@ const Help: React.FC = () => {
                                         <li>
                                             People with severe mental health
                                             conditions such as Autism,
-                                            Tourette's Syndrome, Dissociative
+                                            Tourette&apos;s Syndrome, Dissociative
                                             Identity Disorder, Complex PTSD
                                             (PTSD Type 4), and Comorbid PTSD
                                             (PTSD Type 5) will not be able to
