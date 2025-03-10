@@ -87,7 +87,7 @@ const Draw: React.FC = () => {
 
     return (
         <div
-            className={`min-h-screen flex flex-col flex-auto flex-shrink-0 antialiased bg-white dark:bg-gray-700 text-black dark:text-white ${isDark ? "dark" : ""}`}
+            className={`min-h-screen flex flex-col flex-auto flex-shrink-0 antialiased bg-white dark:bg-gray-900 text-black dark:text-white ${isDark ? "dark" : ""}`}
         >
             <Head>
                 <script

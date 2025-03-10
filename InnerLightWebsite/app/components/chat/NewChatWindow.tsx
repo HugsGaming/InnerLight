@@ -310,7 +310,7 @@ function NewChatWindow({
                         <div
                             className={`rounded-lg px-4 py-2 break-words ${
                                 isOwnMessage
-                                    ? "bg-blue-500 text-white"
+                                    ? "bg-green-500 text-white"
                                     : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                             }`}
                         >

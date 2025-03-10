@@ -10,7 +10,7 @@ import Help from "../components/settings/Help";
 export default function Page() {
     return (
         <div
-            className={`min-h-screen flex flex-col flex-auto flex-shrink-0 antialiased bg-white dark:bg-gray-700 text-black dark:text-white `}
+            className={`min-h-screen flex flex-col flex-auto flex-shrink-0 antialiased bg-white dark:bg-gray-900 text-black dark:text-white `}
         >
             <Head>
                 <script

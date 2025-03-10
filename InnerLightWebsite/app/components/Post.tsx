@@ -233,9 +233,10 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
     const isMediaUploaded = formState.image !== null || formState.gif !== null;
 
     return (
-        <div className="container mx-auto flex flex-col text-gray-800 mb-10">
+        <div className="container mx-auto flex flex-col text-gray-800 dark:text-gray-200 mb-10">
+            {/* Title Input */}
             <input
-                className="title bg-gray-100 border border-gray-300 p-2 mb-4 outline-none"
+                className="title bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 p-2 mb-4 outline-none text-black dark:text-white"
                 spellCheck="false"
                 placeholder="Title"
                 type="text"
@@ -243,8 +244,9 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                 onChange={handleTitleChange}
                 maxLength={100}
             />
+            {/* Description Input */}
             <textarea
-                className="description bg-gray-100 sec p-3 h-50 border border-gray-300 outline-none"
+                className="description bg-gray-100 dark:bg-gray-800 sec p-3 h-50 border border-gray-300 dark:border-gray-600 outline-none text-black dark:text-white"
                 spellCheck="false"
                 placeholder="Describe everything about this post here"
                 value={formState.description}
@@ -252,6 +254,7 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                 maxLength={maxCharCount}
             ></textarea>
 
+            {/* Image Preview */}
             {formState.image && (
                 <div className="mt-4 relative">
                     <img
@@ -261,7 +264,7 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                     />
                     <button
                         onClick={() => removeMedia("image")}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors"
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition"
                         aria-label="Remove Image"
                     >
                         <FaTimes />
@@ -269,6 +272,7 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                 </div>
             )}
 
+            {/* GIF Preview */}
             {formState.gif && (
                 <div className="mt-4 relative">
                     <img
@@ -277,10 +281,8 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                         className="w-full h-auto rounded"
                     />
                     <button
-                        onClick={() => {
-                            removeMedia("gif");
-                        }}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors"
+                        onClick={() => removeMedia("gif")}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition"
                         aria-label="Remove GIF"
                     >
                         <FaTimes />
@@ -288,13 +290,14 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                 </div>
             )}
 
-            <div className="icons flex text-gray-500 m-2 dark:text-white text-xl">
+            {/* Media Upload Icons */}
+            <div className="icons flex text-gray-500 dark:text-gray-300 m-2 text-xl">
                 <label
                     htmlFor="image-upload"
                     className={`mr-2 cursor-pointer transition-colors ${
                         isMediaUploaded
-                            ? "text-gray-400 cursor-not-allowed"
-                            : "hover:text-gray-700"
+                            ? "text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                            : "hover:text-gray-700 dark:hover:text-gray-400"
                     }`}
                 >
                     <FaImage />
@@ -312,8 +315,8 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                     htmlFor="gif-upload"
                     className={`mr-2 cursor-pointer transition-colors ${
                         isMediaUploaded
-                            ? "text-gray-400 cursor-not-allowed"
-                            : "hover:text-gray-700"
+                            ? "text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                            : "hover:text-gray-700 dark:hover:text-gray-400"
                     }`}
                 >
                     <PiGifFill />
@@ -327,22 +330,22 @@ const Post: React.FC<PostProps> = ({ addPost, user }) => {
                     onChange={handleGifUpload}
                     disabled={isMediaUploaded}
                 />
-                {/* <FaLink className="mr-2 cursor-pointer hover:text-gray-700" />
-                <FaPoll className="mr-2 cursor-pointer hover:text-gray-700" /> */}
-                <div className="count ml-auto text-gray-400 text-xs font-semibold">
+                <div className="count ml-auto text-gray-400 dark:text-gray-500 text-xs font-semibold">
                     {formState.charCount}/{maxCharCount}
                 </div>
             </div>
+
+            {/* Buttons */}
             <div className="buttons flex">
                 <button
-                    className="btn border border-gray-300 p-1 px-4 font-semibold cursor-pointer text-gray-500 ml-auto rounded hover:bg-gray-100 transition-colors"
+                    className="btn border border-gray-300 dark:border-gray-600 p-1 px-4 mr- font-semibold cursor-pointer text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 ml-auto rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition"
                     onClick={resetForm}
                     disabled={formState.isSubmitting}
                 >
                     Cancel
                 </button>
                 <button
-                    className="btn border border-indigo-500 p-1 px-4 font-semibold cursor-pointer text-gray-200 ml-2 bg-indigo-500 rounded hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn border border-green-500 p-1 px-4 font-semibold cursor-pointer text-white bg-green-500 rounded hover:bg-green-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handlePost}
                     disabled={
                         !formState.title.trim() ||

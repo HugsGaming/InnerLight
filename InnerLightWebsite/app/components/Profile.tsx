@@ -202,8 +202,8 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
     }
 
     return (
-        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-300 dark:border-gray-700">
-            <div className="h-48 bg-yellow-600 dark:bg-yellow-700 rounded-t-lg flex items-center px-6 space-x-4 relative">
+        <div className="bg-white dark:bg-gray-800 dark:text-white shadow-lg border border-gray-300 dark:border-gray-700">
+            <div className="h-48 bg-gradient-to-r from-green-600 to-green-900 dark:from-green-900 dark:to-green-600  rounded-t-lg flex items-center px-6 space-x-4 relative">
                 <img
                     src={previewAvatar || avatarUrl || avatar}
                     alt={`${user.username}'s avatar`}
@@ -277,10 +277,12 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
                 />
 
                 <div>
-                    <h1 className="text-3xl font-bold text-black">
+                    <h1 className="text-3xl font-bold text-black dark:text-white">
                         {`${user.first_name} ${user.last_name}`}
                     </h1>
-                    <p className="text-lg text-black">@{user.username}</p>
+                    <p className="text-lg text-black dark:text-white">
+                        @{user.username}
+                    </p>
                 </div>
             </div>
 
@@ -332,13 +334,13 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
             </div>
 
             {/* Tabs */}
-            <div className="mt-6 flex justify-center border-b border-gray-300 dark:border-gray-700">
+            <div className="mt-6 flex justify-center border-b border-gray-300 dark:border-gray-700 ">
                 <button
                     onClick={() => setActiveTab("posts")}
                     className={`px-4 py-2 text-lg font-medium transition-colors 
                         ${
                             activeTab === "posts"
-                                ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-500"
+                                ? "text-green-700 dark:text-green-400 border-b-2 border-green-500"
                                 : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                         }`}
                 >
@@ -349,7 +351,7 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
                     className={`px-4 py-2 text-lg font-medium transition-colors 
                         ${
                             activeTab === "media"
-                                ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-500"
+                                ? "text-green-700 dark:text-green-400 border-b-2 border-green-500"
                                 : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                         }`}
                 >
@@ -360,7 +362,7 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
                         onClick={() => setActiveTab("emotions")}
                         className={`px-4 py-2 text-lg font-medium transition-colors border-b-2 ${
                             activeTab === "emotions"
-                                ? "text-blue-600 dark:text-blue-400 border-blue-500"
+                                ? "text-green-700 dark:text-green-4000 border-green-500"
                                 : "text-gray-700 dark:text-gray-300 border-transparent hover:text-gray-900 dark:hover:text-white"
                         }`}
                     >
@@ -370,7 +372,7 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, mediaPosts }) => {
             </div>
 
             {/* Tab Content */}
-            <div className="p-6">
+            <div className="p-6 text-green-600 dark:text-green-400">
                 {activeTab === "posts" ? (
                     <div>
                         <ProfilePostList

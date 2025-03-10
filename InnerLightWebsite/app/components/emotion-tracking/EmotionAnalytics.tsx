@@ -214,8 +214,8 @@ export default function EmotionAnalytics({
                 const startDate = new Date(selectedDate);
                 const endDate = new Date(selectedDate);
 
-                if(selectedTime) {
-                    const [hours, minutes] = selectedTime.split(':');
+                if (selectedTime) {
+                    const [hours, minutes] = selectedTime.split(":");
                     startDate.setHours(Number(hours), Number(minutes), 0, 0);
                     endDate.setHours(Number(hours), Number(minutes), 59, 999);
                 } else {
@@ -258,7 +258,10 @@ export default function EmotionAnalytics({
             <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                    <label htmlFor="date-select" className="text-sm text-gray-600 dark:text-gray-300">
+                    <label
+                        htmlFor="date-select"
+                        className="text-sm text-gray-600 dark:text-gray-300"
+                    >
                         Select Date:
                     </label>
                 </div>
@@ -273,7 +276,10 @@ export default function EmotionAnalytics({
             <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                     <Clock className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                    <label htmlFor="time-select" className="text-sm text-gray-600 dark:text-gray-300">
+                    <label
+                        htmlFor="time-select"
+                        className="text-sm text-gray-600 dark:text-gray-300"
+                    >
                         Select Time:
                     </label>
                 </div>
@@ -287,7 +293,7 @@ export default function EmotionAnalytics({
                     />
                     {selectedTime && (
                         <button
-                            onClick={() => setSelectedTime('')}
+                            onClick={() => setSelectedTime("")}
                             className="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
                         >
                             Clear time
@@ -473,10 +479,9 @@ export default function EmotionAnalytics({
                     <div className="flex items-center">
                         <Info className="h-5 w-5 text-yellow-400 mr-2" />
                         <p className="text-sm text-yellow-700">
-                            {selectedTime 
+                            {selectedTime
                                 ? `No emotion detection data available for ${selectedDate} at ${selectedTime}. Try selecting a different time or viewing all logs for the day by clearing the time filter.`
-                                : `No emotion detection data available for ${selectedDate}. Please select a different date or ensure our emotion detection is enabled.`
-                            }
+                                : `No emotion detection data available for ${selectedDate}. Please select a different date or ensure our emotion detection is enabled.`}
                         </p>
                     </div>
                 </div>

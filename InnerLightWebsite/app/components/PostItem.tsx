@@ -582,7 +582,7 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
     }, [onVote, post.id]);
 
     return (
-        <div className="flex border p-4 rounded-lg shadow-md mb-4 transition-colors duration-300 bg-white dark:bg-gray-800 text-gray-600 dark:text-white">
+        <div className="flex p-4 rounded-lg shadow-md mb-4 transition-colors duration-300 bg-white dark:bg-gray-800 text-gray-600 dark:text-white">
             <div className="flex flex-col items-center space-y-1 mr-4">
                 <button
                     onClick={handleUpvote}
@@ -611,7 +611,7 @@ const PostItem: FC<PostItemProps> = ({ user, post, onVote }) => {
                     <div className="text-sm">
                         Posted by:{" "}
                         <Link href={`/profile/${post.user?.id}`} legacyBehavior>
-                            <a className="text-blue-500 hover:underline">
+                            <a className="text-green-500 dark:text-[#EAD8AC] hover:underline">
                                 {post.user?.username}
                             </a>
                         </Link>
