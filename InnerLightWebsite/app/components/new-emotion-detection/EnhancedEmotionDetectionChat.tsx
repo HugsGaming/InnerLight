@@ -13,6 +13,7 @@ import {
     Loader2,
     AlertCircle,
     RefreshCw,
+    Mic,
 } from "lucide-react";
 import { resolve } from "bun";
 import { createClient } from "../../utils/supabase/client";
@@ -165,8 +166,34 @@ export default function EnhancedEmotionDetectionChat() {
     const lastLogTimeRef = useRef<number>(0);
     const sessionId = useRef<string>(uuidv4());
     const userIdRef = useRef<string | null>(null);
-
+    const [isListening, setIsListening] = useState(false);
+    const recognitionRef = useRef(null);
     const router = useRouter();
+
+    const startListening = () => {
+        if (!("webkitSpeechRecognition" in window)) {
+            alert("Speech Recognition is not supported in your browser.");
+            return;
+        }
+
+        const recognition = new (window as any).webkitSpeechRecognition();
+        recognition.lang = "en-US";
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => setIsListening(true);
+        recognition.onresult = (event: {
+            results: { transcript: any }[][];
+        }) => {
+            const transcript = event.results[0][0].transcript;
+            setInputMessage(transcript);
+        };
+        recognition.onerror = () => alert("Error with speech recognition.");
+        recognition.onend = () => setIsListening(false);
+
+        recognition.start();
+        recognitionRef.current = recognition;
+    };
 
     const [detectorState, setDetectorState] = useState<EmotionDetectorState>({
         isInitialized: false,
@@ -644,7 +671,7 @@ export default function EnhancedEmotionDetectionChat() {
                         <button
                             onClick={() => window.location.reload()}
                             disabled={detectorState.isLoading}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400 transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-gray-400 transition-colors"
                         >
                             <RefreshCw className="w-4 h-4" />
                             {detectorState.isLoading
@@ -658,19 +685,15 @@ export default function EnhancedEmotionDetectionChat() {
                             </span>
                         )}
                     </div>
+                    <p className="text-red-500 text-sm mt-2">
+                        Required: Camera Permission to use Chatbot
+                    </p>
                 </div>
             </div>
-
             {/* Chat Interface Section */}
             <div className="w-full md:w-1/2">
                 <div className="bg-white rounded-lg shadow-md h-full">
                     <div className="p-4 flex flex-col h-[600px]">
-                        {/* {detectorState.error && (
-                            <Alert variant="destructive" className="mb-4">
-                                <AlertDescription>{detectorState.error}</AlertDescription>
-                            </Alert>
-                        )} */}
-
                         <div
                             ref={chatContainerRef}
                             className="flex-1 overflow-y-auto mb-4 space-y-4 scroll-smooth"
@@ -683,7 +706,7 @@ export default function EnhancedEmotionDetectionChat() {
                                     <div
                                         className={`max-w-[80%] p-3 rounded-lg ${
                                             message.sender === "user"
-                                                ? "bg-blue-500 text-white"
+                                                ? "bg-green-500 text-white"
                                                 : "bg-gray-100 text-gray-800"
                                         }`}
                                     >
@@ -702,7 +725,6 @@ export default function EnhancedEmotionDetectionChat() {
                                 </div>
                             ))}
                         </div>
-
                         <form onSubmit={handleSubmit} className="flex gap-2">
                             <input
                                 type="text"
@@ -711,18 +733,30 @@ export default function EnhancedEmotionDetectionChat() {
                                     setInputMessage(e.target.value)
                                 }
                                 placeholder="Type your message..."
-                                disabled={
-                                    isSending || !detectorState.isInitialized
-                                }
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed dark:text-black"
+                                disabled={isSending}
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed dark:text-black"
                                 aria-label="Chat message input"
                             />
+
+                            {/* Speech-to-Text Button */}
+                            <button
+                                type="button"
+                                onClick={startListening}
+                                className={`p-2 rounded-md ${
+                                    isListening
+                                        ? "bg-red-500 text-white"
+                                        : "bg-blue-500 text-white"
+                                } hover:bg-blue-600 transition-colors`}
+                                aria-label="Voice input"
+                            >
+                                <Mic className="w-5 h-5" />
+                            </button>
+
+                            {/* Send Button */}
                             <button
                                 type="submit"
-                                disabled={
-                                    isSending || !detectorState.isInitialized
-                                }
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                                disabled={isSending}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                                 aria-label="Send message"
                             >
                                 {isSending ? (

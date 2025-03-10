@@ -12,9 +12,9 @@ const About: React.FC = () => {
                 <div className="w-full lg:w-1/2">
                     <div className="relative aspect-[4/3] w-full max-w-lg mx-auto">
                         <img
-                            src="https://picsum.photos/200/300/?blur"
+                            src="https://imgur.com/g8zAUSv.jpg"
                             alt="About Us Image"
-                            className="rounded-lg shadow-lg object-cover w-full h-full"
+                            className="object-contain w-full h-full"
                         />
                     </div>
                 </div>
@@ -29,14 +29,21 @@ const About: React.FC = () => {
 
                     <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold">
                         About{" "}
-                        <span className="text-yellow-600">Our Company</span>
+                        <span className="text-yellow-600">INNERLIGHT</span>
                     </h2>
 
                     <p className="text-gray-700 dark:text-white text-sm md:text-base leading-relaxed max-w-prose">
-                        Lorem ipsum dolor sit amet, consectetur adipisicing
-                        elit. Aliquid, commodi doloremque, fugiat illum magni
-                        minus nisi nulla numquam obcaecati placeat quia,
-                        repellat tempore voluptatum.
+                        The purpose of this project is to mitigate the effects
+                        of depression and anxiety among its users through
+                        creative expressions. The beneficiaries are:
+                        <br />
+                        <strong>Patients</strong> - for them to have a platform
+                        in which they can express themselves and help mitigate
+                        their symptoms
+                        <br />
+                        <strong>Psychiatrists</strong> - for them to recommend a
+                        platform to their patients to help mitigate their
+                        symptoms
                     </p>
                 </div>
             </div>

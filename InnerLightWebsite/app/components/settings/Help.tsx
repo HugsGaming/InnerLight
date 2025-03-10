@@ -20,7 +20,7 @@ const Help: React.FC = () => {
                             aria-expanded="false"
                         >
                             <span className="flex-1 text-base-content">
-                                Lorem ipsum, dolor sit amet consectetur?
+                                General Objective of InnerLight?
                             </span>
                             <svg
                                 className="flex-shrink-0 w-4 h-4  ml-auto fill-current"
@@ -52,12 +52,11 @@ const Help: React.FC = () => {
                             <div className="pb-5 leading-relaxed">
                                 <div className="space-y-2 leading-relaxed">
                                     {" "}
-                                    Lorem ipsum, dolor sit amet consectetur
-                                    adipisicing elit. Assumenda cum amet
-                                    blanditiis quis vero saepe quo veritatis ab
-                                    dicta ratione cumque, labore velit omnis
-                                    sequi voluptatem harum distinctio reiciendis
-                                    eveniet!
+                                    The general objective is to create a social
+                                    media platform that can help users cope with
+                                    their anxiety and depression by allowing
+                                    them to express themselves through their
+                                    artworks and creative writing.
                                 </div>
                             </div>
                         </div>
@@ -68,7 +67,7 @@ const Help: React.FC = () => {
                             aria-expanded="false"
                         >
                             <span className="flex-1 text-base-content">
-                                Lorem ipsum, dolor sit amet consectetur
+                                Scope of InnerLight?
                             </span>
                             <svg
                                 className="flex-shrink-0 w-4 h-4 ml-auto fill-current"
@@ -99,13 +98,32 @@ const Help: React.FC = () => {
                         >
                             <div className="pb-5 leading-relaxed">
                                 <div className="space-y-2 leading-relaxed">
-                                    {" "}
-                                    Lorem ipsum, dolor sit amet consectetur
-                                    adipisicing elit. Assumenda cum amet
-                                    blanditiis quis vero saepe quo veritatis ab
-                                    dicta ratione cumque, labore velit omnis
-                                    sequi voluptatem harum distinctio reiciendis
-                                    eveniet!
+                                    <ul className="list-disc list-inside">
+                                        <li>
+                                            The project will use existing web
+                                            technologies to create the platform.
+                                        </li>
+                                        <li>
+                                            This platform will be a web
+                                            application to make it
+                                            cross-platform to cater users using
+                                            the desktop and mobile devices.
+                                        </li>
+                                        <li>
+                                            Proponents will use Supabase as
+                                            their platform for authentication,
+                                            database, and storage.
+                                        </li>
+                                        <li>
+                                            The web application will be deployed
+                                            in Vercel as their platform for the
+                                            deployment of the website.
+                                        </li>
+                                        <li>
+                                            The proponents will use Chat GPT-4
+                                            as their model.
+                                        </li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>
@@ -116,7 +134,7 @@ const Help: React.FC = () => {
                             aria-expanded="false"
                         >
                             <span className="flex-1 text-base-content">
-                                Lorem ipsum, dolor sit amet consectetur?
+                                Other Scope?
                             </span>
                             <svg
                                 className="flex-shrink-0 w-4 h-4 ml-auto fill-current"
@@ -148,12 +166,29 @@ const Help: React.FC = () => {
                             <div className="pb-5 leading-relaxed">
                                 <div className="space-y-2 leading-relaxed">
                                     {" "}
-                                    Lorem ipsum, dolor sit amet consectetur
-                                    adipisicing elit. Assumenda cum amet
-                                    blanditiis quis vero saepe quo veritatis ab
-                                    dicta ratione cumque, labore velit omnis
-                                    sequi voluptatem harum distinctio reiciendis
-                                    eveniet!
+                                    <ul className="list-disc list-inside">
+                                        <li>
+                                            The application will be available
+                                            for everyone to use.
+                                        </li>
+                                        <li>
+                                            User accounts are free and can be
+                                            created by anyone.
+                                        </li>
+                                        <li>
+                                            User comments and posts will be
+                                            filtered by an edge function.
+                                        </li>
+                                        <li>
+                                            The application is intended to serve
+                                            people who have less severe mental
+                                            health conditions such as
+                                            Depression, Anxiety, Normal Stress
+                                            Response (PTSD Type 1), Acute Stress
+                                            Disorder (PTSD Type 2),
+                                            Uncomplicated PTSD (PTSD Type 3).
+                                        </li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>
@@ -164,7 +199,7 @@ const Help: React.FC = () => {
                             aria-expanded="false"
                         >
                             <span className="flex-1 text-base-content">
-                                Lorem ipsum, dolor sit amet consectetur?
+                                Limitations of Innerlight?
                             </span>
                             <svg
                                 className="flex-shrink-0 w-4 h-4 ml-auto fill-current"
@@ -195,13 +230,47 @@ const Help: React.FC = () => {
                         >
                             <div className="pb-5 leading-relaxed">
                                 <div className="space-y-2 leading-relaxed">
-                                    {" "}
-                                    Lorem ipsum, dolor sit amet consectetur
-                                    adipisicing elit. Assumenda cum amet
-                                    blanditiis quis vero saepe quo veritatis ab
-                                    dicta ratione cumque, labore velit omnis
-                                    sequi voluptatem harum distinctio reiciendis
-                                    eveniet!
+                                    <ul className="list-disc list-inside">
+                                        <li>
+                                            The application will only be
+                                            accessible through a browser.
+                                        </li>
+                                        <li>
+                                            The AI will only be able to
+                                            recognize facial expressions, not
+                                            body language.
+                                        </li>
+                                        <li>
+                                            The application can only be accessed
+                                            if there is an internet connection
+                                            available.
+                                        </li>
+                                        <li>
+                                            The proponents will not upgrade the
+                                            current Supabase plan from a free
+                                            tier.
+                                        </li>
+                                        <li>
+                                            People with severe mental health
+                                            conditions such as Autism,
+                                            Tourette's Syndrome, Dissociative
+                                            Identity Disorder, Complex PTSD
+                                            (PTSD Type 4), and Comorbid PTSD
+                                            (PTSD Type 5) will not be able to
+                                            use the program.
+                                        </li>
+                                        <li>
+                                            The chatbot will only support
+                                            limited languages, such as English
+                                            and Filipino.
+                                        </li>
+                                        <li>
+                                            Due to how Open AI custom chatbots
+                                            do not save messages, messages for
+                                            AI to user won’t be saved to
+                                            database.
+                                        </li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>
@@ -212,7 +281,7 @@ const Help: React.FC = () => {
                             aria-expanded="false"
                         >
                             <span className="flex-1 text-base-content">
-                                Lorem ipsum, dolor sit amet consectetur?
+                                Assumptions?
                             </span>
                             <svg
                                 className="flex-shrink-0 w-4 h-4 ml-auto fill-current"
@@ -243,13 +312,21 @@ const Help: React.FC = () => {
                         >
                             <div className="pb-5 leading-relaxed">
                                 <div className="space-y-2 leading-relaxed">
-                                    {" "}
-                                    Lorem ipsum, dolor sit amet consectetur
-                                    adipisicing elit. Assumenda cum amet
-                                    blanditiis quis vero saepe quo veritatis ab
-                                    dicta ratione cumque, labore velit omnis
-                                    sequi voluptatem harum distinctio reiciendis
-                                    eveniet!
+                                    <ul className="list-disc list-inside">
+                                        <li>
+                                            Assuming that the user is
+                                            experiencing Depression and Anxiety.
+                                        </li>
+                                        <li>
+                                            Assumes that the user has a webcam
+                                            for the chatbot to know what mood
+                                            the user’s mood.
+                                        </li>
+                                        <li>
+                                            Assumes that the User is only
+                                            visible in the webcam.
+                                        </li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>

@@ -9,6 +9,7 @@ import {
     FaInfoCircle,
     FaQuestionCircle,
     FaCog,
+    FaCamera,
 } from "react-icons/fa";
 
 const Sidebar: React.FC = () => {
@@ -18,7 +19,7 @@ const Sidebar: React.FC = () => {
         <div className="print:hidden">
             {/* Toggle Button for Mobile/Tablet */}
             <button
-                className="lg:hidden fixed top-4 left-4 z-99 bg-yellow-950 text-white p-2 rounded-full shadow-lg focus:outline-none"
+                className="lg:hidden fixed top-4 left-4 z-50 bg-[#C46C4C] dark:bg-[#EAD8AC] text-[#EAD8AC] dark:text-[#1E3226] p-2 rounded-full shadow-lg focus:outline-none"
                 onClick={() => setIsOpen(!isOpen)}
                 aria-label="Toggle Sidebar"
             >
@@ -27,28 +28,33 @@ const Sidebar: React.FC = () => {
 
             {/* Sidebar */}
             <div
-                className={`fixed flex flex-col top-0 left-0 bg-yellow-950 dark:bg-gray-900 h-full text-white transition-all duration-300 z-99 ${
-                    isOpen ? "w-64" : "w-14 lg:w-64"
-                }`}
+                className={`fixed flex flex-col top-0 left-0 h-full transition-all duration-300 z-999 
+                    ${isOpen ? "w-64" : "w-14 lg:w-64"} 
+                    bg-[#1E3226] dark:bg-gray-900 text-[#EAD8AC] dark:text-gray-200`}
             >
-                <div className="flex flex-col justify-between flex-grow mt-14">
+                <div className="flex flex-col justify-between flex-grow mt-14 font-medium text-2xl">
                     <ul className="flex flex-col py-4 space-y-1">
                         {/* Sidebar Items */}
-                        <li className="px-5 hidden lg:block">
+                        <li className="px-5 hidden lg:block text-lg">
                             <div className="flex flex-row items-center h-8">
-                                <div className="text-sm font-light tracking-wide text-gray-400 uppercase">
+                                <div className="text-sm font-light tracking-wide text-[#A19F81] dark:text-gray-400 uppercase">
                                     Home
                                 </div>
                             </div>
                         </li>
                         <SidebarItem
-                            href="/home"
+                            href="/dashboard"
                             icon={<FaHome />}
                             label="Dashboard"
                         />
                         <SidebarItem
-                            href="/chatbot"
+                            href="/home"
                             icon={<FaPen />}
+                            label="Post"
+                        />
+                        <SidebarItem
+                            href="/chatbot"
+                            icon={<FaCamera />}
                             label="Chatbot"
                         />
                         <SidebarItem
@@ -60,7 +66,7 @@ const Sidebar: React.FC = () => {
                             href="/chat"
                             icon={<FaCommentDots />}
                             label="Chats"
-                            badge="2"
+                            // badge="2"
                         />
                     </ul>
 
@@ -69,7 +75,7 @@ const Sidebar: React.FC = () => {
                         <ul className="flex flex-col py-4 space-y-1">
                             <li className="px-5 hidden lg:block">
                                 <div className="flex flex-row items-center mt-5 h-8">
-                                    <div className="text-sm font-light tracking-wide text-gray-400 uppercase">
+                                    <div className="text-sm font-light tracking-wide text-[#A19F81] dark:text-gray-400 uppercase">
                                         Settings
                                     </div>
                                 </div>
@@ -85,7 +91,7 @@ const Sidebar: React.FC = () => {
                                 label="Help"
                             />
                         </ul>
-                        <p className="mb-4 px-5 py-3 hidden lg:block text-center text-xs">
+                        <p className="mb-4 px-5 py-3 hidden lg:block text-center text-xs text-[#A19F81] dark:text-gray-400">
                             Copyright Innerlight © 2024
                         </p>
                     </div>
@@ -95,7 +101,7 @@ const Sidebar: React.FC = () => {
             {/* Overlay for Mobile */}
             {isOpen && (
                 <div
-                    className="fixed inset-0 bg-black opacity-50 z-99 md:hidden"
+                    className="fixed inset-0 bg-black opacity-50 z-40 md:hidden"
                     onClick={() => setIsOpen(false)}
                     aria-hidden="true"
                 ></div>
@@ -120,7 +126,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     <li>
         <a
             href={href}
-            className="relative flex flex-row items-center h-11 focus:outline-none hover:bg-yellow-800 dark:hover:bg-gray-600 text-white-600 hover:text-white-800 border-l-4 border-transparent hover:border-yellow-500 dark:hover:border-gray-800 pr-6"
+            className="relative flex flex-row items-center h-11 focus:outline-none hover:bg-green-800 dark:hover:bg-gray-600 text-white-600 hover:text-white-800 border-l-4 border-transparent hover:border-yellow-500 dark:hover:border-gray-800 pr-6"
         >
             <span className="inline-flex justify-center items-center ml-4">
                 {icon}

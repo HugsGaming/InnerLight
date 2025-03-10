@@ -125,95 +125,94 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor, user }) => {
         const ctx = ctxRef.current;
         if (!canvas || !ctx) return;
 
+        const draw = (x: number, y: number) => {
+            if (tool === "brush" || tool === "rainbow") {
+                const stroke = getStroke(points, {
+                    size: brushSize,
+                    thinning: 0.5,
+                    smoothing: 0.5,
+                    streamline: 0.5,
+                    easing: (t) => t,
+                    simulatePressure: true,
+                });
+
+                ctx.beginPath();
+                stroke.forEach(([x, y], index) => {
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+
+                if (tool === "rainbow") {
+                    const rainbowColors = [
+                        "red",
+                        "orange",
+                        "yellow",
+                        "green",
+                        "blue",
+                        "indigo",
+                        "violet",
+                    ];
+                    ctx.strokeStyle =
+                        rainbowColors[
+                            Math.floor(Math.random() * rainbowColors.length)
+                        ];
+                } else {
+                    ctx.strokeStyle = currentColorState;
+                }
+
+                ctx.globalAlpha = brushOpacity;
+                ctx.lineWidth = brushSize;
+                ctx.stroke();
+                ctx.closePath();
+            } else if (tool === "eraser") {
+                ctx.globalCompositeOperation = "destination-out";
+                ctx.strokeStyle = "rgba(0,0,0,1)";
+                ctx.lineWidth = brushSize;
+                ctx.beginPath();
+                ctx.moveTo(points[0][0], points[0][1]);
+                points.forEach(([x, y]) => {
+                    ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+                ctx.closePath();
+                ctx.globalCompositeOperation = "source-over";
+            } else if (tool === "spray") {
+                ctx.fillStyle = currentColorState;
+                points.forEach(([x, y]) => {
+                    for (let i = 0; i < 20; i++) {
+                        const offsetX =
+                            Math.random() * brushSize - brushSize / 2;
+                        const offsetY =
+                            Math.random() * brushSize - brushSize / 2;
+                        ctx.fillRect(x + offsetX, y + offsetY, 1, 1);
+                    }
+                });
+            }
+        };
+
         const handleMouseDown = (e: MouseEvent) => {
             if (tool === "fill-bucket") {
                 fillBucket(e.offsetX, e.offsetY);
             } else {
                 setIsDrawing(true);
                 setPoints([[e.offsetX, e.offsetY]]);
+                draw(e.offsetX, e.offsetY);
             }
         };
 
         const handleMouseMove = (e: MouseEvent) => {
             if (!isDrawing) return;
             setPoints((prev) => [...prev, [e.offsetX, e.offsetY]]);
+            draw(e.offsetX, e.offsetY);
         };
 
         const handleMouseUp = () => {
             setIsDrawing(false);
-            if (ctx && points.length) {
-                if (tool === "brush" || tool === "rainbow") {
-                    const stroke = getStroke(points, {
-                        size: brushSize,
-                        thinning: 0.5,
-                        smoothing: 0.5,
-                        streamline: 0.5,
-                        easing: (t) => t,
-                        simulatePressure: true,
-                    });
-
-                    ctx.beginPath();
-                    stroke.forEach(([x, y], index) => {
-                        if (index === 0) {
-                            ctx.moveTo(x, y);
-                        } else {
-                            ctx.lineTo(x, y);
-                        }
-                    });
-
-                    if (tool === "rainbow") {
-                        const rainbowColors = [
-                            "red",
-                            "orange",
-                            "yellow",
-                            "green",
-                            "blue",
-                            "indigo",
-                            "violet",
-                        ];
-                        ctx.strokeStyle =
-                            rainbowColors[
-                                Math.floor(Math.random() * rainbowColors.length)
-                            ];
-                    } else {
-                        ctx.strokeStyle = currentColorState;
-                    }
-
-                    ctx.globalAlpha = brushOpacity;
-                    ctx.lineWidth = brushSize;
-                    ctx.stroke();
-                    ctx.closePath();
-                    saveCanvasState();
-                    setPoints([]);
-                } else if (tool === "eraser") {
-                    ctx.globalCompositeOperation = "destination-out";
-                    ctx.strokeStyle = "rgba(0,0,0,1)";
-                    ctx.lineWidth = brushSize;
-                    ctx.beginPath();
-                    ctx.moveTo(points[0][0], points[0][1]);
-                    points.forEach(([x, y]) => {
-                        ctx.lineTo(x, y);
-                    });
-                    ctx.stroke();
-                    ctx.closePath();
-                    ctx.globalCompositeOperation = "source-over";
-                    saveCanvasState();
-                    setPoints([]);
-                } else if (tool === "spray") {
-                    ctx.fillStyle = currentColorState;
-                    points.forEach(([x, y]) => {
-                        for (let i = 0; i < 20; i++) {
-                            const offsetX =
-                                Math.random() * brushSize - brushSize / 2;
-                            const offsetY =
-                                Math.random() * brushSize - brushSize / 2;
-                            ctx.fillRect(x + offsetX, y + offsetY, 1, 1);
-                        }
-                    });
-                    saveCanvasState();
-                    setPoints([]);
-                }
-            }
+            saveCanvasState();
+            setPoints([]);
         };
 
         const handleTouchStart = (e: TouchEvent) => {
@@ -228,6 +227,7 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor, user }) => {
                 setPoints([
                     [touch.clientX - rect.left, touch.clientY - rect.top],
                 ]);
+                draw(touch.clientX - rect.left, touch.clientY - rect.top);
             }
         };
 
@@ -239,83 +239,13 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor, user }) => {
                 ...prev,
                 [touch.clientX - rect.left, touch.clientY - rect.top],
             ]);
+            draw(touch.clientX - rect.left, touch.clientY - rect.top);
         };
 
         const handleTouchEnd = () => {
             setIsDrawing(false);
-            if (ctx && points.length) {
-                if (tool === "brush" || tool === "rainbow") {
-                    const stroke = getStroke(points, {
-                        size: brushSize,
-                        thinning: 0.5,
-                        smoothing: 0.5,
-                        streamline: 0.5,
-                        easing: (t) => t,
-                        simulatePressure: true,
-                    });
-
-                    ctx.beginPath();
-                    stroke.forEach(([x, y], index) => {
-                        if (index === 0) {
-                            ctx.moveTo(x, y);
-                        } else {
-                            ctx.lineTo(x, y);
-                        }
-                    });
-
-                    if (tool === "rainbow") {
-                        const rainbowColors = [
-                            "red",
-                            "orange",
-                            "yellow",
-                            "green",
-                            "blue",
-                            "indigo",
-                            "violet",
-                        ];
-                        ctx.strokeStyle =
-                            rainbowColors[
-                                Math.floor(Math.random() * rainbowColors.length)
-                            ];
-                    } else {
-                        ctx.strokeStyle = currentColorState;
-                    }
-
-                    ctx.globalAlpha = brushOpacity;
-                    ctx.lineWidth = brushSize;
-                    ctx.stroke();
-                    ctx.closePath();
-                    saveCanvasState();
-                    setPoints([]);
-                } else if (tool === "eraser") {
-                    ctx.globalCompositeOperation = "destination-out";
-                    ctx.strokeStyle = "rgba(0,0,0,1)";
-                    ctx.lineWidth = brushSize;
-                    ctx.beginPath();
-                    ctx.moveTo(points[0][0], points[0][1]);
-                    points.forEach(([x, y]) => {
-                        ctx.lineTo(x, y);
-                    });
-                    ctx.stroke();
-                    ctx.closePath();
-                    ctx.globalCompositeOperation = "source-over";
-                    saveCanvasState();
-                    setPoints([]);
-                } else if (tool === "spray") {
-                    ctx.fillStyle = currentColorState;
-                    points.forEach(([x, y]) => {
-                        for (let i = 0; i < 20; i++) {
-                            const offsetX =
-                                Math.random() * brushSize - brushSize / 2;
-                            const offsetY =
-                                Math.random() * brushSize - brushSize / 2;
-                            ctx.fillRect(x + offsetX, y + offsetY, 1, 1);
-                        }
-                    });
-                    saveCanvasState();
-                    setPoints([]);
-                }
-            }
+            saveCanvasState();
+            setPoints([]);
         };
 
         canvas.addEventListener("mousedown", handleMouseDown);
@@ -338,6 +268,41 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor, user }) => {
             canvas.removeEventListener("touchcancel", handleTouchEnd);
         };
     }, [isDrawing, points, brushSize, brushOpacity, currentColorState, tool]);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+            const resizeCanvas = () => {
+                const ctx = ctxRef.current;
+                if (!ctx) return;
+
+                const imageData = ctx.getImageData(
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height,
+                );
+
+                const displayWidth = canvas.clientWidth;
+                const displayHeight = canvas.clientHeight;
+
+                canvas.width = displayWidth * window.devicePixelRatio;
+                canvas.height = displayHeight * window.devicePixelRatio;
+
+                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+                ctx.putImageData(imageData, 0, 0);
+            };
+
+            resizeCanvas();
+
+            window.addEventListener("resize", resizeCanvas);
+
+            return () => {
+                window.removeEventListener("resize", resizeCanvas);
+            };
+        }
+    }, [canvasRef]);
 
     const handleCanvasClick = (selectedTool: string) => {
         setTool(selectedTool);
@@ -515,7 +480,7 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor, user }) => {
     };
 
     return (
-        <div className="flex flex-col items-center space-y-4 p-4 bg-gray-100 dark:bg-gray-600">
+        <div className="flex flex-col items-center space-y-4 p-4 ">
             <div className="relative overflow-hidden bg-white border border-gray-300 shadow-md rounded-lg">
                 <canvas
                     ref={canvasRef}
@@ -550,7 +515,7 @@ const Canvas: React.FC<CanvasProps> = ({ canvasRef, currentColor, user }) => {
                 </div>
             </div>
 
-            <div className="flex flex-wrap justify-center gap-2 md:gap-4 dark:bg-gray-600">
+            <div className="flex flex-wrap justify-center gap-2 md:gap-4">
                 <div
                     className="tool undo cursor-pointer flex items-center justify-center w-10 h-10 md:w-14 md:h-14 p-2 md:p-3 rounded bg-yellow-500 text-white hover:bg-yellow-600"
                     onClick={handleUndoClick}

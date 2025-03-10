@@ -237,7 +237,9 @@ const PostList: React.FC<{
                 //Handle image upload if present
                 let postImage: string | null = null;
                 if (post.image || post.gif) {
-                    const extension = getFileExtension(post.image?.name ?? post.gif?.name ?? "");
+                    const extension = getFileExtension(
+                        post.image?.name ?? post.gif?.name ?? "",
+                    );
                     const imagePath = `post_images/${uuidv4()}.${extension}`;
 
                     const { data: imageData, error: imageError } =
@@ -296,9 +298,15 @@ const PostList: React.FC<{
     );
 
     return (
-        <div className="container px-6 py-10 mx-auto bg-white dark:bg-gray-700">
+        <div className="container px-6 py-10 mx-auto">
             {showAddPost && <PostComponent addPost={addPost} user={user} />}
-            {posts?.length === 0 && <p>No posts found.</p>}
+
+            {posts?.length === 0 && (
+                <p className="text-[#1E3226] dark:text-[#EAD8AC] text-center">
+                    No posts found.
+                </p>
+            )}
+
             {posts?.map((post) => (
                 <PostItem
                     key={post!.id}
@@ -307,15 +315,16 @@ const PostList: React.FC<{
                     onVote={handleVote}
                 />
             ))}
+
             <div
                 ref={loadingRef}
                 className="w-full h-16 flex items-center justify-center"
             >
                 {isLoading && (
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white" />
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#C46C4C]" />
                 )}
                 {!hasMore && posts.length > 0 && (
-                    <p className="text-gray-500 dark:text-white">
+                    <p className="text-[#1E3226] dark:text-[#EAD8AC]">
                         No more posts to load
                     </p>
                 )}

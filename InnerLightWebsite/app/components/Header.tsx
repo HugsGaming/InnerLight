@@ -58,8 +58,8 @@ const Header: React.FC = () => {
     };
 
     return (
-        <header className="fixed w-full flex items-center justify-between h-14 text-white z-10 print:hidden">
-            <div className="flex items-center justify-start md:justify-center pl-3 w-14 md:w-64 h-14 bg-yellow-950 dark:bg-gray-800 border-none">
+        <header className="fixed w-full flex items-center justify-between h-14 text-[#EAD8AC] z-10 print:hidden bg-[#1E3226] dark:bg-gray-800">
+            <div className="flex items-center justify-start md:justify-center pl-3 w-14 md:w-64 h-14 bg-[#1E3226] dark:bg-gray-800 border-none">
                 <span className="hidden md:block w-full">
                     <img
                         src="https://imgur.com/ygBYDbr.png"
@@ -68,46 +68,44 @@ const Header: React.FC = () => {
                     />
                 </span>
             </div>
-            <div className="flex justify-between items-center h-14 bg-yellow-950 dark:bg-gray-800 header-right">
-                <div className="bg-white rounded flex items-center w-full max-w-xl mr-4 p-2 shadow-sm border border-gray-200">
+            <div className="flex justify-between items-center h-14 bg-[#1E3226] dark:bg-gray-800 header-right">
+                <div className="bg-[#EAD8AC] dark:bg-gray-800 rounded flex items-center w-full max-w-xl ml-2 mr-4 p-2 shadow-sm border border-[#A19F81] dark:border-gray-700">
                     <button className="outline-none focus:outline-none">
-                        <FaSearch className="w-5 text-gray-600 h-5 cursor-pointer" />
+                        <FaSearch className="w-5 text-[#C46C4C] dark:text-[#EAD8AC] h-5 cursor-pointer" />
                     </button>
                     <input
                         type="search"
-                        name=""
-                        id=""
                         placeholder="Search"
-                        className="w-full pl-3 text-sm text-black outline-none focus:outline-none bg-transparent"
+                        className="w-full pl-3 text-sm text-[#1E3226] dark:text-white outline-none focus:outline-none bg-transparent"
                     />
                 </div>
                 <ul className="flex items-center">
                     <li>
                         <button
                             onClick={toggleTheme}
-                            className="group p-2 transition-colors duration-200 rounded-full shadow-md bg-yellow-700 hover:bg-yellow-900 dark:bg-gray-50 dark:hover:bg-gray-200 text-gray-900 focus:outline-none"
+                            className="group p-2 transition-colors duration-200 rounded-full shadow-md bg-[#C46C4C] dark:bg-[#9A4F3A] hover:bg-[#7A9179] focus:outline-none"
                         >
                             {isDark ? (
-                                <FaSun className="w-4 h-4 text-gray-700 group-hover:text-gray-500 dark:text-gray-700 dark:group-hover:text-gray-500" />
+                                <FaSun className="w-4 h-4 text-[#EAD8AC] dark:text-yellow-400 group-hover:text-[#1E3226]" />
                             ) : (
-                                <FaMoon className="w-4 h-4 text-gray-100 group-hover:text-gray-300 dark:text-gray-700 dark:group-hover:text-gray-500" />
+                                <FaMoon className="w-4 h-4 text-[#EAD8AC] group-hover:text-[#1E3226]" />
                             )}
                         </button>
                     </li>
                     <li>
-                        <div className="block w-px h-6 mx-3 mr-1 bg-gray-400 dark:bg-gray-700"></div>
+                        <div className="block w-px h-6 mx-3 mr-1 bg-[#A19F81] dark:bg-gray-500"></div>
                     </li>
                     <li>
                         <button
-                            className=" p-2 transition-colors duration-200 rounded-full shadow-md hover:text-blue-100"
+                            className="p-2 transition-colors duration-200 rounded-full shadow-md hover:text-[#7A9179]"
                             onClick={openProfile}
                         >
-                            <FaUserCircle className="w-8 h-8 md:w-8 md:h-8 mr-2 rounded-full overflow-hidden" />
+                            <FaUserCircle className="w-8 h-8 md:w-8 md:h-8 mr-2 rounded-full overflow-hidden text-[#EAD8AC] dark:text-gray-300" />
                         </button>
                     </li>
                     <li>
                         <a
-                            className="flex items-center mr-4 hover:text-blue-100 cursor-pointer"
+                            className="flex items-center mr-4 hover:text-[#7A9179] dark:hover:text-gray-300 cursor-pointer"
                             onClick={signOut}
                         >
                             <FaSignOutAlt className="w-4 h-4" />
