@@ -54,7 +54,7 @@ const Sidebar: React.FC = () => {
                             label="Post"
                         />
                         <SidebarItem
-                            href="/chatbot"
+                            href="/adaptive-chat"
                             icon={<FaCamera />}
                             label="Chatbot"
                         />
