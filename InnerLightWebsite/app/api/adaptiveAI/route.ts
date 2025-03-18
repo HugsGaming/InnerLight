@@ -48,15 +48,21 @@ export async function POST(request: Request) {
         
         if (contextData?.context) {
             // Add user preferences to the context
+            // @ts-ignore
             if (contextData.context.preferences) {
+                // @ts-ignore
                 personalizedContext += `\nUser preferences: ${JSON.stringify(contextData.context.preferences)}`;
             }
             
             // Add conversation history notes
+            // @ts-ignore
             if (contextData.context.conversationNotes) {
+                // @ts-ignore
                 personalizedContext += `\nPrevious conversation context: ${contextData.context.conversationNotes}`;
             }
         }
+
+        console.log("Personalized context:", personalizedContext);
 
         // Add topics of interest if available
         if (topicsData && topicsData.length > 0) {
@@ -86,7 +92,7 @@ export async function POST(request: Request) {
         });
 
         // Get the latest user message for topic analysis
-        const latestUserMessage = messages.find(m => m.role === "user");
+        const latestUserMessage = messages.find((m: any) => m.role === "user");
         const userMessageContent = latestUserMessage?.content;
 
         // Analyze message for topics (simplified detection)
@@ -169,6 +175,8 @@ export async function POST(request: Request) {
                     max_tokens: 100,
                 });
 
+                console.log(contextUpdate.choices[0].message.content);
+
                 const conversationNotes = contextUpdate.choices[0].message.content?.trim();
                 
                 if (conversationNotes) {
@@ -180,8 +188,9 @@ export async function POST(request: Request) {
                         .single();
                     
                     if (existingContext) {
+                        const context = existingContext.context as { [key: string]: any };
                         const updatedContext = {
-                            ...existingContext.context,
+                            ...context,
                             conversationNotes
                         };
                         
