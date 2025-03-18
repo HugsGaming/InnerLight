@@ -66,6 +66,30 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_feedback: {
+        Row: {
+          created_at: string
+          helpful: boolean
+          id: number
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          helpful: boolean
+          id?: number
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          helpful?: boolean
+          id?: number
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       commentDownVotes: {
         Row: {
           comment_id: string | null
@@ -224,6 +248,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      detected_topics: {
+        Row: {
+          created_at: string
+          frequency: number
+          id: number
+          last_detected: string
+          topic: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          frequency?: number
+          id?: number
+          last_detected?: string
+          topic: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          frequency?: number
+          id?: number
+          last_detected?: string
+          topic?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       emotion_logs: {
         Row: {
@@ -694,6 +745,30 @@ export type Database = {
           },
         ]
       }
+      user_context: {
+        Row: {
+          context: Json
+          created_at: string
+          id: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          context?: Json
+          created_at?: string
+          id?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          id?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_emotion_patterns: {
         Row: {
           contexts: string[] | null
@@ -772,7 +847,16 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      user_preferences_view: {
+        Row: {
+          conversation_notes: string | null
+          email: string | null
+          last_updated: string | null
+          preferences: string | null
+          username: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
