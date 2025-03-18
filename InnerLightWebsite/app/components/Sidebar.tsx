@@ -10,6 +10,7 @@ import {
     FaQuestionCircle,
     FaCog,
     FaCamera,
+    FaBrain,
 } from "react-icons/fa";
 
 const Sidebar: React.FC = () => {
@@ -67,6 +68,11 @@ const Sidebar: React.FC = () => {
                             icon={<FaCommentDots />}
                             label="Chats"
                             // badge="2"
+                        />
+                        <SidebarItem
+                            href="/hpt-test"
+                            icon={<FaBrain />}
+                            label="Psych Test"
                         />
                     </ul>
 
