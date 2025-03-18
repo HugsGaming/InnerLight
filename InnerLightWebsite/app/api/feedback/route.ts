@@ -40,6 +40,7 @@ export async function POST(request: Request) {
                 // Update preferences in context
                 if (contextData) {
                     // Get existing preferences or initialize empty array
+                    // @ts-ignore
                     const preferences = contextData.context.preferences || [];
                     
                     // Add new preference note based on feedback
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
                     
                     // Update the context
                     const updatedContext = {
+                        // @ts-ignore
                         ...contextData.context,
                         preferences: updatedPreferences
                     };
