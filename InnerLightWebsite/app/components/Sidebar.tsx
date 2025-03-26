@@ -11,6 +11,7 @@ import {
     FaCog,
     FaCamera,
     FaBrain,
+    FaBookOpen,
 } from "react-icons/fa";
 
 const Sidebar: React.FC = () => {
@@ -73,6 +74,11 @@ const Sidebar: React.FC = () => {
                             href="/hpt-test"
                             icon={<FaBrain />}
                             label="Psych Test"
+                        />
+                        <SidebarItem
+                            href="/completion-test"
+                            icon={<FaBookOpen />}
+                            label="Completion Test"
                         />
                     </ul>
 
