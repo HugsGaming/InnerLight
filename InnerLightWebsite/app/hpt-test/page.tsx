@@ -39,7 +39,6 @@ export default function HPTTestPage() {
                 <li>Draw each item as completely as you can - take your time</li>
                 <li>There are no right or wrong ways to draw - express yourself naturally</li>
                 <li>After completing all drawings, AI analysis will provide psychological insights</li>
-                <li>Your drawings are saved securely and are only visible to you</li>
               </ul>
             </div>
           </div>

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import { createClient } from "../../utils/supabase/server";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -17,51 +16,13 @@ export async function POST(request: Request) {
       );
     }
     
-    const supabase = createClient();
+    // Extract the drawings directly from the request
+    // No need for Supabase or signed URLs
+    const houseData = drawings.find(item => item.stage === "house")?.dataUrl;
+    const personData = drawings.find(item => item.stage === "person")?.dataUrl;
+    const treeData = drawings.find(item => item.stage === "tree")?.dataUrl;
     
-    // Get signed URLs for the drawings
-    const signedUrls = await Promise.all(
-        drawings.map(async (drawing: { stage: string; path?: string; dataUrl?: string }) => {
-          // If we have a direct dataUrl from the fallback approach, use it
-          if (drawing.dataUrl) {
-            return {
-              stage: drawing.stage,
-              url: drawing.dataUrl
-            };
-          }
-          
-          // Otherwise try to get a signed URL from storage
-          if (drawing.path) {
-            try {
-              const { data, error } = await supabase.storage
-                .from("htp-test-drawings")
-                .createSignedUrl(drawing.path, 3600);
-                
-              if (error) {
-                console.error(`Error creating signed URL for ${drawing.stage}:`, error);
-                throw error;
-              }
-              
-              return {
-                stage: drawing.stage,
-                url: data?.signedUrl
-              };
-            } catch (error) {
-              console.error(`Failed to get signed URL for ${drawing.stage}:`, error);
-              throw error;
-            }
-          }
-          
-          throw new Error(`No path or dataUrl provided for ${drawing.stage} drawing`);
-        })
-      );
-    
-    // Create prompts for OpenAI Vision API
-    const houseUrl = signedUrls.find(item => item.stage === "house")?.url;
-    const personUrl = signedUrls.find(item => item.stage === "person")?.url;
-    const treeUrl = signedUrls.find(item => item.stage === "tree")?.url;
-    
-    if (!houseUrl || !personUrl || !treeUrl) {
+    if (!houseData || !personData || !treeData) {
       return NextResponse.json(
         { error: "Missing one or more drawings" },
         { status: 400 }
@@ -125,9 +86,9 @@ export async function POST(request: Request) {
     
     // Analyze each drawing in parallel
     const [houseAnalysis, personAnalysis, treeAnalysis] = await Promise.all([
-      analyzeDrawing(houseUrl, "house"),
-      analyzeDrawing(personUrl, "person"),
-      analyzeDrawing(treeUrl, "tree")
+      analyzeDrawing(houseData, "house"),
+      analyzeDrawing(personData, "person"),
+      analyzeDrawing(treeData, "tree")
     ]);
     
     // Generate overall analysis
@@ -197,15 +158,7 @@ export async function POST(request: Request) {
       };
     }
     
-    // Log analysis to database
-    await supabase
-      .from("hpt_analysis_logs")
-      .insert({
-        user_id: userId,
-        session_id: sessionId,
-        request_timestamp: new Date().toISOString(),
-        response_status: "success",
-      });
+    // Log analysis to localStorage on the client side instead of the database
     
     // Return the complete analysis
     return NextResponse.json({

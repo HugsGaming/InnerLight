@@ -7,7 +7,6 @@ import { redirect } from "next/navigation";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Profile from "../components/Profile";
-import { QueryData } from "@supabase/supabase-js";
 import { Post } from "../components/PostList";
 
 const OwnProfile: React.FC = async () => {

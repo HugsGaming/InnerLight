@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { FaMoon, FaSun } from "react-icons/fa";
 import "react-toastify/dist/ReactToastify.css";
-import LoginForm from "../../components/LoginForm";
 import LogInForm from "../../components/new-auth/LogInForm";
 import { ToastContainer } from "react-toastify";
 
