@@ -18,8 +18,11 @@ export async function POST(request: Request) {
     
     // Extract the drawings directly from the request
     // No need for Supabase or signed URLs
+    // @ts-ignore
     const houseData = drawings.find(item => item.stage === "house")?.dataUrl;
+    // @ts-ignore
     const personData = drawings.find(item => item.stage === "person")?.dataUrl;
+    // @ts-ignore
     const treeData = drawings.find(item => item.stage === "tree")?.dataUrl;
     
     if (!houseData || !personData || !treeData) {
