@@ -2,7 +2,6 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "../utils/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "react-toastify";
 import { Loader2, Save, Home, User, Palmtree, RefreshCw, ArrowRight } from "lucide-react";
@@ -29,7 +28,6 @@ interface AnalysisResult {
 }
 
 const HousePersonTreeTest: React.FC = () => {
-
     const formatMarkdown = (text:string) => {
         if (!text) return "";
         try {
@@ -51,7 +49,6 @@ const HousePersonTreeTest: React.FC = () => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [instructions, setInstructions] = useState("");
   
-  const supabase = createClient();
   const router = useRouter();
 
   // Set instructions based on current stage
@@ -169,54 +166,24 @@ const HousePersonTreeTest: React.FC = () => {
     setIsAnalyzing(true);
     
     try {
-      // Get user ID
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
+      // Generate a simple user ID if needed
+      const userId = localStorage.getItem('userId') || uuidv4();
+      localStorage.setItem('userId', userId);
 
-      // Save drawings to Supabase storage
-      const drawingPaths = await Promise.all(
-        Object.entries(drawings).map(async ([stage, dataUrl]) => {
-          try {
-            // Convert base64 data URL to blob
-            const base64Response = await fetch(dataUrl);
-            const blob = await base64Response.blob();
-            
-            const filePath = `${user.id}/${sessionId}/${stage}.png`;
-            
-            const { data, error } = await supabase.storage
-              .from("htp-test-drawings")
-              .upload(filePath, blob, { 
-                contentType: 'image/png', 
-                upsert: true 
-              });
-            
-            if (error) {
-              console.error(`Error uploading ${stage} drawing:`, error);
-              throw error;
-            }
-            
-            console.log(`Successfully uploaded ${stage} drawing:`, data);
-            return { stage, path: data?.path || filePath };
-          } catch (error) {
-            console.error(`Error processing ${stage} drawing:`, error);
-            // Fallback approach - store the data URL directly in the request
-            return { stage, dataUrl };
-          }
-        })
-      );
-
-      console.log("Drawing Paths:", drawingPaths);
+      // Process the drawings for API
+      const drawingsForApi = Object.entries(drawings).map(([stage, dataUrl]) => ({
+        stage,
+        dataUrl
+      }));
 
       // Send to API for analysis
       const response = await fetch("/api/analyze-hpt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: user.id,
+          userId,
           sessionId,
-          drawings: drawingPaths
+          drawings: drawingsForApi
         })
       });
 
@@ -227,19 +194,23 @@ const HousePersonTreeTest: React.FC = () => {
       const result = await response.json();
       setAnalysisResult(result);
       
-      // Save results to database
-      await supabase.from("hpt_test_results").insert({
-        user_id: user.id,
-        session_id: sessionId,
-        house_analysis: result.house,
-        person_analysis: result.person,
-        tree_analysis: result.tree,
-        overall_analysis: result.overall,
-        emotional_stability_score: result.scores.emotionalStability,
-        social_interaction_score: result.scores.socialInteraction,
-        self_perception_score: result.scores.selfPerception,
-        environmental_adaptation_score: result.scores.environmentalAdaptation
-      });
+      // Save the result to local storage for history 
+      try {
+        // Get existing results or initialize empty array
+        const savedResults = JSON.parse(localStorage.getItem('hptResults') || '[]');
+        savedResults.push({
+          sessionId,
+          timestamp: new Date().toISOString(),
+          result
+        });
+        // Only keep the last 10 results to avoid excessive storage
+        if (savedResults.length > 10) {
+          savedResults.splice(0, savedResults.length - 10);
+        }
+        localStorage.setItem('hptResults', JSON.stringify(savedResults));
+      } catch (err) {
+        console.error('Error saving results to localStorage:', err);
+      }
 
     } catch (error) {
       console.error("Error analyzing drawings:", error);
